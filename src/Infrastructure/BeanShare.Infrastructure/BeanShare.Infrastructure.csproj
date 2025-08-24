@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\BeanShare.Infrastructure.Persistence\BeanShare.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\BeanShare.Infrastructure.Identity\BeanShare.Infrastructure.Identity.csproj" />
+    <ProjectReference Include="..\BeanShare.Infrastructure.Communication\BeanShare.Infrastructure.Communication.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\BeanShare.Application\BeanShare.Application.csproj" />
+    <ProjectReference Include="..\BeanShare.Contracts\BeanShare.Contracts.csproj" />
+    <ProjectReference Include="..\BeanShare.SharedUi\BeanShare.SharedUi.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\BeanShare.Infrastructure\BeanShare.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+</Project>

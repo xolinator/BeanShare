@@ -1,0 +1,6 @@
+@CoffeeOffice.Api_HostAddress = http://localhost:5247
+
+GET {{CoffeeOffice.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
