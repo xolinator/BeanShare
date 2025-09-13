@@ -1,4 +1,6 @@
-namespace BeanShare.Domain.Offices;
+using BeanShare.Domain.Exceptions;
+
+namespace BeanShare.Domain.ValueObjects;
 
 public readonly record struct InviteCode
 {
@@ -11,13 +13,13 @@ public readonly record struct InviteCode
     public InviteCode(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ArgumentException("Invite code cannot be empty", nameof(value));
+            throw new SpaceDomainException("Invite code cannot be empty");
             
         if (value.Length < MinLength || value.Length > MaxLength)
-            throw new ArgumentException($"Invite code must be between {MinLength} and {MaxLength} characters", nameof(value));
+            throw new SpaceDomainException($"Invite code must be between {MinLength} and {MaxLength} characters");
             
         if (!value.All(c => SafeCharacters.Contains(c)))
-            throw new ArgumentException("Invite code contains invalid characters", nameof(value));
+            throw new SpaceDomainException("Invite code contains invalid characters");
             
         Value = value;
     }

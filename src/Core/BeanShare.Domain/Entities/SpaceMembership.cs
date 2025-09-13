@@ -1,27 +1,28 @@
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Enums;
 
-namespace BeanShare.Domain.Offices;
+namespace BeanShare.Domain.Entities;
 
-public sealed class OfficeMembership
+public sealed class SpaceMembership
 {
     public UserId UserId { get; private set; }
-    public OfficeRole Role { get; private set; }
+    public SpaceRole Role { get; private set; }
     public DateTime JoinedAt { get; private set; }
     
-    internal OfficeMembership(UserId userId, OfficeRole role, DateTime joinedAt)
+    internal SpaceMembership(UserId userId, SpaceRole role, DateTime joinedAt)
     {
         UserId = userId;
         Role = role;
         JoinedAt = joinedAt;
     }
     
-    internal void ChangeRole(OfficeRole newRole)
+    internal void ChangeRole(SpaceRole newRole)
     {
         Role = newRole;
     }
     
     public override bool Equals(object? obj) => 
-        obj is OfficeMembership other && UserId.Equals(other.UserId);
+        obj is SpaceMembership other && UserId.Equals(other.UserId);
         
     public override int GetHashCode() => UserId.GetHashCode();
 }
