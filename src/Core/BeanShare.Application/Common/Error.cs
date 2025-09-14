@@ -25,4 +25,7 @@ public readonly record struct Error(string Code, string Message)
 
     public static Error SystemFailure(string operation) => 
         new("SYSTEM_ERROR", $"System error occurred during {operation}");
+
+    public static Error Unauthorized() => 
+        new("UNAUTHORIZED", "User is not authenticated");
 }
