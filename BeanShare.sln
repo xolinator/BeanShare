@@ -41,6 +41,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeanShare.Maui", "src\Prese
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeanShare.Application.Tests", "tests\BeanShare.Application.Tests\BeanShare.Application.Tests.csproj", "{D87CF553-EBBD-410D-A925-3BC4F40797C5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BeanShare.Infrastructure.Tests", "tests\BeanShare.Infrastructure.Tests\BeanShare.Infrastructure.Tests.csproj", "{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -219,6 +221,18 @@ Global
 		{D87CF553-EBBD-410D-A925-3BC4F40797C5}.Release|x64.Build.0 = Release|Any CPU
 		{D87CF553-EBBD-410D-A925-3BC4F40797C5}.Release|x86.ActiveCfg = Release|Any CPU
 		{D87CF553-EBBD-410D-A925-3BC4F40797C5}.Release|x86.Build.0 = Release|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Debug|x64.Build.0 = Debug|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Debug|x86.Build.0 = Debug|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Release|x64.ActiveCfg = Release|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Release|x64.Build.0 = Release|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Release|x86.ActiveCfg = Release|Any CPU
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -241,5 +255,6 @@ Global
 		{EC548DEE-C732-4979-A1E8-B9E2A492C856} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{E3083172-9F27-4D0E-A2CE-FFD4BEB77609} = {6996BBF7-DB31-59BC-C7DD-9A7CCC6138C4}
 		{D87CF553-EBBD-410D-A925-3BC4F40797C5} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{45898E11-E53A-4AB1-BD3E-C6EAB7AE006C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
