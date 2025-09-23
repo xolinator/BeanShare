@@ -67,7 +67,7 @@ public class SpaceQueryTests
         var result = await handler.Handle(query, default);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.First().Code.Should().Be("Space.NotFound");
+        result.Errors.First().Code.Should().Be("SPACE_NOT_FOUND");
     }
 
     [Fact]

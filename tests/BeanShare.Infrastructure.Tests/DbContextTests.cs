@@ -24,7 +24,7 @@ public sealed class DbContextTests : IClassFixture<DatabaseFixture>
         
         var spaceId = SpaceId.New();
         var userId = new UserId(Guid.NewGuid());
-        var inviteCode = new InviteCode("ROUND7");
+        var inviteCode = new InviteCode("DEFGHJ");
         
         var space = Space.Create(spaceId, "Value Object Test", userId, inviteCode, clock);
 
@@ -50,7 +50,7 @@ public sealed class DbContextTests : IClassFixture<DatabaseFixture>
         var spaceId = SpaceId.New();
         var creatorId = new UserId(Guid.NewGuid());
         var memberId = new UserId(Guid.NewGuid());
-        var inviteCode = new InviteCode("OWNED5");
+        var inviteCode = new InviteCode("KLMNPQ");
         
         var space = Space.Create(spaceId, "Owned Entity Test", creatorId, inviteCode, clock);
         space.Join(memberId, clock);

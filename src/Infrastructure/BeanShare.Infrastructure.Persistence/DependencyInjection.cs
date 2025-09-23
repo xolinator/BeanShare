@@ -15,6 +15,7 @@ public static class DependencyInjection
 
         services.AddScoped<ISpaceRepository, SpaceRepository>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
     }

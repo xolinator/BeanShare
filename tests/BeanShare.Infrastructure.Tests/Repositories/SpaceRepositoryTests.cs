@@ -73,8 +73,8 @@ public sealed class SpaceRepositoryTests : IClassFixture<DatabaseFixture>
         var userId = new UserId(Guid.NewGuid());
         var creatorId = new UserId(Guid.NewGuid());
         
-        var space1 = Space.Create(SpaceId.New(), "Space 1", userId, new InviteCode("SPACE1"), clock);
-        var space2 = Space.Create(SpaceId.New(), "Space 2", creatorId, new InviteCode("SPACE2"), clock);
+        var space1 = Space.Create(SpaceId.New(), "Space 1", userId, new InviteCode("BCDEFG"), clock);
+        var space2 = Space.Create(SpaceId.New(), "Space 2", creatorId, new InviteCode("HJKLMN"), clock);
         space2.Join(userId, clock);
 
         await repository.AddAsync(space1);
