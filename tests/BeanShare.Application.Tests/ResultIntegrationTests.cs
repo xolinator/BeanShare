@@ -17,8 +17,8 @@ public class ResultIntegrationTests
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().HaveCount(2);
-        result.Errors.Should().Contain(e => e.Code == "SPACE_NOT_FOUND");
-        result.Errors.Should().Contain(e => e.Code == "ALREADY_MEMBER");
+        result.Errors.Should().Contain(e => e.Code == Error.Codes.SpaceNotFound);
+        result.Errors.Should().Contain(e => e.Code == Error.Codes.AlreadyMember);
     }
 
     [Fact]

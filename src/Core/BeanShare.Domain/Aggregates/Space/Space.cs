@@ -35,7 +35,7 @@ public sealed class Space : AggregateRoot
         IsActive = true;
         CreatedAt = createdAt;
         
-        var creatorMembership = new SpaceMembership(creatorUserId, SpaceRole.Admin, createdAt);
+        var creatorMembership = SpaceMembership.Create(creatorUserId, SpaceRole.Admin, createdAt);
         _members.Add(creatorMembership);
     }
     
@@ -79,7 +79,7 @@ public sealed class Space : AggregateRoot
             return;
             
         var joinedAt = clock.UtcNow;
-        var membership = new SpaceMembership(userId, SpaceRole.Member, joinedAt);
+        var membership = SpaceMembership.Create(userId, SpaceRole.Member, joinedAt);
         _members.Add(membership);
         
         RaiseDomainEvent(new SpaceMembershipChanged(

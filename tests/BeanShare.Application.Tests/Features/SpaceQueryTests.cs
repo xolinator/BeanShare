@@ -1,4 +1,5 @@
 using BeanShare.Application.Abstractions;
+using BeanShare.Application.Common;
 using BeanShare.Application.Features.Spaces.Dtos;
 using BeanShare.Application.Features.Spaces.Queries;
 using BeanShare.Domain.Aggregates.Space;
@@ -67,7 +68,7 @@ public class SpaceQueryTests
         var result = await handler.Handle(query, default);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.First().Code.Should().Be("SPACE_NOT_FOUND");
+        result.Errors.First().Code.Should().Be(Error.Codes.SpaceNotFound);
     }
 
     [Fact]

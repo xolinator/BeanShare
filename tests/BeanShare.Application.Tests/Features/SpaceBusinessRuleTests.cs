@@ -24,7 +24,7 @@ public class SpaceBusinessRuleTests
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be("INVITE_CODE_INVALID");
+            .Which.Code.Should().Be(Error.Codes.InviteCodeInvalid);
     }
 
     [Fact]

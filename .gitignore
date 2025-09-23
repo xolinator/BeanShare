@@ -56,5 +56,7 @@ nunit-*.xml
 # Visual Studio cache/options directory
 .vs/
 
-# Docker setup scripts (excluded from repository)
+# Docker setup scripts
 scripts/*.ps1
+*.ps1
+/scripts/dev-setup.sh

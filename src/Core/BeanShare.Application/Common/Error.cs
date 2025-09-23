@@ -2,30 +2,59 @@ namespace BeanShare.Application.Common;
 
 public readonly record struct Error(string Code, string Message)
 {
-    public static Error SpaceNotFound(Guid spaceId) => 
-        new("SPACE_NOT_FOUND", $"Coffee space with ID {spaceId} was not found");
+    public static class Codes
+    {
+        public const string SpaceNotFound = "SPACE_NOT_FOUND";
+        public const string InviteCodeInvalid = "INVITE_CODE_INVALID";
+        public const string AlreadyMember = "ALREADY_MEMBER";
+        public const string InsufficientPrivileges = "INSUFFICIENT_PRIVILEGES";
+        public const string LastAdminProtection = "LAST_ADMIN_PROTECTION";
+        public const string InvalidSpaceName = "INVALID_SPACE_NAME";
+        public const string ValidationError = "VALIDATION_ERROR";
+        public const string SystemError = "SYSTEM_ERROR";
+        public const string Unauthorized = "UNAUTHORIZED";
+        public const string CannotRemoveLastAdmin = "CANNOT_REMOVE_LAST_ADMIN";
+        public const string MemberNotFound = "MEMBER_NOT_FOUND";
+        public const string CannotPromoteMember = "CANNOT_PROMOTE_MEMBER";
+        public const string CannotDemoteMember = "CANNOT_DEMOTE_MEMBER";
+    }
 
-    public static Error InviteCodeNotFound(string inviteCode) => 
-        new("INVITE_CODE_INVALID", $"Invite code '{inviteCode}' is not valid or has expired");
+    public static Error SpaceNotFound(Guid spaceId) =>
+        new(Codes.SpaceNotFound, $"Coffee space with ID {spaceId} was not found");
 
-    public static Error AlreadySpaceMember(Guid spaceId, Guid userId) => 
-        new("ALREADY_MEMBER", $"User {userId} is already a member of coffee space {spaceId}");
+    public static Error InviteCodeNotFound(string inviteCode) =>
+        new(Codes.InviteCodeInvalid, $"Invite code '{inviteCode}' is not valid or has expired");
 
-    public static Error InsufficientSpacePrivileges(string action) => 
-        new("INSUFFICIENT_PRIVILEGES", $"User lacks privileges to {action} in this coffee space");
+    public static Error AlreadySpaceMember(Guid spaceId, Guid userId) =>
+        new(Codes.AlreadyMember, $"User {userId} is already a member of coffee space {spaceId}");
 
-    public static Error LastAdminProtection() => 
-        new("LAST_ADMIN_PROTECTION", "Cannot remove or demote the last admin of a coffee space");
+    public static Error InsufficientSpacePrivileges(string action) =>
+        new(Codes.InsufficientPrivileges, $"User lacks privileges to {action} in this coffee space");
 
-    public static Error InvalidSpaceName(string? name) => 
-        new("INVALID_SPACE_NAME", $"Coffee space name '{name}' is invalid or empty");
+    public static Error LastAdminProtection() =>
+        new(Codes.LastAdminProtection, "Cannot remove or demote the last admin of a coffee space");
 
-    public static Error ValidationFailure(string field, string message) => 
-        new("VALIDATION_ERROR", $"{field}: {message}");
+    public static Error InvalidSpaceName(string? name) =>
+        new(Codes.InvalidSpaceName, $"Coffee space name '{name}' is invalid or empty");
 
-    public static Error SystemFailure(string operation) => 
-        new("SYSTEM_ERROR", $"System error occurred during {operation}");
+    public static Error ValidationFailure(string field, string message) =>
+        new(Codes.ValidationError, $"{field}: {message}");
 
-    public static Error Unauthorized() => 
-        new("UNAUTHORIZED", "User is not authenticated");
+    public static Error SystemFailure(string operation) =>
+        new(Codes.SystemError, $"System error occurred during {operation}");
+
+    public static Error Unauthorized() =>
+        new(Codes.Unauthorized, "User is not authenticated");
+
+    public static Error CannotRemoveLastAdmin() =>
+        new(Codes.CannotRemoveLastAdmin, "Cannot remove the last admin from a coffee space");
+
+    public static Error MemberNotFound(Guid userId, Guid spaceId) =>
+        new(Codes.MemberNotFound, $"User {userId} is not a member of coffee space {spaceId}");
+
+    public static Error CannotPromoteMember(string reason) =>
+        new(Codes.CannotPromoteMember, $"Cannot promote member: {reason}");
+
+    public static Error CannotDemoteMember(string reason) =>
+        new(Codes.CannotDemoteMember, $"Cannot demote member: {reason}");
 }

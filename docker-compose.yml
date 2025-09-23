@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  beanshare-postgres:
+    image: postgres:15-alpine
+    container_name: beanshare-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: beanshare_dev
+      POSTGRES_USER: beanshare
+      POSTGRES_PASSWORD: beanshare123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - beanshare_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beanshare -d beanshare_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  beanshare-postgres-test:
+    image: postgres:15-alpine
+    container_name: beanshare-postgres-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: beanshare_test
+      POSTGRES_USER: beanshare_test
+      POSTGRES_PASSWORD: beanshare_test123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - beanshare_postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beanshare_test -d beanshare_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  beanshare_postgres_data:
+    driver: local
+  beanshare_postgres_test_data:
+    driver: local

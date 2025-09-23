@@ -19,7 +19,7 @@ public class PipelineBehaviorTests
         var result = await behavior.Handle(new TestCreateCommand(), () => Task.FromResult(Result<string>.Success("should-not-reach")), default);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle().Which.Code.Should().Be("UNAUTHORIZED");
+        result.Errors.Should().ContainSingle().Which.Code.Should().Be(Error.Codes.Unauthorized);
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class PipelineBehaviorTests
         var result = await behavior.Handle(new TestCreateCommand(), () => Task.FromResult(Result<string>.Success("should-not-reach")), default);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle().Which.Code.Should().Be("VALIDATION_ERROR");
+        result.Errors.Should().ContainSingle().Which.Code.Should().Be(Error.Codes.ValidationError);
     }
 
     [Fact]
