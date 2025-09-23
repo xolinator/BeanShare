@@ -1,5 +1,4 @@
 using BeanShare.Api.Infrastructure.Mocks;
-using BeanShare.Application.Abstractions;
 using BeanShare.Application.Behaviors;
 using BeanShare.Application.Common;
 using BeanShare.Infrastructure;
@@ -19,12 +18,25 @@ builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavi
 
 builder.Services.AddMapster();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var useMockServices = builder.Configuration.GetValue<bool>("UseMockServices", false);
 
-builder.Services.AddInfrastructure(connectionString);
+if (useMockServices)
+{
+    builder.Services.AddSingleton<BeanShare.Domain.Common.IClock, SystemClock>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IInviteCodeGenerator, MockInviteCodeGenerator>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ISpaceRepository, MockSpaceRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUnitOfWork, MockUnitOfWork>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUserContext, MockUserContext>();
+}
+else
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddSingleton<IUserContext, MockUserContext>();
+    builder.Services.AddInfrastructure(connectionString);
+
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUserContext, MockUserContext>();
+}
 
 builder.Services.SwaggerDocument();
 
