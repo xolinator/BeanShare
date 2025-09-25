@@ -1,5 +1,6 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
+using BeanShare.Application.Tests.TestHelpers;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.ValueObjects;

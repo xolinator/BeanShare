@@ -24,20 +24,17 @@ public sealed class PostgreSqlFixture : WebApplicationFactory<Program>, IAsyncLi
     {
         builder.ConfigureServices(services =>
         {
-            // Remove the existing DbContext registration
             var descriptor = services.SingleOrDefault(s => s.ServiceType == typeof(DbContextOptions<BeanShareDbContext>));
             if (descriptor != null)
             {
                 services.Remove(descriptor);
             }
 
-            // Add test database context
             services.AddDbContext<BeanShareDbContext>(options =>
             {
                 options.UseNpgsql(ConnectionString);
             });
 
-            // Force real services (not mocks) for integration tests
             builder.UseSetting("UseMockServices", "false");
         });
 
@@ -55,7 +52,6 @@ public sealed class PostgreSqlFixture : WebApplicationFactory<Program>, IAsyncLi
     {
         await _postgresContainer.StartAsync();
 
-        // Run migrations on the test database
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<BeanShareDbContext>();
         await context.Database.MigrateAsync();

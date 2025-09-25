@@ -1,5 +1,6 @@
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using BeanShare.Infrastructure.Persistence.Repositories;
 using BeanShare.Infrastructure.Tests.Fixtures;
@@ -32,7 +33,8 @@ public sealed class SpaceRepositoryTests : IClassFixture<DatabaseFixture>
         await repository.AddAsync(space);
         await context.SaveChangesAsync();
 
-        var retrieved = await repository.GetByIdAsync(spaceId);
+        var specification = new SpaceByIdSpecification(spaceId);
+        var retrieved = await repository.GetSingleBySpecAsync(specification);
         
         retrieved.Should().NotBeNull();
         retrieved!.Name.Should().Be("Test Coffee Space");
@@ -56,7 +58,8 @@ public sealed class SpaceRepositoryTests : IClassFixture<DatabaseFixture>
         await repository.AddAsync(space);
         await context.SaveChangesAsync();
 
-        var retrieved = await repository.GetByInviteCodeAsync(inviteCode);
+        var specification = new SpaceByInviteCodeSpecification(inviteCode);
+        var retrieved = await repository.GetSingleBySpecAsync(specification);
         
         retrieved.Should().NotBeNull();
         retrieved!.Name.Should().Be("Brew Space");
@@ -81,7 +84,8 @@ public sealed class SpaceRepositoryTests : IClassFixture<DatabaseFixture>
         await repository.AddAsync(space2);
         await context.SaveChangesAsync();
 
-        var userSpaces = await repository.GetUserSpacesAsync(userId);
+        var specification = new SpacesWithUserMembershipSpecification(userId);
+        var userSpaces = await repository.GetBySpecAsync(specification);
         
         userSpaces.Should().HaveCount(2);
         userSpaces.Should().Contain(s => s.Name == "Space 1");

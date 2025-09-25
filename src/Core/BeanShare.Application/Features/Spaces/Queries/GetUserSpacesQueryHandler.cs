@@ -2,6 +2,7 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.Spaces.Dtos;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
 using MapsterMapper;
 using MediatR;
 
@@ -25,10 +26,11 @@ public sealed class GetUserSpacesQueryHandler : IRequestHandler<GetUserSpacesQue
 
     public async Task<Result<GetUserSpacesResult>> Handle(GetUserSpacesQuery request, CancellationToken cancellationToken)
     {
-        var userSpaces = await _spaceRepository.GetUserSpacesAsync(_userContext.CurrentUserId, cancellationToken);
-        
+        var specification = new SpacesWithUserMembershipSpecification(_userContext.CurrentUserId);
+        var userSpaces = await _spaceRepository.GetBySpecAsync(specification, cancellationToken);
+
         var spaceDtos = _mapper.Map<IReadOnlyList<SpaceSummaryDto>>(userSpaces);
-        
+
         return Result<GetUserSpacesResult>.Success(new GetUserSpacesResult(spaceDtos));
     }
 }

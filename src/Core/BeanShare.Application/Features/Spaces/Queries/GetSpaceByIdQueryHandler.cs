@@ -2,6 +2,7 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.Spaces.Dtos;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
 using MapsterMapper;
 using MediatR;
 
@@ -25,7 +26,8 @@ public sealed class GetSpaceByIdQueryHandler : IRequestHandler<GetSpaceByIdQuery
 
     public async Task<Result<SpaceDto>> Handle(GetSpaceByIdQuery request, CancellationToken cancellationToken)
     {
-        var space = await _spaceRepository.GetByIdAsync(request.SpaceId, cancellationToken);
+        var specification = new SpaceByIdSpecification(request.SpaceId);
+        var space = await _spaceRepository.GetSingleBySpecAsync(specification, cancellationToken);
 
         if (space == null)
         {
@@ -38,7 +40,7 @@ public sealed class GetSpaceByIdQueryHandler : IRequestHandler<GetSpaceByIdQuery
         }
 
         var spaceDto = _mapper.Map<SpaceDto>(space);
-        
+
         return Result<SpaceDto>.Success(spaceDto);
     }
 }

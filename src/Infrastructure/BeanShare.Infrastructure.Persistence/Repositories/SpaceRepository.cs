@@ -1,7 +1,6 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Domain.Aggregates.Space;
-using BeanShare.Domain.Common;
-using BeanShare.Domain.ValueObjects;
+using BeanShare.Domain.Specifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeanShare.Infrastructure.Persistence.Repositories;
@@ -15,25 +14,19 @@ public sealed class SpaceRepository : ISpaceRepository
         _context = context;
     }
 
-    public async Task<Space?> GetByIdAsync(SpaceId id, CancellationToken cancellationToken = default)
+    public async Task<Space?> GetSingleBySpecAsync(ISpec<Space> specification, CancellationToken cancellationToken = default)
     {
         return await _context.Spaces
             .Include(s => s.Members)
-            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+            .Where(specification.Criteria)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<Space?> GetByInviteCodeAsync(InviteCode code, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Space>> GetBySpecAsync(ISpec<Space> specification, CancellationToken cancellationToken = default)
     {
         return await _context.Spaces
             .Include(s => s.Members)
-            .FirstOrDefaultAsync(s => s.InviteCode == code, cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<Space>> GetUserSpacesAsync(UserId userId, CancellationToken cancellationToken = default)
-    {
-        return await _context.Spaces
-            .Include(s => s.Members)
-            .Where(s => s.Members.Any(m => m.UserId == userId))
+            .Where(specification.Criteria)
             .ToListAsync(cancellationToken);
     }
 

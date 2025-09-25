@@ -1,7 +1,9 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Features.Spaces.Commands;
+using BeanShare.Application.Tests.TestHelpers;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using FluentAssertions;
 using NSubstitute;
@@ -52,7 +54,7 @@ public class SpaceCommandTests
         clock.UtcNow.Returns(DateTime.UtcNow);
         
         var space = Space.Create(spaceId, "Test Space", creatorId, inviteCode, clock);
-        spaceRepository.GetByInviteCodeAsync(inviteCode, default).Returns(space);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
 
         var handler = new JoinSpaceCommandHandler(spaceRepository, userContext, clock);
         var command = new JoinSpaceCommand("CAFE23");

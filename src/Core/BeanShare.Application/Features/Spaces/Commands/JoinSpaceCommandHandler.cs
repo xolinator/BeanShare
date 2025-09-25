@@ -1,6 +1,7 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
 
@@ -25,7 +26,8 @@ public sealed class JoinSpaceCommandHandler : IRequestHandler<JoinSpaceCommand, 
     public async Task<Result<JoinSpaceResult>> Handle(JoinSpaceCommand request, CancellationToken cancellationToken)
     {
         var inviteCode = new InviteCode(request.InviteCode);
-        var space = await _spaceRepository.GetByInviteCodeAsync(inviteCode, cancellationToken);
+        var specification = new SpaceByInviteCodeSpecification(inviteCode);
+        var space = await _spaceRepository.GetSingleBySpecAsync(specification, cancellationToken);
 
         if (space == null)
         {
