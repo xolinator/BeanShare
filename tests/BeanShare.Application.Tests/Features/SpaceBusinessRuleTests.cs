@@ -3,8 +3,11 @@ using BeanShare.Application.Common;
 using BeanShare.Application.Tests.TestHelpers;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
+using FluentAssertions;
 using NSubstitute;
+using Xunit;
 
 namespace BeanShare.Application.Tests.Features;
 
@@ -34,10 +37,11 @@ public class SpaceBusinessRuleTests
         var repository = Substitute.For<ISpaceRepository>();
         var spaceId = SpaceId.New();
         var expectedSpace = CreateTestSpace(spaceId);
-        
-        repository.GetByIdAsync(spaceId, default).Returns(expectedSpace);
 
-        var result = await repository.GetByIdAsync(spaceId);
+        var specification = new SpaceByIdSpecification(spaceId);
+        repository.GetSingleBySpecAsync(specification, default).Returns(expectedSpace);
+
+        var result = await repository.GetSingleBySpecAsync(specification);
 
         result.Should().NotBeNull();
         result!.Id.Should().Be(spaceId);

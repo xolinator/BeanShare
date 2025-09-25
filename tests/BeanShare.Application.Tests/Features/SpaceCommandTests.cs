@@ -64,4 +64,217 @@ public class SpaceCommandTests
         result.IsSuccess.Should().BeTrue();
         result.Value.SpaceName.Should().Be("Test Space");
     }
+
+    [Fact]
+    public async Task PromoteMember_WithValidRequest_ShouldPromoteMember()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId);
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        space.Join(memberId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new PromoteMemberCommandHandler(spaceRepository, userContext, clock);
+        var command = new PromoteMemberCommand(spaceId.Value, memberId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Role.Should().Be("Admin");
+        space.IsAdmin(memberId).Should().BeTrue();
+        await spaceRepository.Received(1).UpdateAsync(space, default);
+    }
+
+    [Fact]
+    public async Task PromoteMember_WithNonAdminCaller_ShouldReturnUnauthorized()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+        var unauthorizedUserId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(unauthorizedUserId);
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        space.Join(memberId, clock);
+        space.Join(unauthorizedUserId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new PromoteMemberCommandHandler(spaceRepository, userContext, clock);
+        var command = new PromoteMemberCommand(spaceId.Value, memberId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle(e => e.Code == "INSUFFICIENT_PRIVILEGES");
+        await spaceRepository.DidNotReceive().UpdateAsync(Arg.Any<Space>(), default);
+    }
+
+    [Fact]
+    public async Task PromoteMember_WithNonMember_ShouldReturnMemberNotFound()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var nonMemberId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId);
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new PromoteMemberCommandHandler(spaceRepository, userContext, clock);
+        var command = new PromoteMemberCommand(spaceId.Value, nonMemberId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle(e => e.Code == "MEMBER_NOT_FOUND");
+        await spaceRepository.DidNotReceive().UpdateAsync(Arg.Any<Space>(), default);
+    }
+
+    [Fact]
+    public async Task PromoteMember_WithExistingAdmin_ShouldBeIdempotent()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var targetAdminId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId);
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        space.Join(targetAdminId, clock);
+        space.PromoteMember(targetAdminId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new PromoteMemberCommandHandler(spaceRepository, userContext, clock);
+        var command = new PromoteMemberCommand(spaceId.Value, targetAdminId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Role.Should().Be("Admin");
+        space.IsAdmin(targetAdminId).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DemoteMember_WithValidRequest_ShouldDemoteMember()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var targetAdminId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId);
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        space.Join(targetAdminId, clock);
+        space.PromoteMember(targetAdminId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new DemoteMemberCommandHandler(spaceRepository, userContext, clock);
+        var command = new DemoteMemberCommand(spaceId.Value, targetAdminId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Role.Should().Be("Member");
+        space.IsAdmin(targetAdminId).Should().BeFalse();
+        await spaceRepository.Received(1).UpdateAsync(space, default);
+    }
+
+    [Fact]
+    public async Task DemoteMember_WithLastAdmin_ShouldReturnLastAdminViolation()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId);
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new DemoteMemberCommandHandler(spaceRepository, userContext, clock);
+        var command = new DemoteMemberCommand(spaceId.Value, adminId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle(e => e.Code == "LAST_ADMIN_PROTECTION");
+        await spaceRepository.DidNotReceive().UpdateAsync(Arg.Any<Space>(), default);
+    }
+
+    [Fact]
+    public async Task DemoteMember_WithExistingMember_ShouldBeIdempotent()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId);
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        space.Join(memberId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new DemoteMemberCommandHandler(spaceRepository, userContext, clock);
+        var command = new DemoteMemberCommand(spaceId.Value, memberId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Role.Should().Be("Member");
+        space.IsAdmin(memberId).Should().BeFalse();
+    }
 }
