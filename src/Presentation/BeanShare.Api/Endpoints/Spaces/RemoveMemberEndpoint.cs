@@ -4,25 +4,27 @@ using BeanShare.Contracts.Spaces;
 using FastEndpoints;
 using MediatR;
 
-public sealed class DemoteMemberEndpoint : Endpoint<DemoteMemberRequest, MemberActionResponse>
+namespace BeanShare.Api.Endpoints.Spaces;
+
+public sealed class RemoveMemberEndpoint : Endpoint<RemoveMemberRequest, MemberActionResponse>
 {
     private readonly IMediator _mediator;
 
-    public DemoteMemberEndpoint(IMediator mediator)
+    public RemoveMemberEndpoint(IMediator mediator)
     {
         _mediator = mediator;
     }
 
     public override void Configure()
     {
-        Post("/api/spaces/{spaceId}/members/{userId}/demote");
+        Delete("/api/spaces/{spaceId}/members/{userId}");
         AllowAnonymous(); // TODO: Add authentication when OIDC is configured
-        Validator<DemoteMemberRequestValidator>();
+        Validator<RemoveMemberRequestValidator>();
         Summary(s =>
         {
-            s.Summary = "Demote admin to member";
-            s.Description = "Demotes a space admin to member role. Requires admin privileges. Cannot demote the last admin. Route parameters must match request body.";
-            s.ExampleRequest = new DemoteMemberRequest
+            s.Summary = "Remove member from space";
+            s.Description = "Removes a member from the space. Requires admin privileges. Cannot remove the last admin. Route parameters must match request body.";
+            s.ExampleRequest = new RemoveMemberRequest
             {
                 SpaceId = Guid.NewGuid(),
                 UserId = Guid.NewGuid()
@@ -30,7 +32,7 @@ public sealed class DemoteMemberEndpoint : Endpoint<DemoteMemberRequest, MemberA
         });
     }
 
-    public override async Task HandleAsync(DemoteMemberRequest req, CancellationToken ct)
+    public override async Task HandleAsync(RemoveMemberRequest req, CancellationToken ct)
     {
         var routeSpaceId = Route<Guid>("spaceId");
         var routeUserId = Route<Guid>("userId");
@@ -51,7 +53,7 @@ public sealed class DemoteMemberEndpoint : Endpoint<DemoteMemberRequest, MemberA
             return;
         }
 
-        var command = new DemoteMemberCommand(req.SpaceId, req.UserId);
+        var command = new RemoveMemberCommand(req.SpaceId, req.UserId);
         var result = await _mediator.Send(command, ct);
 
         if (result.IsFailure)
@@ -68,7 +70,7 @@ public sealed class DemoteMemberEndpoint : Endpoint<DemoteMemberRequest, MemberA
         {
             SpaceId = req.SpaceId,
             UserId = req.UserId,
-            Message = "Member demoted to regular member successfully"
+            Message = "Member removed from space successfully"
         };
 
         await SendOkAsync(response, ct);

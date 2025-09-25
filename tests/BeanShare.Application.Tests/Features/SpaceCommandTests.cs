@@ -1,11 +1,14 @@
 using BeanShare.Application.Abstractions;
+using BeanShare.Application.Common;
 using BeanShare.Application.Features.Spaces.Commands;
+using BeanShare.Application.Features.Spaces.Dtos;
 using BeanShare.Application.Tests.TestHelpers;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using FluentAssertions;
+using MapsterMapper;
 using NSubstitute;
 using Xunit;
 
@@ -276,5 +279,201 @@ public class SpaceCommandTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Role.Should().Be("Member");
         space.IsAdmin(memberId).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoveMember_WithSelfRemoval_ShouldSucceed()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var mapper = Substitute.For<IMapper>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(memberId); // Member removing themselves
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        space.Join(memberId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new RemoveMemberCommandHandler(spaceRepository, userContext, mapper, clock);
+        var command = new RemoveMemberCommand(spaceId.Value, memberId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Action.Should().Be("removed");
+        result.Value.UserId.Should().Be(memberId.Value);
+        await spaceRepository.Received(1).UpdateAsync(space, default);
+    }
+
+    [Fact]
+    public async Task RemoveMember_WithSelfRemovalAsLastAdmin_ShouldReturnError()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var mapper = Substitute.For<IMapper>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId); // Admin trying to remove themselves (last admin)
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new RemoveMemberCommandHandler(spaceRepository, userContext, mapper, clock);
+        var command = new RemoveMemberCommand(spaceId.Value, adminId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be(Error.Codes.CannotRemoveLastAdmin);
+        await spaceRepository.DidNotReceive().UpdateAsync(Arg.Any<Space>(), default);
+    }
+
+    [Fact]
+    public async Task RemoveMember_WithNonAdminRemovingOther_ShouldReturnError()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var mapper = Substitute.For<IMapper>();
+        var clock = Substitute.For<IClock>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+        var otherMemberId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(memberId); // Non-admin trying to remove someone else
+        clock.UtcNow.Returns(DateTime.UtcNow);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        space.Join(memberId, clock);
+        space.Join(otherMemberId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new RemoveMemberCommandHandler(spaceRepository, userContext, mapper, clock);
+        var command = new RemoveMemberCommand(spaceId.Value, otherMemberId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be(Error.Codes.InsufficientPrivileges);
+        await spaceRepository.DidNotReceive().UpdateAsync(Arg.Any<Space>(), default);
+    }
+
+    [Fact]
+    public async Task RegenerateInviteCode_WithValidAdmin_ShouldSucceed()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var inviteCodeGenerator = Substitute.For<IInviteCodeGenerator>();
+        var mapper = Substitute.For<IMapper>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var oldInviteCode = new InviteCode("CAFE23");
+        var newInviteCode = new InviteCode("BREW45");
+
+        userContext.CurrentUserId.Returns(adminId);
+        inviteCodeGenerator.GenerateAsync(Arg.Any<CancellationToken>()).Returns(newInviteCode);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, oldInviteCode, TestClock.Instance);
+        var expectedDto = new SpaceDto
+        {
+            Id = spaceId,
+            Name = "Test Space",
+            InviteCode = "BREW45",
+            IsActive = true,
+            CreatedBy = adminId,
+            CreatedAt = TestClock.Instance.UtcNow,
+            MemberCount = 1,
+            Members = new List<MembershipDto>()
+        };
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+        mapper.Map<SpaceDto>(space).Returns(expectedDto);
+
+        var handler = new RegenerateInviteCodeCommandHandler(spaceRepository, userContext, inviteCodeGenerator, mapper);
+        var command = new RegenerateInviteCodeCommand(spaceId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.InviteCode.Should().Be("BREW45");
+        space.InviteCode.Value.Should().Be("BREW45");
+        await spaceRepository.Received(1).UpdateAsync(space, default);
+    }
+
+    [Fact]
+    public async Task RegenerateInviteCode_WithNonAdmin_ShouldReturnError()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var inviteCodeGenerator = Substitute.For<IInviteCodeGenerator>();
+        var mapper = Substitute.For<IMapper>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(memberId); // Non-admin user
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, TestClock.Instance);
+        space.Join(memberId, TestClock.Instance);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new RegenerateInviteCodeCommandHandler(spaceRepository, userContext, inviteCodeGenerator, mapper);
+        var command = new RegenerateInviteCodeCommand(spaceId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be(Error.Codes.InsufficientPrivileges);
+        await spaceRepository.DidNotReceive().UpdateAsync(Arg.Any<Space>(), default);
+    }
+
+    [Fact]
+    public async Task RegenerateInviteCode_WithDeactivatedSpace_ShouldReturnError()
+    {
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var inviteCodeGenerator = Substitute.For<IInviteCodeGenerator>();
+        var mapper = Substitute.For<IMapper>();
+
+        var adminId = new UserId(Guid.NewGuid());
+        var spaceId = SpaceId.New();
+        var inviteCode = new InviteCode("CAFE23");
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, TestClock.Instance);
+        space.Deactivate(TestClock.Instance); // Deactivate the space
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+
+        var handler = new RegenerateInviteCodeCommandHandler(spaceRepository, userContext, inviteCodeGenerator, mapper);
+        var command = new RegenerateInviteCodeCommand(spaceId.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be(Error.Codes.ValidationError);
+        await spaceRepository.DidNotReceive().UpdateAsync(Arg.Any<Space>(), default);
     }
 }

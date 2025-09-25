@@ -1,9 +1,8 @@
+using BeanShare.Api.Endpoints.Spaces.Validators;
 using BeanShare.Application.Features.Spaces.Commands;
 using BeanShare.Contracts.Spaces;
 using FastEndpoints;
 using MediatR;
-
-namespace BeanShare.Api.Endpoints.Spaces;
 
 public sealed class PromoteMemberEndpoint : Endpoint<PromoteMemberRequest, MemberActionResponse>
 {
@@ -18,10 +17,11 @@ public sealed class PromoteMemberEndpoint : Endpoint<PromoteMemberRequest, Membe
     {
         Post("/api/spaces/{spaceId}/members/{userId}/promote");
         AllowAnonymous(); // TODO: Add authentication when OIDC is configured
+        Validator<PromoteMemberRequestValidator>();
         Summary(s =>
         {
             s.Summary = "Promote member to admin";
-            s.Description = "Promotes a space member to admin role. Requires admin privileges.";
+            s.Description = "Promotes a space member to admin role. Requires admin privileges. Route parameters must match request body.";
             s.ExampleRequest = new PromoteMemberRequest
             {
                 SpaceId = Guid.NewGuid(),
@@ -32,6 +32,25 @@ public sealed class PromoteMemberEndpoint : Endpoint<PromoteMemberRequest, Membe
 
     public override async Task HandleAsync(PromoteMemberRequest req, CancellationToken ct)
     {
+        var routeSpaceId = Route<Guid>("spaceId");
+        var routeUserId = Route<Guid>("userId");
+
+        if (req.SpaceId != routeSpaceId)
+        {
+            AddError("RouteParameterMismatch", "Route SpaceId must match request SpaceId");
+        }
+
+        if (req.UserId != routeUserId)
+        {
+            AddError("RouteParameterMismatch", "Route UserId must match request UserId");
+        }
+
+        if (ValidationFailed)
+        {
+            await SendErrorsAsync(cancellation: ct);
+            return;
+        }
+
         var command = new PromoteMemberCommand(req.SpaceId, req.UserId);
         var result = await _mediator.Send(command, ct);
 

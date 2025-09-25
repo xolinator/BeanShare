@@ -4,45 +4,40 @@ using BeanShare.Contracts.Spaces;
 using FastEndpoints;
 using MediatR;
 
-public sealed class DemoteMemberEndpoint : Endpoint<DemoteMemberRequest, MemberActionResponse>
+namespace BeanShare.Api.Endpoints.Spaces;
+
+public sealed class RegenerateInviteCodeEndpoint : Endpoint<RegenerateInviteCodeRequest, InviteCodeResponse>
 {
     private readonly IMediator _mediator;
 
-    public DemoteMemberEndpoint(IMediator mediator)
+    public RegenerateInviteCodeEndpoint(IMediator mediator)
     {
         _mediator = mediator;
     }
 
     public override void Configure()
     {
-        Post("/api/spaces/{spaceId}/members/{userId}/demote");
+        Put("/api/spaces/{spaceId}/invite-code");
         AllowAnonymous(); // TODO: Add authentication when OIDC is configured
-        Validator<DemoteMemberRequestValidator>();
+        Validator<RegenerateInviteCodeRequestValidator>();
         Summary(s =>
         {
-            s.Summary = "Demote admin to member";
-            s.Description = "Demotes a space admin to member role. Requires admin privileges. Cannot demote the last admin. Route parameters must match request body.";
-            s.ExampleRequest = new DemoteMemberRequest
+            s.Summary = "Regenerate space invite code";
+            s.Description = "Generates a new invite code for the space. Requires admin privileges. Cannot regenerate for deactivated spaces. Route parameters must match request body.";
+            s.ExampleRequest = new RegenerateInviteCodeRequest
             {
-                SpaceId = Guid.NewGuid(),
-                UserId = Guid.NewGuid()
+                SpaceId = Guid.NewGuid()
             };
         });
     }
 
-    public override async Task HandleAsync(DemoteMemberRequest req, CancellationToken ct)
+    public override async Task HandleAsync(RegenerateInviteCodeRequest req, CancellationToken ct)
     {
         var routeSpaceId = Route<Guid>("spaceId");
-        var routeUserId = Route<Guid>("userId");
 
         if (req.SpaceId != routeSpaceId)
         {
             AddError("RouteParameterMismatch", "Route SpaceId must match request SpaceId");
-        }
-
-        if (req.UserId != routeUserId)
-        {
-            AddError("RouteParameterMismatch", "Route UserId must match request UserId");
         }
 
         if (ValidationFailed)
@@ -51,7 +46,7 @@ public sealed class DemoteMemberEndpoint : Endpoint<DemoteMemberRequest, MemberA
             return;
         }
 
-        var command = new DemoteMemberCommand(req.SpaceId, req.UserId);
+        var command = new RegenerateInviteCodeCommand(req.SpaceId);
         var result = await _mediator.Send(command, ct);
 
         if (result.IsFailure)
@@ -64,11 +59,11 @@ public sealed class DemoteMemberEndpoint : Endpoint<DemoteMemberRequest, MemberA
             return;
         }
 
-        var response = new MemberActionResponse
+        var response = new InviteCodeResponse
         {
             SpaceId = req.SpaceId,
-            UserId = req.UserId,
-            Message = "Member demoted to regular member successfully"
+            InviteCode = result.Value.InviteCode,
+            Message = "Invite code regenerated successfully"
         };
 
         await SendOkAsync(response, ct);

@@ -153,4 +153,32 @@ public sealed class Space : AggregateRoot
             clock.UtcNow
         ));
     }
+
+    public void UpdateName(string newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+            throw new ArgumentException("Space name cannot be empty", nameof(newName));
+
+        if (newName.Length > 100)
+            throw new ArgumentException("Space name cannot exceed 100 characters", nameof(newName));
+
+        Name = newName.Trim();
+    }
+
+    public void Deactivate(IClock clock)
+    {
+        IsActive = false;
+
+        RaiseDomainEvent(new SpaceDeactivated(
+            Id,
+            clock.UtcNow
+        ));
+    }
+
+    public void RegenerateInviteCode(InviteCode newInviteCode)
+    {
+        ArgumentNullException.ThrowIfNull(newInviteCode);
+
+        InviteCode = newInviteCode;
+    }
 }

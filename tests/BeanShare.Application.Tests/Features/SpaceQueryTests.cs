@@ -34,11 +34,12 @@ public class SpaceQueryTests
         var space = Space.Create(spaceId, "Test Space", userId, inviteCode, clock);
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
         
-        var spaceDto = new SpaceDto 
-        { 
+        var spaceDto = new SpaceDto
+        {
             Id = spaceId,
-            Name = "Test Space", 
+            Name = "Test Space",
             InviteCode = "CAFE23",
+            IsActive = true,
             CreatedBy = userId,
             CreatedAt = DateTime.UtcNow,
             MemberCount = 1,
