@@ -1,4 +1,5 @@
 using BeanShare.Api.Infrastructure.Mocks;
+using BeanShare.Application;
 using BeanShare.Application.Behaviors;
 using BeanShare.Application.Common;
 using BeanShare.Infrastructure;
@@ -11,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddFastEndpoints();
 
+builder.Services.AddApplication();
 builder.Services.AddMediatR(typeof(Result).Assembly);
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

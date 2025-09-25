@@ -5,9 +5,12 @@ using BeanShare.Application.Features.Spaces.Queries;
 using BeanShare.Application.Tests.TestHelpers;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
+using FluentAssertions;
 using MapsterMapper;
 using NSubstitute;
+using Xunit;
 
 namespace BeanShare.Application.Tests.Features;
 
@@ -29,13 +32,14 @@ public class SpaceQueryTests
         clock.UtcNow.Returns(DateTime.UtcNow);
         
         var space = Space.Create(spaceId, "Test Space", userId, inviteCode, clock);
-        spaceRepository.GetByIdAsync(spaceId, default).Returns(space);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
         
-        var spaceDto = new SpaceDto 
-        { 
+        var spaceDto = new SpaceDto
+        {
             Id = spaceId,
-            Name = "Test Space", 
+            Name = "Test Space",
             InviteCode = "CAFE23",
+            IsActive = true,
             CreatedBy = userId,
             CreatedAt = DateTime.UtcNow,
             MemberCount = 1,
@@ -61,7 +65,7 @@ public class SpaceQueryTests
         var mapper = Substitute.For<IMapper>();
         
         var spaceId = SpaceId.New();
-        spaceRepository.GetByIdAsync(spaceId, default).Returns((Space?)null);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns((Space?)null);
 
         var handler = new GetSpaceByIdQueryHandler(spaceRepository, userContext, mapper);
         var query = new GetSpaceByIdQuery(spaceId);
@@ -90,7 +94,7 @@ public class SpaceQueryTests
         var space = Space.Create(spaceId, "Test Space", userId, inviteCode, clock);
         var spaces = new List<Space> { space };
         
-        spaceRepository.GetUserSpacesAsync(userId, default).Returns(spaces);
+        spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(spaces);
         
         var spaceSummary = new SpaceSummaryDto 
         { 
