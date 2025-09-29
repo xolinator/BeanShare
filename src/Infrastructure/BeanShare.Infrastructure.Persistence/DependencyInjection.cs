@@ -14,6 +14,7 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
 
         services.AddScoped<ISpaceRepository, SpaceRepository>();
+        services.AddScoped<ICoffeeStockRepository, CoffeeStockRepository>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
