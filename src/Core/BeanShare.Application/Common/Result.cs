@@ -7,14 +7,14 @@ public readonly record struct Result
     private Result(bool isSuccess, Error[] errors)
     {
         IsSuccess = isSuccess;
-        _errors = errors ?? Array.Empty<Error>();
+        _errors = errors ?? [];
     }
 
     public bool IsSuccess { get; }
     public bool IsFailure => !IsSuccess;
     public IReadOnlyList<Error> Errors => _errors;
 
-    public static Result Success() => new(true, Array.Empty<Error>());
+    public static Result Success() => new(true, []);
 
     public static Result Failure(Error error) => new(false, new[] { error });
 
@@ -50,7 +50,7 @@ public readonly record struct Result<T>
     {
         IsSuccess = isSuccess;
         _value = value;
-        _errors = errors ?? Array.Empty<Error>();
+        _errors = errors ?? [];
     }
 
     public bool IsSuccess { get; }
@@ -58,7 +58,7 @@ public readonly record struct Result<T>
     public T Value => IsSuccess ? _value! : throw new InvalidOperationException("Cannot access value of failed result");
     public IReadOnlyList<Error> Errors => _errors;
 
-    public static Result<T> Success(T value) => new(true, value, Array.Empty<Error>());
+    public static Result<T> Success(T value) => new(true, value, []);
 
     public static Result<T> Failure(Error error) => new(false, default, new[] { error });
 
