@@ -67,7 +67,7 @@ public sealed class StockLevel : Entity
 
         var newConsumed = TotalConsumed.Add(quantity);
         if (newConsumed > TotalPurchased)
-            throw new StockDomainException($"Cannot consume {quantity}. Only {CurrentStock} available.");
+            throw new InsufficientStockException(Product.Name, Product.Brand, quantity.Grams, CurrentStock.Grams);
 
         TotalConsumed = newConsumed;
         UpdatedAt = clock.UtcNow;

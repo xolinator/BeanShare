@@ -15,6 +15,7 @@ public static class DependencyInjection
 
         services.AddScoped<ISpaceRepository, SpaceRepository>();
         services.AddScoped<ICoffeeStockRepository, CoffeeStockRepository>();
+        services.AddScoped<IConsumptionRepository, ConsumptionRepository>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

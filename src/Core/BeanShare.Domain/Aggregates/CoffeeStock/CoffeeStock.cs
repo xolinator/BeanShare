@@ -100,7 +100,7 @@ public sealed class CoffeeStock : AggregateRoot
             sl.Product.Type == product.Type);
 
         if (stockLevel == null)
-            throw new StockDomainException($"Product {product} not found in stock");
+            throw new ProductNotFoundException(product.Name, product.Brand);
 
         stockLevel.ConsumeStock(quantity, clock);
         UpdatedAt = clock.UtcNow;

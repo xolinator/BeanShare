@@ -1,18 +1,16 @@
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Aggregates.CoffeeStock;
+using BeanShare.Domain.Entities;
 using BeanShare.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeanShare.Infrastructure.Persistence;
 
-public sealed class BeanShareDbContext : DbContext
+public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> options) : DbContext(options)
 {
     public DbSet<Space> Spaces => Set<Space>();
     public DbSet<CoffeeStock> CoffeeStocks => Set<CoffeeStock>();
-
-    public BeanShareDbContext(DbContextOptions<BeanShareDbContext> options) : base(options)
-    {
-    }
+    public DbSet<ConsumptionEntry> Consumptions => Set<ConsumptionEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,5 +20,6 @@ public sealed class BeanShareDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CoffeeStockConfiguration());
         modelBuilder.ApplyConfiguration(new PurchaseConfiguration());
         modelBuilder.ApplyConfiguration(new StockLevelConfiguration());
+        modelBuilder.ApplyConfiguration(new ConsumptionEntryConfiguration());
     }
 }
