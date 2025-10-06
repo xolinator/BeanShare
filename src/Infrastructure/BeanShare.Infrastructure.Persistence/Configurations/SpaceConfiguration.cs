@@ -40,7 +40,7 @@ public sealed class SpaceConfiguration : IEntityTypeConfiguration<Space>
         builder.OwnsMany(s => s.Members, memberBuilder =>
         {
             memberBuilder.ToTable("SpaceMemberships");
-            
+
             memberBuilder.WithOwner()
                 .HasForeignKey("SpaceId");
 
@@ -64,6 +64,9 @@ public sealed class SpaceConfiguration : IEntityTypeConfiguration<Space>
             memberBuilder.Property(m => m.JoinedAt)
                 .IsRequired();
         });
+
+        builder.Navigation(s => s.Members)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(s => s.DomainEvents);
     }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using BeanShare.Contracts.CoffeeStock;
 using BeanShare.Contracts.Spaces;
+using BeanShare.Tests.Integration.Extensions;
 using BeanShare.Tests.Integration.Fixtures;
 using FluentAssertions;
 
@@ -16,6 +17,7 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
     {
         _fixture = fixture;
         _client = _fixture.CreateClient();
+        _client.AsDefaultUser();
     }
 
     [Fact]
@@ -24,7 +26,7 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
         var spaceId = await CreateTestSpace();
         var request = new AddStockPurchaseRequest
         {
-            SpaceId = spaceId,
+            BodySpaceId = spaceId,
             ProductName = "Premium Espresso Blend",
             ProductBrand = "Blue Mountain Coffee",
             ProductType = "Espresso",
@@ -60,7 +62,7 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
         var differentSpaceId = Guid.NewGuid();
         var request = new AddStockPurchaseRequest
         {
-            SpaceId = differentSpaceId, // Different from route parameter
+            BodySpaceId = differentSpaceId,
             ProductName = "Test Product",
             ProductBrand = "Test Brand",
             ProductType = "Espresso",
@@ -82,12 +84,12 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
         var spaceId = await CreateTestSpace();
         var request = new AddStockPurchaseRequest
         {
-            SpaceId = spaceId,
-            ProductName = "", // Invalid empty name
+            BodySpaceId = spaceId,
+            ProductName = "",
             ProductBrand = "Test Brand",
             ProductType = "Espresso",
-            QuantityGrams = 0, // Invalid zero quantity
-            CostAmount = -5.00m, // Invalid negative cost
+            QuantityGrams = 0,
+            CostAmount = -5.00m,
             CostCurrency = "USD",
             Vendor = "Test Vendor",
             PurchasedAt = DateTime.UtcNow.AddDays(-1)
@@ -104,7 +106,7 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
         var nonexistentSpaceId = Guid.NewGuid();
         var request = new AddStockPurchaseRequest
         {
-            SpaceId = nonexistentSpaceId,
+            BodySpaceId = nonexistentSpaceId,
             ProductName = "Test Product",
             ProductBrand = "Test Brand",
             ProductType = "Espresso",
@@ -176,12 +178,8 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
     public async Task GetLowStockAlerts_WithDefaultThreshold_ShouldReturnAlerts()
     {
         var spaceId = await CreateTestSpace();
-        // Add purchases and consume most of the first product to create low stock
         await AddTestPurchase(spaceId, "Premium Blend", "Blue Mountain", 1000, 25.99m);
         await AddTestPurchase(spaceId, "House Roast", "Local Roasters", 500, 15.50m);
-
-        // Note: For this test to work, we would need a ConsumeStock endpoint
-        // For now, we'll just test the alert mechanism with what we have
 
         var response = await _client.GetAsync($"/api/spaces/{spaceId}/stock/alerts");
 
@@ -208,7 +206,6 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
         alerts.Should().NotBeNull();
         alerts!.SpaceId.Should().Be(spaceId);
         alerts.Alerts.Should().NotBeNull();
-        // With threshold of 1500g and only 1000g in stock, should trigger alert
         alerts.AlertCount.Should().BeGreaterThan(0);
     }
 
@@ -287,7 +284,7 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
     {
         var request = new AddStockPurchaseRequest
         {
-            SpaceId = spaceId,
+            BodySpaceId = spaceId,
             ProductName = productName,
             ProductBrand = productBrand,
             ProductType = productType,

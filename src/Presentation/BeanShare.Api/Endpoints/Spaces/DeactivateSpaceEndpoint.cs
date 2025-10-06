@@ -17,8 +17,7 @@ public sealed class DeactivateSpaceEndpoint : Endpoint<DeactivateSpaceRequest, S
 
     public override void Configure()
     {
-        Delete("/api/spaces/{spaceId}");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
+        Post("/api/spaces/{spaceId}/deactivate");
         Validator<DeactivateSpaceRequestValidator>();
         Summary(s =>
         {

@@ -1,9 +1,11 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
+using BeanShare.Application.Common.Authorization;
 using BeanShare.Application.Features.Consumption.Dtos;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
 
+[RequireSpaceMember("SpaceId")]
 public sealed record RecordConsumptionCommand(
     Guid SpaceId,
     string ProductName,
@@ -11,4 +13,4 @@ public sealed record RecordConsumptionCommand(
     string ProductType,
     decimal QuantityGrams,
     DateTime? ConsumedAt
-) : ICommand<Result<ConsumptionEntryDto>>;
+) : IAuthorize, ICommand<Result<ConsumptionEntryDto>>;

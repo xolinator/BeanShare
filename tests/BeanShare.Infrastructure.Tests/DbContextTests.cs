@@ -3,6 +3,7 @@ using BeanShare.Domain.Common;
 using BeanShare.Domain.ValueObjects;
 using BeanShare.Infrastructure.Tests.Fixtures;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace BeanShare.Infrastructure.Tests;
@@ -46,12 +47,12 @@ public sealed class DbContextTests : IClassFixture<DatabaseFixture>
     {
         await using var context = await _databaseFixture.CreateDbContextAsync();
         var clock = new TestClock();
-        
+
         var spaceId = SpaceId.New();
         var creatorId = new UserId(Guid.NewGuid());
         var memberId = new UserId(Guid.NewGuid());
         var inviteCode = new InviteCode("KLMNPQ");
-        
+
         var space = Space.Create(spaceId, "Owned Entity Test", creatorId, inviteCode, clock);
         space.Join(memberId, clock);
 
@@ -61,11 +62,50 @@ public sealed class DbContextTests : IClassFixture<DatabaseFixture>
         context.ChangeTracker.Clear();
 
         var retrieved = await context.Spaces.FindAsync(spaceId);
-        
+
         retrieved.Should().NotBeNull();
         retrieved!.Members.Should().HaveCount(2);
         retrieved.Members.Should().Contain(m => m.UserId == creatorId);
         retrieved.Members.Should().Contain(m => m.UserId == memberId);
+    }
+
+    [Fact]
+    public async Task SpaceMemberships_ShouldBeLoadedWithFirstOrDefaultAsync()
+    {
+        await using var context = await _databaseFixture.CreateDbContextAsync();
+        var clock = new TestClock();
+
+        var spaceId = SpaceId.New();
+        var creatorId = new UserId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+        var inviteCode = new InviteCode("RSTUVW");
+
+        var space = Space.Create(spaceId, "Repository Query Test", creatorId, inviteCode, clock);
+        space.Join(adminId, clock);
+        space.PromoteMember(adminId, clock);
+        space.Join(memberId, clock);
+
+        context.Spaces.Add(space);
+        await context.SaveChangesAsync();
+
+        context.ChangeTracker.Clear();
+
+        var retrieved = await context.Spaces
+            .Where(s => s.Id == spaceId)
+            .FirstOrDefaultAsync();
+
+        retrieved.Should().NotBeNull();
+        retrieved!.Members.Should().HaveCount(3);
+
+        retrieved.HasMember(creatorId).Should().BeTrue();
+        retrieved.HasMember(adminId).Should().BeTrue();
+        retrieved.HasMember(memberId).Should().BeTrue();
+        retrieved.HasMember(new UserId(Guid.NewGuid())).Should().BeFalse();
+
+        retrieved.IsAdmin(creatorId).Should().BeTrue();
+        retrieved.IsAdmin(adminId).Should().BeTrue();
+        retrieved.IsAdmin(memberId).Should().BeFalse();
     }
 
     private sealed class TestClock : IClock

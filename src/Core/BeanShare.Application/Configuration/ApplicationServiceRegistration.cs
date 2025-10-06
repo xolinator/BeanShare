@@ -1,4 +1,5 @@
 using BeanShare.Application.Behaviors;
+using BeanShare.Application.Pipeline;
 using FluentValidation;
 using Mapster;
 using MapsterMapper;
@@ -18,7 +19,7 @@ public static class ApplicationServiceRegistration
         services.AddValidatorsFromAssembly(assembly);
         services.AddMapster();
 
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(Pipeline.AuthorizationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));
 

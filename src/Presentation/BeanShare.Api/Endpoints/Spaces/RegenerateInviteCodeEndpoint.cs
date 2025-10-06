@@ -18,7 +18,6 @@ public sealed class RegenerateInviteCodeEndpoint : Endpoint<RegenerateInviteCode
     public override void Configure()
     {
         Put("/api/spaces/{spaceId}/invite-code");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Validator<RegenerateInviteCodeRequestValidator>();
         Summary(s =>
         {

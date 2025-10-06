@@ -8,11 +8,9 @@ public sealed class AddStockPurchaseRequestValidator : Validator<AddStockPurchas
 {
     public AddStockPurchaseRequestValidator()
     {
-        RuleFor(x => x.SpaceId)
-            .NotEmpty()
-            .WithMessage("Space ID is required")
-            .Must(BeValidGuid)
-            .WithMessage("Space ID must be a valid GUID");
+        RuleFor(x => x.BodySpaceId)
+            .Must(BeValidGuidIfProvided)
+            .WithMessage("Space ID must be a valid GUID if provided");
 
         RuleFor(x => x.ProductName)
             .NotEmpty()
@@ -67,9 +65,9 @@ public sealed class AddStockPurchaseRequestValidator : Validator<AddStockPurchas
             .WithMessage("Purchase date cannot be more than 10 years ago");
     }
 
-    private static bool BeValidGuid(Guid guid)
+    private static bool BeValidGuidIfProvided(Guid? guid)
     {
-        return guid != Guid.Empty;
+        return !guid.HasValue || guid.Value != Guid.Empty;
     }
 
     private static bool BeValidCoffeeType(string coffeeType)

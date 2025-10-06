@@ -5,6 +5,6 @@ namespace BeanShare.Application.Abstractions;
 public interface IUserContext
 {
     UserId CurrentUserId { get; }
-    string? Email { get; }
+    string Email { get; }
     IReadOnlyCollection<string> Roles { get; }
 }

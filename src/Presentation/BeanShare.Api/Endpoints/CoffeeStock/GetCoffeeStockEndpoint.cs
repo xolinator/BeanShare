@@ -17,7 +17,6 @@ public sealed class GetCoffeeStockEndpoint : Endpoint<GetSpaceStockRequest, Spac
     public override void Configure()
     {
         Get("/api/coffeestock/{spaceId}");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Summary(s =>
         {
             s.Summary = "Get coffee stock for space";

@@ -44,7 +44,9 @@ public sealed class CoffeeStockConfiguration : IEntityTypeConfiguration<CoffeeSt
             .HasForeignKey("CoffeeStockId")
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Navigation(cs => cs.Purchases).EnableLazyLoading(false);
-        builder.Navigation(cs => cs.StockLevels).EnableLazyLoading(false);
+        builder.Navigation(cs => cs.Purchases).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(cs => cs.StockLevels).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Ignore(cs => cs.DomainEvents);
     }
 }

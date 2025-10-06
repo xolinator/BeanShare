@@ -2,7 +2,7 @@ namespace BeanShare.Contracts.CoffeeStock;
 
 public sealed record AddStockPurchaseRequest
 {
-    public required Guid SpaceId { get; init; }
+    public Guid? BodySpaceId { get; init; }
     public required string ProductName { get; init; }
     public required string ProductBrand { get; init; }
     public required string ProductType { get; init; }

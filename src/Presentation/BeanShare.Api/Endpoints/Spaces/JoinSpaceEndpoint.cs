@@ -17,7 +17,7 @@ public sealed class JoinSpaceEndpoint : Endpoint<JoinSpaceRequest, JoinSpaceResp
     public override void Configure()
     {
         Post("/api/spaces/join");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
+        AllowAnonymous(); // Intentional - public signup via invite code
         Summary(s =>
         {
             s.Summary = "Join a coffee space via invite code";

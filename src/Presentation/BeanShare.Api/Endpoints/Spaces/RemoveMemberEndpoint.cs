@@ -17,8 +17,7 @@ public sealed class RemoveMemberEndpoint : Endpoint<RemoveMemberRequest, MemberA
 
     public override void Configure()
     {
-        Delete("/api/spaces/{spaceId}/members/{userId}");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
+        Post("/api/spaces/{spaceId}/members/{userId}/remove");
         Validator<RemoveMemberRequestValidator>();
         Summary(s =>
         {

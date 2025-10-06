@@ -18,7 +18,6 @@ public sealed class GetSpaceEndpoint : EndpointWithoutRequest<GetSpaceByIdRespon
     public override void Configure()
     {
         Get("/api/spaces/{id}");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Summary(s =>
         {
             s.Summary = "Get coffee space details";

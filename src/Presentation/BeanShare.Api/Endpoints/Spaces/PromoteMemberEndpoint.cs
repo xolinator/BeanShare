@@ -1,3 +1,4 @@
+using BeanShare.Api.Endpoints.Common;
 using BeanShare.Api.Endpoints.Spaces.Validators;
 using BeanShare.Application.Features.Spaces.Commands;
 using BeanShare.Contracts.Spaces;
@@ -16,7 +17,6 @@ public sealed class PromoteMemberEndpoint : Endpoint<PromoteMemberRequest, Membe
     public override void Configure()
     {
         Post("/api/spaces/{spaceId}/members/{userId}/promote");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Validator<PromoteMemberRequestValidator>();
         Summary(s =>
         {
@@ -56,11 +56,7 @@ public sealed class PromoteMemberEndpoint : Endpoint<PromoteMemberRequest, Membe
 
         if (result.IsFailure)
         {
-            foreach (var error in result.Errors)
-            {
-                AddError(error.Code, error.Message);
-            }
-            await SendErrorsAsync(cancellation: ct);
+            await this.SendResultErrorsAsync(result, ct);
             return;
         }
 

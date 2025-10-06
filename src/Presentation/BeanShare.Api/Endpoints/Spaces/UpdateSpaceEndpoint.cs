@@ -18,7 +18,6 @@ public sealed class UpdateSpaceEndpoint : Endpoint<UpdateSpaceRequest, SpaceActi
     public override void Configure()
     {
         Put("/api/spaces/{spaceId}");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Validator<UpdateSpaceRequestValidator>();
         Summary(s =>
         {

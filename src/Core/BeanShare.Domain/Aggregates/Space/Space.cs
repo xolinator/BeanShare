@@ -10,18 +10,18 @@ namespace BeanShare.Domain.Aggregates.Space;
 public sealed class Space : AggregateRoot
 {
     private readonly List<SpaceMembership> _members = [];
-    
-    public SpaceId Id { get; private set; }
-    public string Name { get; private set; }
-    public InviteCode InviteCode { get; private set; }
+
+    public SpaceId Id { get; private set; } = default!;
+    public string Name { get; private set; } = default!;
+    public InviteCode InviteCode { get; private set; } = default!;
     public bool IsActive { get; private set; }
-    public IReadOnlyCollection<SpaceMembership> Members => _members.AsReadOnly();
-    
     public DateTime CreatedAt { get; private set; }
-    
-    private Space() 
+
+    public IReadOnlyCollection<SpaceMembership> Members => _members.AsReadOnly();
+
+    private Space()
     {
-        Name = string.Empty;
+        // Required for EF Core
     }
     
     internal Space(SpaceId id, string name, InviteCode inviteCode, UserId creatorUserId, DateTime createdAt)
@@ -39,14 +39,14 @@ public sealed class Space : AggregateRoot
         _members.Add(creatorMembership);
     }
     
-    public bool HasMember(UserId userId) => _members.Any(m => m.UserId == userId);
-    
-    public SpaceMembership? GetMember(UserId userId) => _members.FirstOrDefault(m => m.UserId == userId);
-    
-    public bool IsAdmin(UserId userId) => 
-        _members.FirstOrDefault(m => m.UserId == userId)?.Role == SpaceRole.Admin;
-    
-    public int AdminCount => _members.Count(m => m.Role == SpaceRole.Admin);
+    public bool HasMember(UserId userId) => Members.Any(m => m.UserId == userId);
+
+    public SpaceMembership? GetMember(UserId userId) => Members.FirstOrDefault(m => m.UserId == userId);
+
+    public bool IsAdmin(UserId userId) =>
+        Members.FirstOrDefault(m => m.UserId == userId)?.Role == SpaceRole.Admin;
+
+    public int AdminCount => Members.Count(m => m.Role == SpaceRole.Admin);
     
     public static Space Create(
         SpaceId id,
@@ -142,7 +142,7 @@ public sealed class Space : AggregateRoot
             
         if (member.Role == SpaceRole.Admin && AdminCount <= 1)
             throw new InvariantViolationException("Cannot remove the last admin");
-            
+
         _members.Remove(member);
         
         RaiseDomainEvent(new SpaceMembershipChanged(
@@ -176,9 +176,7 @@ public sealed class Space : AggregateRoot
     }
 
     public void RegenerateInviteCode(InviteCode newInviteCode)
-    {
-        ArgumentNullException.ThrowIfNull(newInviteCode);
-
+    { 
         InviteCode = newInviteCode;
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using BeanShare.Contracts.Spaces;
+using BeanShare.Tests.Integration.Extensions;
 using BeanShare.Tests.Integration.Fixtures;
 using FluentAssertions;
 
@@ -10,6 +11,8 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
 {
     private readonly PostgreSqlFixture _fixture;
     private readonly HttpClient _client;
+    private static readonly Guid DefaultUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid SecondUserId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     public SpaceEndpointsTests(PostgreSqlFixture fixture)
     {
@@ -152,19 +155,23 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
         var createResponse = await _client.PostAsJsonAsync("/api/spaces", createRequest);
         var createdSpace = await createResponse.Content.ReadFromJsonAsync<CreateSpaceResponse>();
 
+        _client.WithTestUser(SecondUserId, "second@test.com");
         var joinRequest = new JoinSpaceRequest { InviteCode = createdSpace!.InviteCode };
         var joinResponse = await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        _client.AsDefaultUser();
         var getResponse = await _client.GetAsync($"/api/spaces/{createdSpace.SpaceId}");
         var space = await getResponse.Content.ReadFromJsonAsync<GetSpaceByIdResponse>();
-        var memberToPromote = space!.Members.FirstOrDefault(m => m.Role == "Member");
+        var memberToPromote = space!.Members.FirstOrDefault(m => m.UserId == SecondUserId);
 
-        memberToPromote.Should().NotBeNull("Space should have a member to promote");
+        memberToPromote.Should().NotBeNull("Second user should be a member");
+        memberToPromote!.Role.Should().Be("Member");
 
         var promoteRequest = new PromoteMemberRequest
         {
             SpaceId = createdSpace.SpaceId,
-            UserId = memberToPromote!.UserId
+            UserId = memberToPromote.UserId
         };
         var response = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{memberToPromote.UserId}/promote", promoteRequest);
 
@@ -200,33 +207,32 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
         var createResponse = await _client.PostAsJsonAsync("/api/spaces", createRequest);
         var createdSpace = await createResponse.Content.ReadFromJsonAsync<CreateSpaceResponse>();
 
+        _client.WithTestUser(SecondUserId, "second@test.com");
         var joinRequest = new JoinSpaceRequest { InviteCode = createdSpace!.InviteCode };
         var joinResponse = await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResponse = await _client.GetAsync($"/api/spaces/{createdSpace.SpaceId}");
-        var space = await getResponse.Content.ReadFromJsonAsync<GetSpaceByIdResponse>();
-        var memberToPromote = space!.Members.FirstOrDefault(m => m.Role == "Member");
-
+        _client.AsDefaultUser();
         var promoteRequest = new PromoteMemberRequest
         {
             SpaceId = createdSpace.SpaceId,
-            UserId = memberToPromote!.UserId
+            UserId = SecondUserId
         };
-        await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{memberToPromote.UserId}/promote", promoteRequest);
+        await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{SecondUserId}/promote", promoteRequest);
 
         var demoteRequest = new DemoteMemberRequest
         {
             SpaceId = createdSpace.SpaceId,
-            UserId = memberToPromote.UserId
+            UserId = SecondUserId
         };
-        var response = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{memberToPromote.UserId}/demote", demoteRequest);
+        var response = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{SecondUserId}/demote", demoteRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var result = await response.Content.ReadFromJsonAsync<MemberActionResponse>();
         result.Should().NotBeNull();
         result!.SpaceId.Should().Be(createdSpace.SpaceId);
-        result.UserId.Should().Be(memberToPromote.UserId);
+        result.UserId.Should().Be(SecondUserId);
         result.Message.Should().Contain("demoted");
     }
 
@@ -254,43 +260,40 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
     [Fact]
     public async Task MembershipWorkflow_PromoteAndDemote_ShouldWorkEndToEnd()
     {
-        // Create space with multiple members
         var createRequest = new CreateSpaceRequest { Name = "Membership Workflow Test" };
         var createResponse = await _client.PostAsJsonAsync("/api/spaces", createRequest);
         var createdSpace = await createResponse.Content.ReadFromJsonAsync<CreateSpaceResponse>();
 
-        // Join as additional member
+        _client.WithTestUser(SecondUserId, "second@test.com");
         var joinRequest = new JoinSpaceRequest { InviteCode = createdSpace!.InviteCode };
-        await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        var joinResponse = await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Get space to identify members
-        var getResponse = await _client.GetAsync($"/api/spaces/{createdSpace.SpaceId}");
-        var space = await getResponse.Content.ReadFromJsonAsync<GetSpaceByIdResponse>();
-        var memberToManage = space!.Members.FirstOrDefault(m => m.Role == "Member");
+        _client.AsDefaultUser();
         var promoteRequest = new PromoteMemberRequest
         {
             SpaceId = createdSpace.SpaceId,
-            UserId = memberToManage!.UserId
+            UserId = SecondUserId
         };
-        var promoteResponse = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{memberToManage.UserId}/promote", promoteRequest);
+        var promoteResponse = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{SecondUserId}/promote", promoteRequest);
         promoteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getAfterPromoteResponse = await _client.GetAsync($"/api/spaces/{createdSpace.SpaceId}");
         var spaceAfterPromote = await getAfterPromoteResponse.Content.ReadFromJsonAsync<GetSpaceByIdResponse>();
-        var promotedMember = spaceAfterPromote!.Members.FirstOrDefault(m => m.UserId == memberToManage.UserId);
+        var promotedMember = spaceAfterPromote!.Members.FirstOrDefault(m => m.UserId == SecondUserId);
         promotedMember!.Role.Should().Be("Admin");
 
         var demoteRequest = new DemoteMemberRequest
         {
             SpaceId = createdSpace.SpaceId,
-            UserId = memberToManage.UserId
+            UserId = SecondUserId
         };
-        var demoteResponse = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{memberToManage.UserId}/demote", demoteRequest);
+        var demoteResponse = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{SecondUserId}/demote", demoteRequest);
         demoteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getAfterDemoteResponse = await _client.GetAsync($"/api/spaces/{createdSpace.SpaceId}");
         var spaceAfterDemote = await getAfterDemoteResponse.Content.ReadFromJsonAsync<GetSpaceByIdResponse>();
-        var demotedMember = spaceAfterDemote!.Members.FirstOrDefault(m => m.UserId == memberToManage.UserId);
+        var demotedMember = spaceAfterDemote!.Members.FirstOrDefault(m => m.UserId == SecondUserId);
         demotedMember!.Role.Should().Be("Member");
     }
 
@@ -363,27 +366,27 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
         var createResponse = await _client.PostAsJsonAsync("/api/spaces", createRequest);
         var createdSpace = await createResponse.Content.ReadFromJsonAsync<CreateSpaceResponse>();
 
+        _client.WithTestUser(SecondUserId, "second@test.com");
         var joinRequest = new JoinSpaceRequest { InviteCode = createdSpace!.InviteCode };
-        await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
-
-        var getResponse = await _client.GetAsync($"/api/spaces/{createdSpace.SpaceId}");
-        var space = await getResponse.Content.ReadFromJsonAsync<GetSpaceByIdResponse>();
-        var memberToRemove = space!.Members.FirstOrDefault(m => m.Role == "Member");
+        var joinResponse = await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var removeRequest = new RemoveMemberRequest
         {
             SpaceId = createdSpace.SpaceId,
-            UserId = memberToRemove!.UserId
+            UserId = SecondUserId
         };
-        var response = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{memberToRemove.UserId}/remove", removeRequest);
+        var response = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{SecondUserId}/remove", removeRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var result = await response.Content.ReadFromJsonAsync<MemberActionResponse>();
         result.Should().NotBeNull();
         result!.SpaceId.Should().Be(createdSpace.SpaceId);
-        result.UserId.Should().Be(memberToRemove.UserId);
+        result.UserId.Should().Be(SecondUserId);
         result.Message.Should().Contain("removed");
+
+        _client.AsDefaultUser();
     }
 
     [Fact]

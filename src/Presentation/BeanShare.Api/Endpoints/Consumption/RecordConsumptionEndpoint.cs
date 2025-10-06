@@ -1,3 +1,4 @@
+using BeanShare.Api.Endpoints.Common;
 using BeanShare.Api.Endpoints.Consumption.Validators;
 using BeanShare.Application.Features.Consumption.Commands;
 using BeanShare.Contracts.Consumption;
@@ -12,7 +13,6 @@ public sealed class RecordConsumptionEndpoint(IMediator mediator)
     public override void Configure()
     {
         Post("/api/consumptions");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Validator<RecordConsumptionRequestValidator>();
         Summary(s =>
         {
@@ -42,55 +42,28 @@ public sealed class RecordConsumptionEndpoint(IMediator mediator)
 
         var result = await mediator.Send(command, ct);
 
-        if (result.IsFailure)
+        if (result.IsSuccess)
         {
-            if (result.Errors.Any(e => e.Code.StartsWith("stock.not_found")))
+            var consumption = result.Value;
+            var response = new RecordConsumptionResponse
             {
-                await SendNotFoundAsync(ct);
-                return;
-            }
-
-            if (result.Errors.Any(e => e.Code.StartsWith("stock.product_not_found")))
-            {
-                await SendNotFoundAsync(ct);
-                return;
-            }
-
-            if (result.Errors.Any(e => e.Code.StartsWith("stock.insufficient")))
-            {
-                await SendAsync(new RecordConsumptionResponse
-                {
-                    SpaceId = req.SpaceId,
-                    ProductName = req.ProductName,
-                    ProductBrand = req.ProductBrand,
-                    ProductType = req.ProductType,
-                    ConsumedGrams = 0,
-                    RemainingGrams = 0,
-                    ConsumedAt = req.ConsumedAt ?? DateTime.UtcNow
-                }, 409, ct);
-                return;
-            }
-
+                SpaceId = consumption.SpaceId,
+                ProductName = consumption.ProductName,
+                ProductBrand = consumption.ProductBrand,
+                ProductType = consumption.ProductType,
+                ConsumedGrams = consumption.QuantityGrams,
+                RemainingGrams = consumption.RemainingGrams,
+                ConsumedAt = consumption.ConsumedAt
+            };
+            await SendAsync(response, 201, ct);
+        }
+        else
+        {
             foreach (var error in result.Errors)
             {
                 AddError(error.Code, error.Message);
             }
             await SendErrorsAsync(cancellation: ct);
-            return;
         }
-
-        var consumption = result.Value;
-        var response = new RecordConsumptionResponse
-        {
-            SpaceId = consumption.SpaceId,
-            ProductName = consumption.ProductName,
-            ProductBrand = consumption.ProductBrand,
-            ProductType = consumption.ProductType,
-            ConsumedGrams = consumption.QuantityGrams,
-            RemainingGrams = consumption.RemainingGrams,
-            ConsumedAt = consumption.ConsumedAt
-        };
-
-        await SendAsync(response, 201, cancellation: ct);
     }
 }
