@@ -17,7 +17,7 @@ public sealed class CreateSpaceEndpoint : Endpoint<CreateSpaceRequest, CreateSpa
     public override void Configure()
     {
         Post("/api/spaces");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
+        AllowAnonymous(); // Intentional - public signup flow
         Summary(s =>
         {
             s.Summary = "Create a new coffee space";

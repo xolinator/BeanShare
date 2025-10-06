@@ -18,7 +18,6 @@ public sealed class AddCoffeeStockPurchaseEndpoint : Endpoint<AddStockPurchaseRe
     public override void Configure()
     {
         Post("/api/coffeestock/purchases");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Validator<AddStockPurchaseRequestValidator>();
         Summary(s =>
         {
@@ -26,7 +25,7 @@ public sealed class AddCoffeeStockPurchaseEndpoint : Endpoint<AddStockPurchaseRe
             s.Description = "Records a new coffee purchase for the space using the new API pattern. Requires admin privileges. Updates stock levels and creates purchase history.";
             s.ExampleRequest = new AddStockPurchaseRequest
             {
-                SpaceId = Guid.NewGuid(),
+                BodySpaceId = Guid.NewGuid(),
                 ProductName = "Premium Espresso Blend",
                 ProductBrand = "Blue Mountain Coffee",
                 ProductType = "Espresso",
@@ -41,8 +40,15 @@ public sealed class AddCoffeeStockPurchaseEndpoint : Endpoint<AddStockPurchaseRe
 
     public override async Task HandleAsync(AddStockPurchaseRequest req, CancellationToken ct)
     {
+        if (!req.BodySpaceId.HasValue)
+        {
+            AddError("SpaceId", "SpaceId is required in the request body");
+            await SendErrorsAsync(cancellation: ct);
+            return;
+        }
+
         var command = new AddStockPurchaseCommand(
-            req.SpaceId,
+            req.BodySpaceId.Value,
             req.ProductName,
             req.ProductBrand,
             req.ProductType,
@@ -103,6 +109,6 @@ public sealed class AddCoffeeStockPurchaseEndpoint : Endpoint<AddStockPurchaseRe
             Message = $"Successfully added {dto.QuantityGrams}g of {dto.ProductBrand} {dto.ProductName}"
         };
 
-        await SendCreatedAtAsync<GetCoffeeStockEndpoint>(new { spaceId = req.SpaceId }, response, cancellation: ct);
+        await SendCreatedAtAsync<GetCoffeeStockEndpoint>(new { spaceId = req.BodySpaceId }, response, cancellation: ct);
     }
 }

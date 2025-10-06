@@ -20,7 +20,7 @@ public sealed class CoffeeStockMappingProfile : IRegister
             .Map(dest => dest.PurchasedBy, src => src.PurchasedBy.Value)
             .Map(dest => dest.PurchasedAt, src => src.PurchasedAt)
             .Map(dest => dest.CreatedAt, src => src.CreatedAt)
-            .Map(dest => dest.CostPerGram, src => src.CostPerGram.Amount);
+            .Map(dest => dest.CostPerGram, src => src.Cost.Amount / src.Quantity.Grams);
 
         config.NewConfig<StockLevel, StockLevelDto>()
             .Map(dest => dest.Id, src => src.Id)
@@ -42,7 +42,7 @@ public sealed class CoffeeStockMappingProfile : IRegister
             .Map(dest => dest.PurchaseCount, src => src.Purchases.Count)
             .Map(dest => dest.ProductVarietyCount, src => src.ProductVarietyCount)
             .Map(dest => dest.TotalCurrentStockGrams, src => src.TotalCurrentStock.Grams)
-            .Map(dest => dest.TotalInvestmentAmount, src => src.GetTotalInvestment("USD").Amount)
+            .Map(dest => dest.TotalInvestmentAmount, src => src.Purchases.Sum(p => p.Cost.Amount))
             .Map(dest => dest.TotalInvestmentCurrency, src => "USD")
             .Map(dest => dest.StockLevels, src => src.StockLevels)
             .Map(dest => dest.RecentPurchases, src => src.Purchases.OrderByDescending(p => p.CreatedAt).Take(10));

@@ -17,7 +17,6 @@ public sealed class GetSpaceLowStockEndpoint : Endpoint<GetLowStockAlertsRequest
     public override void Configure()
     {
         Get("/api/coffeestock/{spaceId}/low-stock");
-        AllowAnonymous(); // TODO: Add authentication when OIDC is configured
         Summary(s =>
         {
             s.Summary = "Get low stock products for space";

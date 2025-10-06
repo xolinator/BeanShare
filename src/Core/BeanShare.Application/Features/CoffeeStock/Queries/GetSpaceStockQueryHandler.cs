@@ -64,7 +64,38 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
             });
         }
 
-        var dto = _mapper.Map<CoffeeStockDto>(coffeeStock);
+        var dto = new CoffeeStockDto
+        {
+            Id = coffeeStock.Id.Value,
+            SpaceId = coffeeStock.SpaceId.Value,
+            CreatedAt = coffeeStock.CreatedAt,
+            UpdatedAt = coffeeStock.UpdatedAt,
+            PurchaseCount = coffeeStock.Purchases.Count,
+            ProductVarietyCount = coffeeStock.ProductVarietyCount,
+            TotalCurrentStockGrams = coffeeStock.TotalCurrentStock.Grams,
+            TotalInvestmentAmount = coffeeStock.Purchases.Sum(p => p.Cost.Amount),
+            TotalInvestmentCurrency = "USD",
+            StockLevels = _mapper.Map<List<StockLevelDto>>(coffeeStock.StockLevels),
+            RecentPurchases = coffeeStock.Purchases
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(10)
+                .Select(p => new StockPurchaseDto
+                {
+                    Id = p.Id,
+                    ProductName = p.Product.Name,
+                    ProductBrand = p.Product.Brand,
+                    ProductType = p.Product.Type.ToString(),
+                    QuantityGrams = p.Quantity.Grams,
+                    CostAmount = p.Cost.Amount,
+                    CostCurrency = p.Cost.Currency,
+                    Vendor = p.Vendor,
+                    PurchasedBy = p.PurchasedBy.Value,
+                    PurchasedAt = p.PurchasedAt,
+                    CreatedAt = p.CreatedAt,
+                    CostPerGram = p.Cost.Amount / p.Quantity.Grams
+                }).ToList()
+        };
+
         return Result<CoffeeStockDto>.Success(dto);
     }
 }

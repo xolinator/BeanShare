@@ -12,6 +12,7 @@
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="FluentAssertions" Version="7.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="NSubstitute" Version="5.0.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="3.9.0" />
     <PackageReference Include="xunit" Version="2.9.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
@@ -20,7 +21,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Infrastructure\BeanShare.Infrastructure.Persistence\BeanShare.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\BeanShare.Infrastructure.Identity\BeanShare.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\..\src\Core\BeanShare.Domain\BeanShare.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>

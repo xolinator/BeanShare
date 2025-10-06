@@ -59,11 +59,13 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
             var cost = Money.Create(command.CostAmount, command.CostCurrency);
 
             var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
+            bool isNewStock = false;
 
             if (coffeeStock == null)
             {
                 coffeeStock = Domain.Aggregates.CoffeeStock.CoffeeStock.Create(spaceId, _clock);
                 await _coffeeStockRepository.AddAsync(coffeeStock, cancellationToken);
+                isNewStock = true;
             }
             else
             {
@@ -84,10 +86,28 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
                 command.PurchasedAt,
                 _clock);
 
-            await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
+            if (!isNewStock)
+            {
+                await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
+            }
 
             var latestPurchase = coffeeStock.Purchases.OrderByDescending(p => p.CreatedAt).First();
-            var dto = _mapper.Map<StockPurchaseDto>(latestPurchase);
+
+            var dto = new StockPurchaseDto
+            {
+                Id = latestPurchase.Id,
+                ProductName = latestPurchase.Product.Name,
+                ProductBrand = latestPurchase.Product.Brand,
+                ProductType = latestPurchase.Product.Type.ToString(),
+                QuantityGrams = latestPurchase.Quantity.Grams,
+                CostAmount = latestPurchase.Cost.Amount,
+                CostCurrency = latestPurchase.Cost.Currency,
+                Vendor = latestPurchase.Vendor,
+                PurchasedBy = latestPurchase.PurchasedBy.Value,
+                PurchasedAt = latestPurchase.PurchasedAt,
+                CreatedAt = latestPurchase.CreatedAt,
+                CostPerGram = latestPurchase.CostPerGram.Amount
+            };
 
             return Result<StockPurchaseDto>.Success(dto);
         }
@@ -95,9 +115,18 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
         {
             return Result<StockPurchaseDto>.Failure(Error.ValidationFailure("Purchase", ex.Message));
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return Result<StockPurchaseDto>.Failure(Error.SystemFailure("add stock purchase"));
+            // TODO: Remove this diagnostic - expose actual error for debugging
+            Console.WriteLine($"=== EXCEPTION IN AddStockPurchaseCommandHandler ===");
+            Console.WriteLine($"Type: {ex.GetType().FullName}");
+            Console.WriteLine($"Message: {ex.Message}");
+            Console.WriteLine($"StackTrace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+            }
+            return Result<StockPurchaseDto>.Failure(new Error("SYSTEM_ERROR", ex.Message));
         }
     }
 }
