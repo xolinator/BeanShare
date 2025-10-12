@@ -1,0 +1,63 @@
+<div>
+    <h2 class="bs-font-bold" style="margin: 0 0 1rem 0; font-size: 1.125rem;">Recent Logs</h2>
+
+    @if (IsLoading)
+    {
+        <div class="bs-flex bs-flex-col bs-gap-2">
+            @for (int i = 0; i < 3; i++)
+            {
+                <div class="bs-card">
+                    <div class="bs-skeleton" style="height: 1rem; width: 50%; margin-bottom: 0.5rem;"></div>
+                    <div class="bs-skeleton" style="height: 0.875rem; width: 30%;"></div>
+                </div>
+            }
+        </div>
+    }
+    else if (RecentLogs == null || !RecentLogs.Any())
+    {
+        <EmptyState Icon="local_cafe"
+                    Title="No consumption logged yet"
+                    Message="Log your first coffee to start tracking your consumption." />
+    }
+    else
+    {
+        <div class="bs-flex bs-flex-col bs-gap-2">
+            @foreach (var log in RecentLogs.Take(10))
+            {
+                <div class="bs-card">
+                    <div class="bs-flex bs-justify-between bs-items-center">
+                        <div>
+                            <p class="bs-font-medium" style="margin: 0;">
+                                @(string.IsNullOrEmpty(log.PresetName) ? "Custom" : log.PresetName) · @log.CoffeeGrams g
+                            </p>
+                            <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.75rem;">
+                                @FormatDate(log.ConsumedAt)
+                            </p>
+                        </div>
+                        <span class="bs-font-semibold" style="text-align: right; color: var(--bs-text);">
+                            −@log.CoffeeGrams g
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<ConsumptionEntryDto>? RecentLogs { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private string FormatDate(DateTime date)
+    {
+        var now = DateTime.Now;
+        if (date.Date == now.Date)
+            return $"Today, {date:h:mm tt}";
+        if (date.Date == now.Date.AddDays(-1))
+            return $"Yesterday, {date:h:mm tt}";
+        return date.ToString("MMM dd, h:mm tt");
+    }
+}

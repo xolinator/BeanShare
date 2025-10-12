@@ -1,0 +1,53 @@
+@if (IsLoading)
+{
+    <div class="bs-flex bs-flex-col bs-gap-4">
+        @for (int i = 0; i < 3; i++)
+        {
+            <div class="bs-card">
+                <div class="bs-flex bs-items-center bs-gap-3">
+                    <div class="bs-skeleton" style="width: 4rem; height: 4rem;"></div>
+                    <div class="bs-flex-1">
+                        <div class="bs-skeleton" style="height: 1.25rem; width: 60%; margin-bottom: 0.5rem;"></div>
+                        <div class="bs-skeleton" style="height: 0.875rem; width: 40%;"></div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else if (Spaces == null || !Spaces.Any())
+{
+    <EmptyState Icon="coffee"
+                Title="No spaces yet"
+                Message="Create a new space or join an existing one with an invite code."
+                ActionText="Create New Space"
+                ActionIcon="add_circle"
+                OnAction="OnCreateSpace" />
+}
+else
+{
+    <div class="bs-flex bs-flex-col bs-gap-4">
+        @foreach (var space in Spaces)
+        {
+            <SpaceCard SpaceId="@space.SpaceId.ToString()"
+                      Name="@space.Name"
+                      Role="@space.Role"
+                      MemberCount="@space.MemberCount"
+                      OnSelect="OnSpaceSelected" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IEnumerable<SpaceSummaryDto>? Spaces { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSpaceSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnCreateSpace { get; set; }
+}

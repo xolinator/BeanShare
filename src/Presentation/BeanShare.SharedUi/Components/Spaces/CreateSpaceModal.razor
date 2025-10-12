@@ -1,0 +1,72 @@
+@if (IsVisible)
+{
+    <div class="bs-modal-backdrop" @onclick="Cancel">
+        <div class="bs-modal" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h3 class="bs-modal-title">Create New Space</h3>
+            </div>
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <div class="bs-form-group">
+                    <label class="bs-label" for="spaceName">Space Name</label>
+                    <InputText id="spaceName"
+                              class="bs-input"
+                              @bind-Value="model.Name"
+                              placeholder="e.g., Engineering Team" />
+                    <ValidationMessage For="@(() => model.Name)" class="bs-validation-message" />
+                </div>
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Cancel">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bs-btn bs-btn-primary bs-flex-1" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span>Creating...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined">add_circle</span>
+                            <span>Create Space</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private CreateSpaceModel model = new();
+    private bool isSubmitting;
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        await OnSubmit.InvokeAsync(model.Name);
+        isSubmitting = false;
+        model = new CreateSpaceModel();
+    }
+
+    private async Task Cancel()
+    {
+        model = new CreateSpaceModel();
+        await OnCancel.InvokeAsync();
+    }
+
+    public class CreateSpaceModel
+    {
+        [Required(ErrorMessage = "Space name is required")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be between 2 and 100 characters")]
+        public string Name { get; set; } = "";
+    }
+}

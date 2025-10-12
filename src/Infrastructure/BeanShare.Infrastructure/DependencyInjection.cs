@@ -8,11 +8,11 @@ namespace BeanShare.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, bool useInMemoryDatabase = false)
     {
         services.AddSingleton<IClock, SystemClock>();
 
-        services.AddPersistence(connectionString);
+        services.AddPersistence(connectionString, useInMemoryDatabase);
 
         // services.AddIdentity();
         // services.AddCommunication();

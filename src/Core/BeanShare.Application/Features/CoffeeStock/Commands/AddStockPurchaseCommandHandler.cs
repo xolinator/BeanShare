@@ -117,15 +117,6 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
         }
         catch (Exception ex)
         {
-            // TODO: Remove this diagnostic - expose actual error for debugging
-            Console.WriteLine($"=== EXCEPTION IN AddStockPurchaseCommandHandler ===");
-            Console.WriteLine($"Type: {ex.GetType().FullName}");
-            Console.WriteLine($"Message: {ex.Message}");
-            Console.WriteLine($"StackTrace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-            }
             return Result<StockPurchaseDto>.Failure(new Error("SYSTEM_ERROR", ex.Message));
         }
     }

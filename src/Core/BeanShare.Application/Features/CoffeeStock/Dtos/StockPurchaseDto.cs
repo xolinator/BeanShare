@@ -14,4 +14,8 @@ public sealed class StockPurchaseDto
     public required DateTime PurchasedAt { get; init; }
     public required DateTime CreatedAt { get; init; }
     public required decimal CostPerGram { get; init; }
+
+    public decimal TotalCost => CostAmount;
+    public string CoffeeType => ProductType;
+    public string PurchasedByName { get; init; } = "Unknown"; // Will be populated from query
 }

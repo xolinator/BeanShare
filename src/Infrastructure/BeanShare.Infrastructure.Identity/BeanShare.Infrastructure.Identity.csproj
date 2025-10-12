@@ -2,11 +2,19 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\BeanShare.Application\BeanShare.Application.csproj" />
+    <ProjectReference Include="..\BeanShare.Infrastructure.Persistence\BeanShare.Infrastructure.Persistence.csproj" />
   </ItemGroup>
 
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="9.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="9.0.9" />
   </ItemGroup>
 
   <PropertyGroup>

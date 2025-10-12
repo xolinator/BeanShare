@@ -1,0 +1,152 @@
+@page "/spaces"
+@rendermode InteractiveServer
+@using MediatR
+@using BeanShare.Application.Features.Spaces.Commands
+@using BeanShare.Application.Features.Spaces.Queries
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>My Spaces - BeanShare</PageTitle>
+
+<div style="position: fixed; top: 1rem; right: 1rem; z-index: 100;">
+    <UserProfile />
+</div>
+
+<div class="bs-container" style="padding-top: 2rem; padding-bottom: 2rem;">
+    <div style="max-width: 48rem; margin: 0 auto;">
+        <div style="margin-bottom: 2rem;">
+            <h1 class="bs-font-bold" style="margin: 0 0 0.5rem 0; font-size: 2rem;">Your Spaces</h1>
+            <p class="bs-text-subtle">Select a space to manage coffee consumption and costs.</p>
+        </div>
+
+        <SpacesList Spaces="@spaces"
+                   IsLoading="@isLoading"
+                   OnSpaceSelected="HandleSpaceSelected"
+                   OnCreateSpace="() => showCreateModal = true" />
+
+        <div class="bs-flex bs-gap-3" style="margin-top: 1.5rem;">
+            <button class="bs-btn bs-btn-primary bs-flex-1" @onclick="() => showCreateModal = true">
+                <span class="material-symbols-outlined">add_circle</span>
+                Create New Space
+            </button>
+            <button class="bs-btn bs-btn-secondary bs-flex-1" @onclick="() => showJoinModal = true">
+                <span class="material-symbols-outlined">login</span>
+                Join with Invite Code
+            </button>
+        </div>
+
+        <p class="bs-text-subtle" style="text-align: center; margin-top: 1rem; font-size: 0.75rem;">
+            Switch spaces anytime from the menu.
+        </p>
+    </div>
+</div>
+
+<CreateSpaceModal IsVisible="@showCreateModal"
+                 OnSubmit="HandleCreateSpace"
+                 OnCancel="() => showCreateModal = false" />
+
+<JoinSpaceModal IsVisible="@showJoinModal"
+               OnSubmit="HandleJoinSpace"
+               OnCancel="() => showJoinModal = false" />
+
+<Toast IsVisible="@showToast"
+       IsError="@isToastError"
+       Title="@toastTitle"
+       Message="@toastMessage"
+       OnClose="() => showToast = false" />
+
+@code {
+    private List<SpaceSummaryDto> spaces = new();
+    private bool isLoading = true;
+    private bool showCreateModal;
+    private bool showJoinModal;
+    private bool showToast;
+    private bool isToastError;
+    private string toastTitle = "";
+    private string toastMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSpaces();
+    }
+
+    private async Task LoadSpaces()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetUserSpacesQuery());
+            if (result.IsSuccess)
+            {
+                spaces = result.Value.Spaces.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load spaces: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleCreateSpace(string name)
+    {
+        try
+        {
+            var result = await Mediator.Send(new CreateSpaceCommand(name));
+            if (result.IsSuccess)
+            {
+                showCreateModal = false;
+                ShowToast(false, "Success", $"Space '{name}' created successfully!");
+                await LoadSpaces();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to create space: {ex.Message}");
+        }
+    }
+
+    private async Task HandleJoinSpace(string inviteCode)
+    {
+        try
+        {
+            var result = await Mediator.Send(new JoinSpaceCommand(inviteCode));
+            if (result.IsSuccess)
+            {
+                showJoinModal = false;
+                ShowToast(false, "Success", "Joined space successfully!");
+                await LoadSpaces();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to join space: {ex.Message}");
+        }
+    }
+
+    private void HandleSpaceSelected(string spaceId)
+    {
+        Navigation.NavigateTo($"/spaces/{spaceId}");
+    }
+
+    private void ShowToast(bool isError, string title, string message)
+    {
+        isToastError = isError;
+        toastTitle = title;
+        toastMessage = message;
+        showToast = true;
+    }
+}

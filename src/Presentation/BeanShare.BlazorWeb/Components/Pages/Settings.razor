@@ -1,0 +1,1056 @@
+@page "/settings"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Settings - BeanShare</PageTitle>
+
+<div class="settings-container">
+    <div class="settings-header">
+        <h1>Settings</h1>
+        <p>Manage your account preferences and application settings</p>
+    </div>
+
+    <div class="settings-content">
+        <div class="settings-nav">
+            <button class="@GetNavClass("appearance")" @onclick='() => SetActiveTab("appearance")'>
+                <span class="material-symbols-outlined">palette</span>
+                Appearance
+            </button>
+            <button class="@GetNavClass("notifications")" @onclick='() => SetActiveTab("notifications")'>
+                <span class="material-symbols-outlined">notifications</span>
+                Notifications
+            </button>
+            <button class="@GetNavClass("privacy")" @onclick='() => SetActiveTab("privacy")'>
+                <span class="material-symbols-outlined">lock</span>
+                Privacy & Security
+            </button>
+            <button class="@GetNavClass("integrations")" @onclick='() => SetActiveTab("integrations")'>
+                <span class="material-symbols-outlined">extension</span>
+                Integrations
+            </button>
+            <button class="@GetNavClass("advanced")" @onclick='() => SetActiveTab("advanced")'>
+                <span class="material-symbols-outlined">settings</span>
+                Advanced
+            </button>
+        </div>
+
+        <div class="settings-panel">
+            @switch(activeTab)
+            {
+                case "appearance":
+                    <div class="panel-content">
+                        <h2>Appearance</h2>
+                        <p class="panel-description">Customize how BeanShare looks and feels</p>
+
+                        <div class="setting-group">
+                            <h3>Theme</h3>
+                            <div class="theme-selector">
+                                <label class="theme-option @(theme == "light" ? "active" : "")">
+                                    <input type="radio" name="theme" checked="@(theme == "light")"
+                                           @onchange='() => SetTheme("light")' />
+                                    <div class="theme-preview light-preview">
+                                        <span class="material-symbols-outlined">light_mode</span>
+                                    </div>
+                                    <span>Light</span>
+                                </label>
+                                <label class="theme-option @(theme == "dark" ? "active" : "")">
+                                    <input type="radio" name="theme" checked="@(theme == "dark")"
+                                           @onchange='() => SetTheme("dark")' />
+                                    <div class="theme-preview dark-preview">
+                                        <span class="material-symbols-outlined">dark_mode</span>
+                                    </div>
+                                    <span>Dark</span>
+                                </label>
+                                <label class="theme-option @(theme == "auto" ? "active" : "")">
+                                    <input type="radio" name="theme" checked="@(theme == "auto")"
+                                           @onchange='() => SetTheme("auto")' />
+                                    <div class="theme-preview auto-preview">
+                                        <span class="material-symbols-outlined">brightness_auto</span>
+                                    </div>
+                                    <span>Auto</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Accent Color</h3>
+                            <div class="color-selector">
+                                <button class="color-option" style="background: #4169E1" @onclick='() => SetAccentColor("#4169E1")'>
+                                    @if (accentColor == "#4169E1") { <span class="material-symbols-outlined">check</span> }
+                                </button>
+                                <button class="color-option" style="background: #10b981" @onclick='() => SetAccentColor("#10b981")'>
+                                    @if (accentColor == "#10b981") { <span class="material-symbols-outlined">check</span> }
+                                </button>
+                                <button class="color-option" style="background: #f59e0b" @onclick='() => SetAccentColor("#f59e0b")'>
+                                    @if (accentColor == "#f59e0b") { <span class="material-symbols-outlined">check</span> }
+                                </button>
+                                <button class="color-option" style="background: #ef4444" @onclick='() => SetAccentColor("#ef4444")'>
+                                    @if (accentColor == "#ef4444") { <span class="material-symbols-outlined">check</span> }
+                                </button>
+                                <button class="color-option" style="background: #8b5cf6" @onclick='() => SetAccentColor("#8b5cf6")'>
+                                    @if (accentColor == "#8b5cf6") { <span class="material-symbols-outlined">check</span> }
+                                </button>
+                                <button class="color-option" style="background: #ec4899" @onclick='() => SetAccentColor("#ec4899")'>
+                                    @if (accentColor == "#ec4899") { <span class="material-symbols-outlined">check</span> }
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Display Options</h3>
+                            <div class="toggle-list">
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Compact Mode</label>
+                                        <p>Reduce spacing between elements</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="compactMode" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Animations</label>
+                                        <p>Enable smooth transitions and animations</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="enableAnimations" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    break;
+
+                case "notifications":
+                    <div class="panel-content">
+                        <h2>Notifications</h2>
+                        <p class="panel-description">Control when and how you receive notifications</p>
+
+                        <div class="setting-group">
+                            <h3>Email Notifications</h3>
+                            <div class="toggle-list">
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>New Coffee Added</label>
+                                        <p>When someone adds coffee to your space</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="notifyNewCoffee" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Low Stock Alert</label>
+                                        <p>When coffee stock is running low</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="notifyLowStock" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Space Invitations</label>
+                                        <p>When you're invited to join a space</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="notifyInvitations" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Weekly Summary</label>
+                                        <p>Weekly coffee consumption report</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="notifyWeeklySummary" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Push Notifications</h3>
+                            <div class="toggle-list">
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Enable Push Notifications</label>
+                                        <p>Receive notifications in your browser</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="enablePushNotifications" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    break;
+
+                case "privacy":
+                    <div class="panel-content">
+                        <h2>Privacy & Security</h2>
+                        <p class="panel-description">Manage your privacy settings and account security</p>
+
+                        <div class="setting-group">
+                            <h3>Password</h3>
+                            <button class="btn-secondary" @onclick="ChangePassword">
+                                <span class="material-symbols-outlined">lock</span>
+                                Change Password
+                            </button>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Two-Factor Authentication</h3>
+                            <div class="two-factor-status @(twoFactorEnabled ? "enabled" : "disabled")">
+                                <span class="material-symbols-outlined">
+                                    @(twoFactorEnabled ? "verified_user" : "security")
+                                </span>
+                                <div>
+                                    <p class="status-label">@(twoFactorEnabled ? "Enabled" : "Disabled")</p>
+                                    <p class="status-description">
+                                        @(twoFactorEnabled
+                                            ? "Your account is protected with 2FA"
+                                            : "Add an extra layer of security to your account")
+                                    </p>
+                                </div>
+                                <button class="btn-secondary" @onclick="Toggle2FA">
+                                    @(twoFactorEnabled ? "Disable" : "Enable")
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Privacy</h3>
+                            <div class="toggle-list">
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Profile Visibility</label>
+                                        <p>Make your profile visible to other users</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="profileVisible" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="toggle-item">
+                                    <div>
+                                        <label>Show Coffee Stats</label>
+                                        <p>Display your coffee consumption stats on your profile</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" @bind="showStats" />
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Connected Accounts</h3>
+                            <div class="connected-accounts">
+                                <div class="account-item">
+                                    <div class="account-info">
+                                        <img src="/images/google.svg" alt="Google" />
+                                        <span>Google</span>
+                                    </div>
+                                    <button class="btn-secondary">Connect</button>
+                                </div>
+                                <div class="account-item">
+                                    <div class="account-info">
+                                        <img src="/images/facebook.svg" alt="Facebook" />
+                                        <span>Facebook</span>
+                                    </div>
+                                    <button class="btn-secondary">Connect</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    break;
+
+                case "integrations":
+                    <div class="panel-content">
+                        <h2>Integrations</h2>
+                        <p class="panel-description">Connect BeanShare with other services</p>
+
+                        <div class="integration-grid">
+                            <div class="integration-card">
+                                <div class="integration-icon">
+                                    <span class="material-symbols-outlined">calendar_month</span>
+                                </div>
+                                <h3>Calendar</h3>
+                                <p>Sync coffee meetings with your calendar</p>
+                                <button class="btn-secondary">Configure</button>
+                            </div>
+                            <div class="integration-card">
+                                <div class="integration-icon">
+                                    <span class="material-symbols-outlined">chat</span>
+                                </div>
+                                <h3>Slack</h3>
+                                <p>Get notifications in Slack channels</p>
+                                <button class="btn-secondary">Configure</button>
+                            </div>
+                            <div class="integration-card">
+                                <div class="integration-icon">
+                                    <span class="material-symbols-outlined">webhook</span>
+                                </div>
+                                <h3>Webhooks</h3>
+                                <p>Send events to your own endpoints</p>
+                                <button class="btn-secondary">Configure</button>
+                            </div>
+                            <div class="integration-card">
+                                <div class="integration-icon">
+                                    <span class="material-symbols-outlined">api</span>
+                                </div>
+                                <h3>API Access</h3>
+                                <p>Generate API keys for programmatic access</p>
+                                <button class="btn-secondary">Configure</button>
+                            </div>
+                        </div>
+                    </div>
+                    break;
+
+                case "advanced":
+                    <div class="panel-content">
+                        <h2>Advanced Settings</h2>
+                        <p class="panel-description">Advanced configuration options</p>
+
+                        <div class="setting-group">
+                            <h3>Language & Region</h3>
+                            <div class="input-group">
+                                <label>Language</label>
+                                <select @bind="language">
+                                    <option value="en">English</option>
+                                    <option value="de">Deutsch</option>
+                                    <option value="fr">Français</option>
+                                    <option value="es">Español</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Time Zone</label>
+                                <select @bind="timeZone">
+                                    <option value="UTC">UTC</option>
+                                    <option value="EST">Eastern Time</option>
+                                    <option value="CST">Central Time</option>
+                                    <option value="PST">Pacific Time</option>
+                                    <option value="CET">Central European Time</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Date Format</label>
+                                <select @bind="dateFormat">
+                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Data & Storage</h3>
+                            <div class="storage-info">
+                                <div class="storage-bar">
+                                    <div class="storage-used" style="width: 35%"></div>
+                                </div>
+                                <p>350 MB of 1 GB used</p>
+                            </div>
+                            <button class="btn-secondary">Clear Cache</button>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Export Data</h3>
+                            <p>Download all your BeanShare data</p>
+                            <button class="btn-secondary">
+                                <span class="material-symbols-outlined">download</span>
+                                Export as JSON
+                            </button>
+                        </div>
+                    </div>
+                    break;
+            }
+
+            <div class="panel-footer">
+                <button class="btn-secondary" @onclick="Cancel">Cancel</button>
+                <button class="btn-primary" @onclick="SaveSettings">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showPasswordModal)
+{
+    <div class="modal-overlay" @onclick="ClosePasswordModal">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <button class="modal-close" @onclick="ClosePasswordModal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="modal-content">
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" @bind="currentPassword" placeholder="Enter current password" />
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" @bind="newPassword" placeholder="Enter new password" />
+                </div>
+                <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" @bind="confirmPassword" placeholder="Confirm new password" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" @onclick="ClosePasswordModal">Cancel</button>
+                <button class="btn-primary" @onclick="UpdatePassword">Update Password</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .settings-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .settings-header {
+        margin-bottom: 2rem;
+    }
+
+    .settings-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .settings-header p {
+        color: #64748b;
+        font-size: 1.125rem;
+    }
+
+    .settings-content {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        gap: 2rem;
+    }
+
+    .settings-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .settings-nav button {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        color: #64748b;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+    }
+
+    .settings-nav button:hover {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .settings-nav button.active {
+        background: #4169E1;
+        color: white;
+    }
+
+    .settings-panel {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        min-height: 600px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .panel-content {
+        flex: 1;
+        padding: 2rem;
+    }
+
+    .panel-content h2 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .panel-description {
+        color: #64748b;
+        margin: 0 0 2rem 0;
+    }
+
+    .setting-group {
+        margin-bottom: 2.5rem;
+    }
+
+    .setting-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .setting-group h3 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 1rem 0;
+    }
+
+    .theme-selector {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .theme-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+
+    .theme-option input {
+        display: none;
+    }
+
+    .theme-preview {
+        width: 100px;
+        height: 80px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .theme-option.active .theme-preview {
+        border-color: #4169E1;
+    }
+
+    .light-preview {
+        background: #f8fafc;
+        color: #1e293b;
+    }
+
+    .dark-preview {
+        background: #1e293b;
+        color: white;
+    }
+
+    .auto-preview {
+        background: linear-gradient(90deg, #f8fafc 50%, #1e293b 50%);
+        color: #4169E1;
+    }
+
+    .color-selector {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .color-option {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+
+    .color-option:hover {
+        transform: scale(1.1);
+    }
+
+    .toggle-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .toggle-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .toggle-item label {
+        font-weight: 500;
+        color: #1e293b;
+    }
+
+    .toggle-item p {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin: 0.25rem 0 0 0;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 24px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #4169E1;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+
+    .two-factor-status {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+    }
+
+    .two-factor-status.enabled {
+        background: #f0fdf4;
+        border-color: #86efac;
+    }
+
+    .two-factor-status span {
+        font-size: 2rem;
+    }
+
+    .two-factor-status.enabled span {
+        color: #16a34a;
+    }
+
+    .two-factor-status.disabled span {
+        color: #94a3b8;
+    }
+
+    .status-label {
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .status-description {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin: 0;
+    }
+
+    .two-factor-status .btn-secondary {
+        margin-left: auto;
+    }
+
+    .connected-accounts {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .account-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .account-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .account-info img {
+        width: 24px;
+        height: 24px;
+    }
+
+    .integration-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .integration-card {
+        padding: 1.5rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .integration-icon {
+        width: 64px;
+        height: 64px;
+        background: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: #4169E1;
+    }
+
+    .integration-icon span {
+        font-size: 2rem;
+    }
+
+    .integration-card h3 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .integration-card p {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin: 0 0 1rem 0;
+    }
+
+    .input-group {
+        margin-bottom: 1rem;
+    }
+
+    .input-group label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: white;
+    }
+
+    .storage-info {
+        margin-bottom: 1rem;
+    }
+
+    .storage-bar {
+        width: 100%;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+
+    .storage-used {
+        height: 100%;
+        background: #4169E1;
+    }
+
+    .storage-info p {
+        font-size: 0.875rem;
+        color: #64748b;
+    }
+
+    .panel-footer {
+        padding: 1.5rem 2rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background: #4169E1;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #3058c7;
+    }
+
+    .btn-secondary {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+        background: #e2e8f0;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+    }
+
+    .modal-close {
+        background: transparent;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        background: #f1f5f9;
+    }
+
+    .modal-content {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    @@media (max-width: 768px) {
+        .settings-content {
+            grid-template-columns: 1fr;
+        }
+
+        .settings-nav {
+            flex-direction: row;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .integration-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private string activeTab = "appearance";
+
+    private string theme = "light";
+    private string accentColor = "#4169E1";
+    private bool compactMode = false;
+    private bool enableAnimations = true;
+
+    private bool notifyNewCoffee = true;
+    private bool notifyLowStock = true;
+    private bool notifyInvitations = true;
+    private bool notifyWeeklySummary = false;
+    private bool enablePushNotifications = false;
+
+    private bool twoFactorEnabled = false;
+    private bool profileVisible = true;
+    private bool showStats = true;
+
+    private string language = "en";
+    private string timeZone = "UTC";
+    private string dateFormat = "MM/DD/YYYY";
+
+    private bool showPasswordModal = false;
+    private string currentPassword = "";
+    private string newPassword = "";
+    private string confirmPassword = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+    }
+
+    private string GetNavClass(string tab)
+    {
+        return tab == activeTab ? "active" : "";
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private void SetTheme(string newTheme)
+    {
+        theme = newTheme;
+    }
+
+    private void SetAccentColor(string color)
+    {
+        accentColor = color;
+    }
+
+    private void ChangePassword()
+    {
+        showPasswordModal = true;
+    }
+
+    private void ClosePasswordModal()
+    {
+        showPasswordModal = false;
+        currentPassword = "";
+        newPassword = "";
+        confirmPassword = "";
+    }
+
+    private async Task UpdatePassword()
+    {
+        if (newPassword == confirmPassword && !string.IsNullOrEmpty(newPassword))
+        {
+            ClosePasswordModal();
+        }
+    }
+
+    private async Task Toggle2FA()
+    {
+        twoFactorEnabled = !twoFactorEnabled;
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task SaveSettings()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

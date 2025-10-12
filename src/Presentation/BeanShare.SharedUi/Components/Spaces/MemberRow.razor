@@ -1,0 +1,116 @@
+<div class="bs-card">
+    <div class="bs-flex bs-items-center bs-justify-between">
+        <div class="bs-flex bs-items-center bs-gap-3">
+            <div style="width: 3rem; height: 3rem; background: @(IsAdmin ? "var(--bs-primary-light)" : "var(--bs-gray-200)"); border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; color: @(IsAdmin ? "var(--bs-primary)" : "var(--bs-gray-700)");">
+                @GetInitials()
+            </div>
+            <div>
+                <p class="bs-font-bold" style="margin: 0;">@Name</p>
+                <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem;">@Email</p>
+            </div>
+        </div>
+        <div class="bs-flex bs-items-center bs-gap-2">
+            <RolePill Role="@Role" />
+            @if (ShowActions && CanManage)
+            {
+                <div style="position: relative;">
+                    <button class="bs-btn-sm"
+                            style="width: 2rem; height: 2rem; padding: 0; background: transparent; border: none; cursor: pointer;"
+                            @onclick="ToggleMenu">
+                        <span class="material-symbols-outlined bs-text-subtle">more_vert</span>
+                    </button>
+                    @if (isMenuOpen)
+                    {
+                        <div style="position: absolute; right: 0; top: 2.5rem; background: white; border: 1px solid var(--bs-border); border-radius: 0.5rem; box-shadow: var(--bs-shadow-lg); min-width: 12rem; z-index: 10;">
+                            <div style="padding: 0.25rem;">
+                                @if (Role == "Member")
+                                {
+                                    <button class="bs-flex bs-items-center bs-gap-2 bs-px-4 bs-py-2"
+                                            style="width: 100%; background: transparent; border: none; cursor: pointer; text-align: left; font-size: 0.875rem;"
+                                            @onclick="() => OnPromote.InvokeAsync(UserId)">
+                                        <span class="material-symbols-outlined" style="font-size: 1.25rem;">arrow_upward</span>
+                                        Promote to Admin
+                                    </button>
+                                }
+                                else if (Role == "Admin" && !IsLastAdmin)
+                                {
+                                    <button class="bs-flex bs-items-center bs-gap-2 bs-px-4 bs-py-2"
+                                            style="width: 100%; background: transparent; border: none; cursor: pointer; text-align: left; font-size: 0.875rem;"
+                                            @onclick="() => OnDemote.InvokeAsync(UserId)">
+                                        <span class="material-symbols-outlined" style="font-size: 1.25rem;">arrow_downward</span>
+                                        Demote to Member
+                                    </button>
+                                }
+                                @if (!IsLastAdmin)
+                                {
+                                    <button class="bs-flex bs-items-center bs-gap-2 bs-px-4 bs-py-2"
+                                            style="width: 100%; background: transparent; border: none; cursor: pointer; text-align: left; font-size: 0.875rem; color: var(--bs-error);"
+                                            @onclick="() => OnRemove.InvokeAsync(UserId)">
+                                        <span class="material-symbols-outlined" style="font-size: 1.25rem;">delete</span>
+                                        Remove from Space
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="bs-px-4 bs-py-2" style="font-size: 0.75rem; color: var(--bs-text-subtle);" title="Cannot remove or demote the last admin">
+                                        <span class="material-symbols-outlined" style="font-size: 1rem;">info</span>
+                                        Last admin cannot be removed
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string UserId { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public string Email { get; set; } = "";
+
+    [Parameter]
+    public string Role { get; set; } = "Member";
+
+    [Parameter]
+    public bool ShowActions { get; set; }
+
+    [Parameter]
+    public bool CanManage { get; set; }
+
+    [Parameter]
+    public bool IsLastAdmin { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnPromote { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnDemote { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnRemove { get; set; }
+
+    private bool isMenuOpen;
+    private bool IsAdmin => Role == "Admin";
+
+    private string GetInitials()
+    {
+        if (string.IsNullOrEmpty(Name)) return "??";
+        var parts = Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return Name.Length >= 2 ? Name.Substring(0, 2).ToUpper() : Name.ToUpper();
+    }
+
+    private void ToggleMenu()
+    {
+        isMenuOpen = !isMenuOpen;
+    }
+}

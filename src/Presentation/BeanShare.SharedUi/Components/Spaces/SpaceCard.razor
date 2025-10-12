@@ -1,0 +1,38 @@
+<div class="bs-card" style="cursor: pointer;" @onclick="() => OnSelect.InvokeAsync(SpaceId)">
+    <div class="bs-flex bs-items-center bs-gap-3">
+        <div style="width: 4rem; height: 4rem; background: var(--bs-primary-light); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
+            <span class="material-symbols-outlined" style="color: var(--bs-primary); font-size: 2rem;">
+                coffee
+            </span>
+        </div>
+        <div class="bs-flex-1">
+            <div class="bs-flex bs-items-center bs-justify-between">
+                <h3 class="bs-font-bold" style="margin: 0; font-size: 1.125rem;">@Name</h3>
+                <RolePill Role="@Role" />
+            </div>
+            <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">
+                @MemberCount @(MemberCount == 1 ? "member" : "members")
+            </p>
+        </div>
+        <span class="material-symbols-outlined bs-text-subtle">
+            chevron_right
+        </span>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string SpaceId { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public string Role { get; set; } = "Member";
+
+    [Parameter]
+    public int MemberCount { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSelect { get; set; }
+}

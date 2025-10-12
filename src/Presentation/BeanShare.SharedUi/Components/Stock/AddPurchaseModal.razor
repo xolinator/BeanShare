@@ -1,0 +1,113 @@
+@if (IsVisible)
+{
+    <div class="bs-modal-backdrop" @onclick="Cancel">
+        <div class="bs-modal" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h3 class="bs-modal-title">Add Stock Purchase</h3>
+            </div>
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="productName">Product Name</label>
+                    <InputText id="productName"
+                              class="bs-input"
+                              @bind-Value="model.ProductName"
+                              placeholder="e.g., Starbucks Pike Place" />
+                    <ValidationMessage For="@(() => model.ProductName)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="quantity">Quantity (grams)</label>
+                    <InputNumber id="quantity"
+                                class="bs-input"
+                                @bind-Value="model.QuantityGrams"
+                                placeholder="250" />
+                    <ValidationMessage For="@(() => model.QuantityGrams)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="totalCost">Total Cost</label>
+                    <InputNumber id="totalCost"
+                                class="bs-input"
+                                @bind-Value="model.TotalCost"
+                                placeholder="15.99" />
+                    <ValidationMessage For="@(() => model.TotalCost)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="coffeeType">Coffee Type</label>
+                    <InputSelect id="coffeeType" class="bs-input" @bind-Value="model.CoffeeType">
+                        <option value="Beans">Beans</option>
+                        <option value="Ground">Ground</option>
+                    </InputSelect>
+                </div>
+
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Cancel">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bs-btn bs-btn-primary bs-flex-1" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span>Adding...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined">add</span>
+                            <span>Add Purchase</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<AddPurchaseModel> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private AddPurchaseModel model = new();
+    private bool isSubmitting;
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        await OnSubmit.InvokeAsync(model);
+        isSubmitting = false;
+        model = new AddPurchaseModel();
+    }
+
+    private async Task Cancel()
+    {
+        model = new AddPurchaseModel();
+        await OnCancel.InvokeAsync();
+    }
+
+    public class AddPurchaseModel
+    {
+        [Required(ErrorMessage = "Product name is required")]
+        [StringLength(200, MinimumLength = 2, ErrorMessage = "Product name must be between 2 and 200 characters")]
+        public string ProductName { get; set; } = "";
+
+        [Required(ErrorMessage = "Quantity is required")]
+        [Range(1, 10000, ErrorMessage = "Quantity must be between 1 and 10000 grams")]
+        public int QuantityGrams { get; set; }
+
+        [Required(ErrorMessage = "Total cost is required")]
+        [Range(0.01, 100000, ErrorMessage = "Total cost must be greater than 0")]
+        public decimal TotalCost { get; set; }
+
+        [Required]
+        public string CoffeeType { get; set; } = "Ground";
+
+        public string Currency { get; set; } = "USD";
+    }
+}

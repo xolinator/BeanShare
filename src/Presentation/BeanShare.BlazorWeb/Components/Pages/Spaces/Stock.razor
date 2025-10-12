@@ -1,0 +1,201 @@
+@page "/spaces/{SpaceId}/stock"
+@rendermode InteractiveServer
+@using MediatR
+@using BeanShare.Application.Features.Spaces.Queries
+@using BeanShare.Application.Features.CoffeeStock.Queries
+@using BeanShare.Application.Features.CoffeeStock.Commands
+@using Microsoft.AspNetCore.Authorization
+@*@attribute [Authorize]*@
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Stock - @spaceName - BeanShare</PageTitle>
+
+@if (!hasSpace || space == null)
+{
+    <div class="bs-container" style="padding-top: 4rem; text-align: center;">
+        <div class="bs-skeleton" style="width: 12rem; height: 2rem; margin: 0 auto 1rem;"></div>
+        <div class="bs-skeleton" style="width: 20rem; height: 1rem; margin: 0 auto;"></div>
+    </div>
+}
+else
+{
+    <div style="position: sticky; top: 0; z-index: 10; background: var(--bs-background-light); border-bottom: 1px solid var(--bs-border); padding: 1rem 0;">
+        <div class="bs-container">
+            <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
+                <button class="bs-btn-sm" style="background: transparent; border: none; cursor: pointer;" @onclick='@(() => Navigation.NavigateTo("/spaces"))'>
+                    <span class="material-symbols-outlined">arrow_back</span>
+                </button>
+                <h1 class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">@space.Name</h1>
+                <div style="width: 2rem;"></div>
+            </div>
+
+            <div style="background: var(--bs-gray-100); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem;">
+                <div class="bs-flex bs-items-center bs-justify-between">
+                    <span class="bs-text-subtle" style="font-size: 0.75rem; font-weight: 600;">INVITE CODE</span>
+                    <div class="bs-flex bs-items-center bs-gap-2">
+                        <span style="font-family: monospace; font-size: 0.875rem; font-weight: 700;">@space.InviteCode</span>
+                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <SpaceTabs SpaceId="@SpaceId"
+                      ActiveTab="stock"
+                      OnTabChange="HandleTabChange"
+                      PreventNavigation="false" />
+        </div>
+    </div>
+
+    <div class="bs-container" style="padding: 2rem 0;">
+        <div>
+            <StockPurchases Purchases="@purchases"
+                           IsLoading="@isLoadingStock" />
+
+            @if (isAdmin)
+            {
+                <button class="bs-btn bs-btn-primary"
+                        style="position: fixed; bottom: 2rem; right: 2rem; width: 4rem; height: 4rem; border-radius: 9999px; box-shadow: var(--bs-shadow-lg); padding: 0;"
+                        @onclick="@(() => showAddPurchaseModal = true)"
+                        title="Add Stock Purchase">
+                    <span class="material-symbols-outlined" style="font-size: 2rem;">add</span>
+                </button>
+            }
+        </div>
+    </div>
+}
+
+<AddPurchaseModal IsVisible="@showAddPurchaseModal"
+                 OnSubmit="HandleAddPurchase"
+                 OnCancel="@(() => showAddPurchaseModal = false)" />
+
+<Toast IsVisible="@showToast"
+       IsError="@isToastError"
+       Title="@toastTitle"
+       Message="@toastMessage"
+       OnClose="@(() => showToast = false)" />
+
+@code {
+    [Parameter]
+    public string SpaceId { get; set; } = "";
+
+    private SpaceDto? space;
+    private string spaceName => space?.Name ?? "Loading...";
+    private bool hasSpace => !string.IsNullOrEmpty(SpaceId) && space != null;
+    private bool isAdmin;
+    private bool isLoadingStock;
+
+    private List<StockPurchaseDto> purchases = new();
+
+    private bool showAddPurchaseModal;
+    private bool showToast;
+    private bool isToastError;
+    private string toastTitle = "";
+    private string toastMessage = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(SpaceId))
+        {
+            await LoadSpace();
+            await LoadStock();
+        }
+    }
+
+    private async Task LoadSpace()
+    {
+        try
+        {
+            var result = await Mediator.Send(new GetSpaceByIdQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                space = result.Value;
+                // Check admin role based on first member for dev purposes
+                isAdmin = space.Members.Any(m => m.Role == "Admin");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load space: {ex.Message}");
+        }
+    }
+
+    private async Task LoadStock()
+    {
+        isLoadingStock = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Mediator.Send(new GetSpaceStockQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                purchases = result.Value.RecentPurchases.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load stock: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingStock = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleTabChange(string newTab)
+    {
+        if (newTab == "members")
+        {
+            Navigation.NavigateTo($"/spaces/{SpaceId}");
+        }
+        else if (newTab == "consumption")
+        {
+            Navigation.NavigateTo($"/spaces/{SpaceId}/consumption");
+        }
+    }
+
+    private async Task HandleAddPurchase(AddPurchaseModal.AddPurchaseModel model)
+    {
+        try
+        {
+            var result = await Mediator.Send(new AddStockPurchaseCommand(
+                Guid.Parse(SpaceId),
+                model.ProductName,
+                "Generic",
+                model.CoffeeType,
+                model.QuantityGrams,
+                model.TotalCost,
+                model.Currency,
+                "Store",
+                DateTime.UtcNow
+            ));
+
+            if (result.IsSuccess)
+            {
+                showAddPurchaseModal = false;
+                ShowToast(false, "Success", "Stock purchase added successfully!");
+                await LoadStock();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to add purchase: {ex.Message}");
+        }
+    }
+
+    private void ShowToast(bool isError, string title, string message)
+    {
+        isToastError = isError;
+        toastTitle = title;
+        toastMessage = message;
+        showToast = true;
+    }
+}

@@ -1,0 +1,50 @@
+@if (IsVisible)
+{
+    <div class="bs-toast @(IsError ? "bs-toast-error" : "bs-toast-success")">
+        <div class="bs-flex bs-items-center bs-gap-2">
+            <span class="material-symbols-outlined">
+                @(IsError ? "error" : "check_circle")
+            </span>
+            <div class="bs-flex-1">
+                <p class="bs-font-bold bs-m-0">@Title</p>
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    <p class="bs-m-0" style="font-size: 0.875rem;">@Message</p>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public bool IsError { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public string Message { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            Task.Delay(3000).ContinueWith(_ =>
+            {
+                InvokeAsync(async () =>
+                {
+                    IsVisible = false;
+                    await OnClose.InvokeAsync();
+                    StateHasChanged();
+                });
+            });
+        }
+    }
+}
