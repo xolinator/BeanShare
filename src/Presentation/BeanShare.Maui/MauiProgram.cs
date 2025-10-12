@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using BeanShare.Maui.Services;
 
 namespace BeanShare.Maui;
 
@@ -15,6 +16,28 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddMauiBlazorWebView();
+
+		// Configure HttpClient for API communication
+		builder.Services.AddHttpClient<ISpacesService, SpacesService>(client =>
+		{
+			// Platform-specific base addresses:
+			// Android emulator: http://10.0.2.2:5000
+			// iOS simulator/Windows: http://localhost:5000
+			client.BaseAddress = new Uri("http://localhost:5000");
+			client.DefaultRequestHeaders.Add("Accept", "application/json");
+		});
+
+		builder.Services.AddHttpClient<IStockService, StockService>(client =>
+		{
+			client.BaseAddress = new Uri("http://localhost:5000");
+			client.DefaultRequestHeaders.Add("Accept", "application/json");
+		});
+
+		builder.Services.AddHttpClient<IConsumptionService, ConsumptionService>(client =>
+		{
+			client.BaseAddress = new Uri("http://localhost:5000");
+			client.DefaultRequestHeaders.Add("Accept", "application/json");
+		});
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

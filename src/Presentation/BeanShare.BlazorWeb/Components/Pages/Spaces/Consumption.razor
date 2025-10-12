@@ -1,0 +1,191 @@
+@page "/spaces/{SpaceId}/consumption"
+@rendermode InteractiveServer
+@using MediatR
+@using BeanShare.Application.Features.Spaces.Queries
+@using BeanShare.Application.Features.Consumption.Queries
+@using BeanShare.Application.Features.Consumption.Commands
+@using Microsoft.AspNetCore.Authorization
+@*@attribute [Authorize]*@
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Consumption - @spaceName - BeanShare</PageTitle>
+
+@if (!hasSpace || space == null)
+{
+    <div class="bs-container" style="padding-top: 4rem; text-align: center;">
+        <div class="bs-skeleton" style="width: 12rem; height: 2rem; margin: 0 auto 1rem;"></div>
+        <div class="bs-skeleton" style="width: 20rem; height: 1rem; margin: 0 auto;"></div>
+    </div>
+}
+else
+{
+    <div style="position: sticky; top: 0; z-index: 10; background: var(--bs-background-light); border-bottom: 1px solid var(--bs-border); padding: 1rem 0;">
+        <div class="bs-container">
+            <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
+                <button class="bs-btn-sm" style="background: transparent; border: none; cursor: pointer;" @onclick='@(() => Navigation.NavigateTo("/spaces"))'>
+                    <span class="material-symbols-outlined">arrow_back</span>
+                </button>
+                <h1 class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">@space.Name</h1>
+                <div style="width: 2rem;"></div>
+            </div>
+
+            <div style="background: var(--bs-gray-100); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem;">
+                <div class="bs-flex bs-items-center bs-justify-between">
+                    <span class="bs-text-subtle" style="font-size: 0.75rem; font-weight: 600;">INVITE CODE</span>
+                    <div class="bs-flex bs-items-center bs-gap-2">
+                        <span style="font-family: monospace; font-size: 0.875rem; font-weight: 700;">@space.InviteCode</span>
+                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <SpaceTabs SpaceId="@SpaceId"
+                      ActiveTab="consumption"
+                      OnTabChange="HandleTabChange"
+                      PreventNavigation="false" />
+        </div>
+    </div>
+
+    <div class="bs-container" style="padding: 2rem 0;">
+        <div class="bs-flex bs-flex-col bs-gap-6">
+            <ConsumptionKpis MyCupsToday="@myCupsToday"
+                            MyTotalCost="@myTotalCost"
+                            RemainingStockGrams="@remainingStock" />
+
+            <ConsumptionForm OnSubmit="HandleLogConsumption" />
+
+            <RecentConsumptionList RecentLogs="@recentConsumptions"
+                                  IsLoading="@isLoadingConsumption" />
+        </div>
+    </div>
+}
+
+<Toast IsVisible="@showToast"
+       IsError="@isToastError"
+       Title="@toastTitle"
+       Message="@toastMessage"
+       OnClose="@(() => showToast = false)" />
+
+@code {
+    [Parameter]
+    public string SpaceId { get; set; } = "";
+
+    private SpaceDto? space;
+    private string spaceName => space?.Name ?? "Loading...";
+    private bool hasSpace => !string.IsNullOrEmpty(SpaceId) && space != null;
+    private bool isLoadingConsumption;
+
+    private List<ConsumptionEntryDto> recentConsumptions = new();
+    private int myCupsToday = 0;
+    private decimal myTotalCost = 0m;
+    private int remainingStock = 0;
+
+    private bool showToast;
+    private bool isToastError;
+    private string toastTitle = "";
+    private string toastMessage = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(SpaceId))
+        {
+            await LoadSpace();
+            await LoadConsumption();
+        }
+    }
+
+    private async Task LoadSpace()
+    {
+        try
+        {
+            var result = await Mediator.Send(new GetSpaceByIdQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                space = result.Value;
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load space: {ex.Message}");
+        }
+    }
+
+    private async Task LoadConsumption()
+    {
+        isLoadingConsumption = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Mediator.Send(new GetRecentConsumptionsQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                recentConsumptions = result.Value.Entries.ToList();
+                myCupsToday = result.Value.MyCupsToday;
+                myTotalCost = result.Value.MyTotalCost;
+                remainingStock = result.Value.RemainingStockGrams;
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load consumption: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingConsumption = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleTabChange(string newTab)
+    {
+        if (newTab == "members")
+        {
+            Navigation.NavigateTo($"/spaces/{SpaceId}");
+        }
+        else if (newTab == "stock")
+        {
+            Navigation.NavigateTo($"/spaces/{SpaceId}/stock");
+        }
+    }
+
+    private async Task HandleLogConsumption(ConsumptionForm.ConsumptionFormModel model)
+    {
+        try
+        {
+            var result = await Mediator.Send(new RecordConsumptionCommand(
+                Guid.Parse(SpaceId),
+                "Coffee",
+                "Generic",
+                "Ground",
+                model.Grams,
+                model.ConsumedAt
+            ));
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Consumption logged successfully!");
+                await LoadConsumption();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to log consumption: {ex.Message}");
+        }
+    }
+
+    private void ShowToast(bool isError, string title, string message)
+    {
+        isToastError = isError;
+        toastTitle = title;
+        toastMessage = message;
+        showToast = true;
+    }
+}

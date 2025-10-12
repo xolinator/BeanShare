@@ -1,0 +1,354 @@
+@inherits LayoutComponentBase
+@using BeanShare.Maui.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="mobile-app-container">
+    <AuthorizeView>
+        <Authorized>
+            <MobileHeader Title="@GetPageTitle()"
+                         Subtitle="@GetPageSubtitle()"
+                         ShowBackButton="@ShouldShowBackButton()"
+                         ShowSearch="@ShouldShowSearch()"
+                         ShowNotifications="true"
+                         ShowMenu="true"
+                         OnSearch="HandleSearch"
+                         OnBack="HandleBack" />
+
+            <main class="mobile-content">
+                <CascadingValue Value="RefreshCallback">
+                    @Body
+                </CascadingValue>
+            </main>
+
+            <BottomTabBar CurrentSpaceId="@currentSpaceId"
+                         OnCreateSpace="ShowCreateSpace"
+                         OnJoinSpace="ShowJoinSpace"
+                         OnLogConsumption="ShowLogConsumption"
+                         OnAddStock="ShowAddStock" />
+        </Authorized>
+        <NotAuthorized>
+            <div class="mobile-auth-container">
+                @Body
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@if (showCreateSpaceModal)
+{
+    <BeanShare.SharedUi.Components.Spaces.CreateSpaceModal OnClose="CloseCreateSpace" OnSpaceCreated="OnSpaceCreated" />
+}
+
+@if (showJoinSpaceModal)
+{
+    <BeanShare.SharedUi.Components.Spaces.JoinSpaceModal OnClose="CloseJoinSpace" OnSpaceJoined="OnSpaceJoined" />
+}
+
+@if (showConsumptionModal)
+{
+    <BeanShare.SharedUi.Components.Consumption.ConsumptionForm SpaceId="@Guid.Parse(currentSpaceId)" OnClose="CloseConsumptionModal" OnConsumptionLogged="OnConsumptionLogged" />
+}
+
+@if (showAddStockModal)
+{
+    <BeanShare.SharedUi.Components.Stock.AddPurchaseModal SpaceId="@Guid.Parse(currentSpaceId)" OnClose="CloseAddStockModal" OnPurchaseAdded="OnPurchaseAdded" />
+}
+
+<style>
+    .mobile-app-container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--bs-background-light);
+    }
+
+    .mobile-content {
+        flex: 1;
+        padding-top: 56px;
+        padding-bottom: 56px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .pull-to-refresh {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        right: 0;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bs-background);
+        border-bottom: 1px solid var(--bs-border);
+        transform: translateY(-100%);
+        transition: transform 0.3s ease;
+        z-index: 25;
+    }
+
+    .pull-to-refresh.visible {
+        transform: translateY(0);
+    }
+
+    .pull-to-refresh-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--bs-gray-300);
+        border-top-color: var(--bs-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @@supports (padding-top: env(safe-area-inset-top)) {
+        .mobile-content {
+            padding-top: calc(56px + env(safe-area-inset-top));
+            padding-bottom: calc(56px + env(safe-area-inset-bottom));
+        }
+
+        .pull-to-refresh {
+            top: calc(56px + env(safe-area-inset-top));
+        }
+    }
+
+    @@media (min-width: 768px) {
+        .mobile-content {
+            padding-top: 64px;
+            max-width: 768px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .mobile-app-container {
+            background-color: var(--bs-gray-100);
+        }
+
+        .mobile-content {
+            background-color: var(--bs-background);
+        }
+    }
+
+    .loading-overlay {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+
+    .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--bs-gray-300);
+        border-top-color: var(--bs-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+</style>
+
+@code {
+    private string currentSpaceId = "";
+    private bool showCreateSpaceModal = false;
+    private bool showJoinSpaceModal = false;
+    private bool showConsumptionModal = false;
+    private bool showAddStockModal = false;
+    private bool isRefreshing = false;
+    private EventCallback<bool> RefreshCallback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        RefreshCallback = EventCallback.Factory.Create<bool>(this, HandleRefresh);
+        UpdateCurrentSpaceId();
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        UpdateCurrentSpaceId();
+        StateHasChanged();
+    }
+
+    private void UpdateCurrentSpaceId()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var segments = path.Split('/');
+
+        if (segments.Length >= 2 && segments[0] == "spaces" && Guid.TryParse(segments[1], out _))
+        {
+            currentSpaceId = segments[1];
+        }
+    }
+
+    private string GetPageTitle()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        if (segments.Length == 0)
+            return "BeanShare";
+
+        return segments[0] switch
+        {
+            "spaces" when segments.Length == 1 => "My Spaces",
+            "spaces" when segments.Length >= 2 => GetSpacePageTitle(segments),
+            "profile" => "Profile",
+            "settings" => "Settings",
+            "notifications" => "Notifications",
+            "help" => "Help & Support",
+            _ => "BeanShare"
+        };
+    }
+
+    private string GetSpacePageTitle(string[] segments)
+    {
+        if (segments.Length >= 3)
+        {
+            return segments[2] switch
+            {
+                "stock" => "Stock",
+                "consumption" => "Consumption",
+                _ => "Space Details"
+            };
+        }
+        return "Space Details";
+    }
+
+    private string? GetPageSubtitle()
+    {
+        return null;
+    }
+
+    private bool ShouldShowBackButton()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        return !string.IsNullOrEmpty(path) && path != "spaces";
+    }
+
+    private bool ShouldShowSearch()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        return path == "spaces" || path.Contains("/stock") || path.Contains("/consumption");
+    }
+
+    private async Task HandleSearch(string query)
+    {
+        Navigation.NavigateTo($"/search?q={Uri.EscapeDataString(query)}");
+    }
+
+    private void HandleBack()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (path.Contains("/stock") || path.Contains("/consumption"))
+        {
+            Navigation.NavigateTo($"/spaces/{currentSpaceId}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/spaces");
+        }
+    }
+
+    private async Task HandleRefresh(bool isRefreshing)
+    {
+        this.isRefreshing = isRefreshing;
+        StateHasChanged();
+
+        if (isRefreshing)
+        {
+            await Task.Delay(1500);
+            this.isRefreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    // Modal handlers
+    private void ShowCreateSpace()
+    {
+        showCreateSpaceModal = true;
+    }
+
+    private void CloseCreateSpace()
+    {
+        showCreateSpaceModal = false;
+    }
+
+    private void OnSpaceCreated(Guid spaceId)
+    {
+        showCreateSpaceModal = false;
+        Navigation.NavigateTo($"/spaces/{spaceId}");
+    }
+
+    private void ShowJoinSpace()
+    {
+        showJoinSpaceModal = true;
+    }
+
+    private void CloseJoinSpace()
+    {
+        showJoinSpaceModal = false;
+    }
+
+    private void OnSpaceJoined(Guid spaceId)
+    {
+        showJoinSpaceModal = false;
+        Navigation.NavigateTo($"/spaces/{spaceId}");
+    }
+
+    private void ShowLogConsumption()
+    {
+        if (!string.IsNullOrEmpty(currentSpaceId))
+        {
+            showConsumptionModal = true;
+        }
+    }
+
+    private void CloseConsumptionModal()
+    {
+        showConsumptionModal = false;
+    }
+
+    private void OnConsumptionLogged()
+    {
+        showConsumptionModal = false;
+        StateHasChanged();
+    }
+
+    private void ShowAddStock()
+    {
+        if (!string.IsNullOrEmpty(currentSpaceId))
+        {
+            showAddStockModal = true;
+        }
+    }
+
+    private void CloseAddStockModal()
+    {
+        showAddStockModal = false;
+    }
+
+    private void OnPurchaseAdded()
+    {
+        showAddStockModal = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+}

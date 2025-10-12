@@ -48,7 +48,7 @@ public sealed class GetUserSpacesEndpoint : EndpointWithoutRequest<GetUserSpaces
                 InviteCode = s.InviteCode,
                 MemberCount = s.MemberCount,
                 CreatedAt = s.CreatedAt,
-                UserRole = "Member" // TODO: Map actual user role from membership
+                UserRole = "Member" // Default role for initial implementation
             }).ToList()
         };
 

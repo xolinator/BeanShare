@@ -1,0 +1,67 @@
+@if (IsLoading)
+{
+    <div class="bs-flex bs-flex-col bs-gap-2">
+        @for (int i = 0; i < 3; i++)
+        {
+            <div class="bs-card">
+                <div class="bs-flex bs-items-center bs-gap-3">
+                    <div class="bs-skeleton" style="width: 3rem; height: 3rem; border-radius: 9999px;"></div>
+                    <div class="bs-flex-1">
+                        <div class="bs-skeleton" style="height: 1rem; width: 50%; margin-bottom: 0.5rem;"></div>
+                        <div class="bs-skeleton" style="height: 0.875rem; width: 70%;"></div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else if (Members == null || !Members.Any())
+{
+    <EmptyState Icon="group"
+                Title="No members yet"
+                Message="Invite your teammates to start sharing coffee costs." />
+}
+else
+{
+    <div class="bs-flex bs-flex-col bs-gap-3">
+        @foreach (var member in Members)
+        {
+            <MemberRow UserId="@member.UserId.ToString()"
+                      Name="@member.UserName"
+                      Email="@member.Email"
+                      Role="@member.Role"
+                      ShowActions="@IsAdmin"
+                      CanManage="@IsAdmin"
+                      IsLastAdmin="@(member.Role == "Admin" && AdminCount == 1)"
+                      OnPromote="HandlePromote"
+                      OnDemote="HandleDemote"
+                      OnRemove="HandleRemove" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IEnumerable<MembershipDto>? Members { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public bool IsAdmin { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnPromoteMember { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnDemoteMember { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnRemoveMember { get; set; }
+
+    private int AdminCount => Members?.Count(m => m.Role == "Admin") ?? 0;
+
+    private Task HandlePromote(string userId) => OnPromoteMember.InvokeAsync(userId);
+    private Task HandleDemote(string userId) => OnDemoteMember.InvokeAsync(userId);
+    private Task HandleRemove(string userId) => OnRemoveMember.InvokeAsync(userId);
+}

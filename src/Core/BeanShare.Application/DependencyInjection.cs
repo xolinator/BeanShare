@@ -1,5 +1,7 @@
 using BeanShare.Application.Behaviors;
 using FluentValidation;
+using Mapster;
+using MapsterMapper;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -15,6 +17,12 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(assembly);
 
         services.AddMediatR(assembly);
+
+        // Add Mapster
+        var config = TypeAdapterConfig.GlobalSettings;
+        config.Scan(assembly);
+        services.AddSingleton(config);
+        services.AddScoped<IMapper, ServiceMapper>();
 
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(Pipeline.AuthorizationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

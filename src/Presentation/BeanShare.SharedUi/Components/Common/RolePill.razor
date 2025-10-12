@@ -1,0 +1,13 @@
+@if (Role == "Admin")
+{
+    <span class="bs-pill bs-pill-admin">Admin</span>
+}
+else
+{
+    <span class="bs-pill bs-pill-member">Member</span>
+}
+
+@code {
+    [Parameter]
+    public string Role { get; set; } = "Member";
+}

@@ -1,0 +1,89 @@
+@page "/logout"
+@inject NavigationManager Navigation
+@inject HttpClient HttpClient
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Logging out - BeanShare</PageTitle>
+
+<div class="logout-container">
+    <div class="logout-card">
+        <div class="logout-spinner">
+            <span class="material-symbols-outlined spinning">progress_activity</span>
+        </div>
+        <h2>Logging out...</h2>
+        <p>You are being securely logged out of BeanShare</p>
+    </div>
+</div>
+
+<style>
+    .logout-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .logout-card {
+        background: white;
+        border-radius: 16px;
+        padding: 3rem 2rem;
+        text-align: center;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        min-width: 400px;
+    }
+
+    .logout-spinner {
+        margin-bottom: 1.5rem;
+    }
+
+    .logout-spinner span {
+        font-size: 48px;
+        color: #4169E1;
+    }
+
+    .spinning {
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    h2 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 0.5rem 0;
+    }
+
+    p {
+        color: #64748b;
+        margin: 0;
+    }
+</style>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var response = await HttpClient.PostAsync("/api/auth/logout", null);
+
+                await JSRuntime.InvokeVoidAsync("localStorage.clear");
+                await JSRuntime.InvokeVoidAsync("sessionStorage.clear");
+
+                await Task.Delay(1000);
+
+                Navigation.NavigateTo("/login", forceLoad: true);
+            }
+            catch
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+            }
+        }
+    }
+}

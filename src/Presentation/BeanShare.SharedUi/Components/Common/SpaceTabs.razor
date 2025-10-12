@@ -1,0 +1,47 @@
+<nav class="bs-tabs">
+    <a class="bs-tab @(ActiveTab == "members" ? "bs-tab-active" : "")"
+       href="@GetTabUrl("members")"
+       @onclick="@(() => HandleTabClick("members"))"
+       @onclick:preventDefault="@PreventNavigation">
+        Members
+    </a>
+    <a class="bs-tab @(ActiveTab == "stock" ? "bs-tab-active" : "")"
+       href="@GetTabUrl("stock")"
+       @onclick="@(() => HandleTabClick("stock"))"
+       @onclick:preventDefault="@PreventNavigation">
+        Stock
+    </a>
+    <a class="bs-tab @(ActiveTab == "consumption" ? "bs-tab-active" : "")"
+       href="@GetTabUrl("consumption")"
+       @onclick="@(() => HandleTabClick("consumption"))"
+       @onclick:preventDefault="@PreventNavigation">
+        Consumption
+    </a>
+    <span class="bs-tab bs-tab-disabled" title="Coming soon">Presets</span>
+    <span class="bs-tab bs-tab-disabled" title="Coming soon">Billing</span>
+    <span class="bs-tab bs-tab-disabled" title="Coming soon">Analytics</span>
+</nav>
+
+@code {
+    [Parameter]
+    public string SpaceId { get; set; } = "";
+
+    [Parameter]
+    public string ActiveTab { get; set; } = "members";
+
+    [Parameter]
+    public EventCallback<string> OnTabChange { get; set; }
+
+    [Parameter]
+    public bool PreventNavigation { get; set; } = true;
+
+    private string GetTabUrl(string tab)
+    {
+        return string.IsNullOrEmpty(SpaceId) ? "#" : $"/spaces/{SpaceId}/{tab}";
+    }
+
+    private async Task HandleTabClick(string tab)
+    {
+        await OnTabChange.InvokeAsync(tab);
+    }
+}

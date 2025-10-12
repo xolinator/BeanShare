@@ -1,0 +1,12 @@
+<div class="bs-kpi-chip">
+    <span class="bs-font-medium">@Label</span>
+    <span class="bs-kpi-value">@Value</span>
+</div>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public string Value { get; set; } = "";
+}

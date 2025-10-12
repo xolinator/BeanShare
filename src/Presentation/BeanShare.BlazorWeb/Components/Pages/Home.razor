@@ -1,7 +1,141 @@
-﻿@page "/"
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Welcome - BeanShare</PageTitle>
 
-<h1>Hello, world!</h1>
+<AuthorizeView>
+    <Authorized>
+        @{
+            Navigation.NavigateTo("/spaces", true);
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="bs-landing-container">
+            <div class="bs-landing-content">
+                <div class="bs-landing-header">
+                    <h1 class="bs-landing-title">Welcome to BeanShare</h1>
+                    <p class="bs-landing-subtitle">
+                        Track your coffee consumption and share costs with your team
+                    </p>
+                </div>
 
-Welcome to your new app.
+                <div class="bs-landing-features">
+                    <div class="bs-feature-card">
+                        <span class="material-symbols-outlined bs-feature-icon">groups</span>
+                        <h3>Shared Spaces</h3>
+                        <p>Create or join spaces with your team to track coffee together</p>
+                    </div>
+                    <div class="bs-feature-card">
+                        <span class="material-symbols-outlined bs-feature-icon">inventory_2</span>
+                        <h3>Stock Management</h3>
+                        <p>Keep track of coffee purchases and remaining stock</p>
+                    </div>
+                    <div class="bs-feature-card">
+                        <span class="material-symbols-outlined bs-feature-icon">local_cafe</span>
+                        <h3>Consumption Logs</h3>
+                        <p>Log your coffee consumption and see your costs</p>
+                    </div>
+                </div>
+
+                <div class="bs-landing-cta">
+                    <a href="/register" class="bs-btn bs-btn-primary" style="padding: 1rem 2rem; font-size: 1rem;">
+                        Get Started
+                    </a>
+                    <a href="/login" class="bs-btn bs-btn-secondary" style="padding: 1rem 2rem; font-size: 1rem;">
+                        Sign In
+                    </a>
+                </div>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+<style>
+    .bs-landing-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: linear-gradient(135deg, var(--bs-primary-light) 0%, var(--bs-background-light) 100%);
+    }
+
+    .bs-landing-content {
+        max-width: 64rem;
+        text-align: center;
+    }
+
+    .bs-landing-header {
+        margin-bottom: 3rem;
+    }
+
+    .bs-landing-title {
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--bs-text);
+        margin: 0 0 1rem 0;
+    }
+
+    .bs-landing-subtitle {
+        font-size: 1.25rem;
+        color: var(--bs-text-subtle);
+        margin: 0;
+    }
+
+    .bs-landing-features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .bs-feature-card {
+        background-color: var(--bs-background);
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .bs-feature-icon {
+        font-size: 3rem;
+        color: var(--bs-primary);
+        margin-bottom: 1rem;
+    }
+
+    .bs-feature-card h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .bs-feature-card p {
+        color: var(--bs-text-subtle);
+        margin: 0;
+    }
+
+    .bs-landing-cta {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    @@media (max-width: 768px) {
+        .bs-landing-title {
+            font-size: 2rem;
+        }
+
+        .bs-landing-subtitle {
+            font-size: 1rem;
+        }
+
+        .bs-landing-features {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+}

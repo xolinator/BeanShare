@@ -1,17 +1,9 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@Body
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+<div id="blazor-error-ui" style="display: none; position: fixed; bottom: 1rem; right: 1rem; background: var(--bs-error, #dc2626); color: white; padding: 1rem; border-radius: 0.5rem;">
+    An unhandled error has occurred.
+    <a href="." class="reload" style="color: white; text-decoration: underline;">Reload</a>
+    <button class="dismiss" style="background: transparent; border: none; color: white; cursor: pointer;">×</button>
 </div>

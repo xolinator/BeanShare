@@ -1,0 +1,56 @@
+<div class="bs-card">
+    <div class="bs-flex bs-items-start bs-justify-between">
+        <div>
+            <p class="bs-font-bold" style="margin: 0;">@ProductName</p>
+            <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">
+                @PurchasedAt.ToString("MMM dd, yyyy")
+            </p>
+        </div>
+        <div style="text-align: right;">
+            <p class="bs-font-bold" style="margin: 0;">@TotalCost.ToString("C")</p>
+            <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">
+                @QuantityGrams g
+            </p>
+        </div>
+    </div>
+    <div class="bs-flex bs-items-center bs-justify-between bs-mt-2" style="font-size: 0.875rem;">
+        <span class="bs-pill" style="background: var(--bs-primary-light); color: var(--bs-primary);">
+            @CoffeeType
+        </span>
+        <span class="bs-text-subtle">
+            by @PurchasedByInitials
+        </span>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string ProductName { get; set; } = "";
+
+    [Parameter]
+    public decimal TotalCost { get; set; }
+
+    [Parameter]
+    public int QuantityGrams { get; set; }
+
+    [Parameter]
+    public string CoffeeType { get; set; } = "Ground";
+
+    [Parameter]
+    public DateTime PurchasedAt { get; set; }
+
+    [Parameter]
+    public string PurchasedByName { get; set; } = "";
+
+    private string PurchasedByInitials
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(PurchasedByName)) return "?";
+            var parts = PurchasedByName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+                return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+            return PurchasedByName.Length >= 2 ? PurchasedByName.Substring(0, 2).ToUpper() : PurchasedByName.ToUpper();
+        }
+    }
+}

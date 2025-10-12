@@ -1,0 +1,133 @@
+@page "/spaces"
+@inject ISpacesService SpacesService
+@inject NavigationManager Navigation
+
+<PageTitle>Spaces - BeanShare</PageTitle>
+
+<div class="bs-container" style="padding: 2rem 0;">
+    <div style="margin-bottom: 2rem;">
+        <h1 class="bs-font-bold" style="font-size: 1.75rem; margin-bottom: 0.5rem;">My Spaces</h1>
+        <p class="bs-text-subtle">Select a space to manage coffee stock and consumption</p>
+    </div>
+
+    <div class="bs-flex bs-gap-3" style="margin-bottom: 2rem;">
+        <button class="bs-btn bs-btn-primary bs-flex-1" @onclick="@(() => showCreateModal = true)">
+            <span class="material-symbols-outlined">add</span>
+            Create Space
+        </button>
+        <button class="bs-btn bs-btn-secondary bs-flex-1" @onclick="@(() => showJoinModal = true)">
+            <span class="material-symbols-outlined">login</span>
+            Join Space
+        </button>
+    </div>
+
+    <SpacesList Spaces="@spaces"
+               IsLoading="@isLoading"
+               OnSpaceSelected="HandleSpaceSelected"
+               OnCreateSpace="@(() => showCreateModal = true)"
+               OnJoinSpace="@(() => showJoinModal = true)" />
+</div>
+
+<CreateSpaceModal IsVisible="@showCreateModal"
+                 OnSubmit="HandleCreateSpace"
+                 OnCancel="@(() => showCreateModal = false)" />
+
+<JoinSpaceModal IsVisible="@showJoinModal"
+               OnSubmit="HandleJoinSpace"
+               OnCancel="@(() => showJoinModal = false)" />
+
+<Toast IsVisible="@showToast"
+       IsError="@isToastError"
+       Title="@toastTitle"
+       Message="@toastMessage"
+       OnClose="@(() => showToast = false)" />
+
+@code {
+    private List<SpaceSummaryDto> spaces = new();
+    private bool isLoading = true;
+    private bool showCreateModal;
+    private bool showJoinModal;
+    private bool showToast;
+    private bool isToastError;
+    private string toastTitle = "";
+    private string toastMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSpaces();
+    }
+
+    private async Task LoadSpaces()
+    {
+        isLoading = true;
+        try
+        {
+            spaces = await SpacesService.GetUserSpacesAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load spaces: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void HandleSpaceSelected(string spaceId)
+    {
+        Navigation.NavigateTo($"/spaces/{spaceId}");
+    }
+
+    private async Task HandleCreateSpace(string name)
+    {
+        try
+        {
+            var spaceId = await SpacesService.CreateSpaceAsync(name);
+            if (spaceId.HasValue)
+            {
+                showCreateModal = false;
+                ShowToast(false, "Success", $"Space '{name}' created successfully!");
+                await LoadSpaces();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to create space. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to create space: {ex.Message}");
+        }
+    }
+
+    private async Task HandleJoinSpace(string inviteCode)
+    {
+        try
+        {
+            var success = await SpacesService.JoinSpaceAsync(inviteCode);
+            if (success)
+            {
+                showJoinModal = false;
+                ShowToast(false, "Success", "Successfully joined the space!");
+                await LoadSpaces();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Invalid invite code or unable to join space.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to join space: {ex.Message}");
+        }
+    }
+
+    private void ShowToast(bool isError, string title, string message)
+    {
+        isToastError = isError;
+        toastTitle = title;
+        toastMessage = message;
+        showToast = true;
+    }
+}

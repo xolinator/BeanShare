@@ -1,0 +1,73 @@
+@if (IsVisible)
+{
+    <div class="bs-modal-backdrop" @onclick="Cancel">
+        <div class="bs-modal" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h3 class="bs-modal-title">Join Space</h3>
+            </div>
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <div class="bs-form-group">
+                    <label class="bs-label" for="inviteCode">Invite Code</label>
+                    <InputText id="inviteCode"
+                              class="bs-input"
+                              @bind-Value="model.InviteCode"
+                              placeholder="Enter 6-character code"
+                              style="text-transform: uppercase; font-family: monospace;" />
+                    <ValidationMessage For="@(() => model.InviteCode)" class="bs-validation-message" />
+                </div>
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Cancel">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bs-btn bs-btn-primary bs-flex-1" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span>Joining...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined">login</span>
+                            <span>Join Space</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private JoinSpaceModel model = new();
+    private bool isSubmitting;
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        await OnSubmit.InvokeAsync(model.InviteCode.ToUpperInvariant());
+        isSubmitting = false;
+        model = new JoinSpaceModel();
+    }
+
+    private async Task Cancel()
+    {
+        model = new JoinSpaceModel();
+        await OnCancel.InvokeAsync();
+    }
+
+    public class JoinSpaceModel
+    {
+        [Required(ErrorMessage = "Invite code is required")]
+        [StringLength(10, MinimumLength = 6, ErrorMessage = "Invite code must be 6-10 characters")]
+        public string InviteCode { get; set; } = "";
+    }
+}

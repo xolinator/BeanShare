@@ -1,0 +1,132 @@
+<div class="bs-card">
+    <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+
+        <div class="bs-form-group">
+            <label class="bs-label">Preset</label>
+            <div class="bs-flex bs-gap-2" style="flex-wrap: wrap;">
+                @foreach (var preset in presets)
+                {
+                    <button type="button"
+                            class="bs-btn bs-btn-sm @(selectedPreset == preset.Name ? "bs-btn-primary" : "bs-btn-secondary")"
+                            @onclick="() => SelectPreset(preset)">
+                        @preset.Name · @preset.Grams g
+                    </button>
+                }
+                <button type="button"
+                        class="bs-btn bs-btn-sm @(isCustomMode ? "bs-btn-primary" : "bs-btn-secondary")"
+                        @onclick="SelectCustom">
+                    Custom
+                </button>
+            </div>
+        </div>
+
+        @if (isCustomMode)
+        {
+            <div class="bs-form-group">
+                <label class="bs-label" for="gramsInput">Coffee (grams)</label>
+                <div style="position: relative;">
+                    <InputNumber id="gramsInput"
+                                class="bs-input"
+                                @bind-Value="model.Grams"
+                                placeholder="12" />
+                    <span style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--bs-text-subtle); font-size: 0.875rem;">
+                        g
+                    </span>
+                </div>
+                <ValidationMessage For="@(() => model.Grams)" class="bs-validation-message" />
+            </div>
+        }
+
+        <div class="bs-form-group">
+            <label class="bs-label" for="dateTimeInput">Date & Time</label>
+            <InputDate Type="InputDateType.DateTimeLocal"
+                      id="dateTimeInput"
+                      class="bs-input"
+                      @bind-Value="model.ConsumedAt" />
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: var(--bs-text-subtle);">
+                Defaults to now.
+            </p>
+        </div>
+
+        <div class="bs-flex bs-gap-3 bs-mt-4">
+            <button type="submit" class="bs-btn bs-btn-primary bs-flex-1" disabled="@isSubmitting">
+                @if (isSubmitting)
+                {
+                    <span>Logging...</span>
+                }
+                else
+                {
+                    <span>Log Coffee</span>
+                }
+            </button>
+            <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Reset">
+                Cancel
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<ConsumptionFormModel> OnSubmit { get; set; }
+
+    private ConsumptionFormModel model = new() { ConsumedAt = DateTime.Now };
+    private bool isSubmitting;
+    private bool isCustomMode = true;
+    private string? selectedPreset;
+
+    private List<PresetOption> presets = new()
+    {
+        new PresetOption { Name = "Espresso", Grams = 8 },
+        new PresetOption { Name = "Large Brew", Grams = 15 }
+    };
+
+    private void SelectPreset(PresetOption preset)
+    {
+        isCustomMode = false;
+        selectedPreset = preset.Name;
+        model.Grams = preset.Grams;
+        model.PresetName = preset.Name;
+    }
+
+    private void SelectCustom()
+    {
+        isCustomMode = true;
+        selectedPreset = null;
+        model.PresetName = null;
+        model.Grams = 0;
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        await OnSubmit.InvokeAsync(model);
+        isSubmitting = false;
+        Reset();
+    }
+
+    private void Reset()
+    {
+        model = new ConsumptionFormModel { ConsumedAt = DateTime.Now };
+        isCustomMode = true;
+        selectedPreset = null;
+    }
+
+    public class ConsumptionFormModel
+    {
+        [Range(1, 100, ErrorMessage = "Grams must be between 1 and 100")]
+        public int Grams { get; set; }
+
+        public string? PresetName { get; set; }
+
+        [Required]
+        public DateTime ConsumedAt { get; set; } = DateTime.Now;
+    }
+
+    private class PresetOption
+    {
+        public string Name { get; set; } = "";
+        public int Grams { get; set; }
+    }
+}

@@ -12,4 +12,7 @@ public sealed class ConsumptionEntryDto
     public required decimal RemainingGrams { get; init; }
     public required DateTime ConsumedAt { get; init; }
     public required DateTime CreatedAt { get; init; }
+
+    public string? PresetName { get; init; }
+    public int CoffeeGrams => (int)QuantityGrams;
 }
