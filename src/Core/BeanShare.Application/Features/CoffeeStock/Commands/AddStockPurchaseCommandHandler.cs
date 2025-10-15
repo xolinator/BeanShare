@@ -92,32 +92,13 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
             }
 
             var latestPurchase = coffeeStock.Purchases.OrderByDescending(p => p.CreatedAt).First();
-
-            var dto = new StockPurchaseDto
-            {
-                Id = latestPurchase.Id,
-                ProductName = latestPurchase.Product.Name,
-                ProductBrand = latestPurchase.Product.Brand,
-                ProductType = latestPurchase.Product.Type.ToString(),
-                QuantityGrams = latestPurchase.Quantity.Grams,
-                CostAmount = latestPurchase.Cost.Amount,
-                CostCurrency = latestPurchase.Cost.Currency,
-                Vendor = latestPurchase.Vendor,
-                PurchasedBy = latestPurchase.PurchasedBy.Value,
-                PurchasedAt = latestPurchase.PurchasedAt,
-                CreatedAt = latestPurchase.CreatedAt,
-                CostPerGram = latestPurchase.CostPerGram.Amount
-            };
+            var dto = _mapper.Map<StockPurchaseDto>(latestPurchase);
 
             return Result<StockPurchaseDto>.Success(dto);
         }
         catch (ArgumentException ex)
         {
-            return Result<StockPurchaseDto>.Failure(Error.ValidationFailure("Purchase", ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return Result<StockPurchaseDto>.Failure(new Error("SYSTEM_ERROR", ex.Message));
+            return Result<StockPurchaseDto>.Failure(Error.ValidationFailure(nameof(AddStockPurchaseCommand), ex.Message));
         }
     }
 }

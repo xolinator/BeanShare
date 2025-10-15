@@ -1,6 +1,5 @@
 using BeanShare.Application.Features.Spaces.Dtos;
 using BeanShare.Domain.Aggregates.Space;
-using BeanShare.Domain.Entities;
 using Mapster;
 
 namespace BeanShare.Application.Features.Spaces.Mapping;

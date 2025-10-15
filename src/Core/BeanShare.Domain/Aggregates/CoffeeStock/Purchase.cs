@@ -1,7 +1,7 @@
 using BeanShare.Domain.Common;
 using BeanShare.Domain.ValueObjects;
 
-namespace BeanShare.Domain.Entities;
+namespace BeanShare.Domain.Aggregates.CoffeeStock;
 
 public sealed class Purchase : Entity
 {

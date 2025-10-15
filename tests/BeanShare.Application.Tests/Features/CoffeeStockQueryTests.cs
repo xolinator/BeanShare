@@ -47,13 +47,13 @@ public sealed class CoffeeStockQueryTests
 
         var space = CreateMockSpace();
         var coffeeStock = CreateSampleCoffeeStock();
-        var expectedDto = CreateSampleCoffeeStockDto();
+        var expectedStockLevels = CreateSampleStockLevelDtos();
 
         _spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
             .Returns(space);
         _coffeeStockRepository.GetBySpaceIdAsync(_spaceId, Arg.Any<CancellationToken>())
             .Returns(coffeeStock);
-        _mapper.Map<CoffeeStockDto>(coffeeStock).Returns(expectedDto);
+        _mapper.Map<List<StockLevelDto>>(Arg.Any<IReadOnlyCollection<StockLevel>>()).Returns(expectedStockLevels);
 
         var result = await handler.Handle(query, CancellationToken.None);
 
@@ -226,49 +226,36 @@ public sealed class CoffeeStockQueryTests
         return coffeeStock;
     }
 
-    private CoffeeStockDto CreateSampleCoffeeStockDto()
+    private List<StockLevelDto> CreateSampleStockLevelDtos()
     {
-        return new CoffeeStockDto
+        return new List<StockLevelDto>
         {
-            Id = Guid.NewGuid(),
-            SpaceId = _spaceId.Value,
-            CreatedAt = _clock.UtcNow,
-            UpdatedAt = _clock.UtcNow,
-            PurchaseCount = 2,
-            ProductVarietyCount = 2,
-            TotalCurrentStockGrams = 500m,
-            TotalInvestmentAmount = 41.49m,
-            TotalInvestmentCurrency = "USD",
-            StockLevels = new List<StockLevelDto>
+            new StockLevelDto
             {
-                new StockLevelDto
-                {
-                    Id = Guid.NewGuid(),
-                    ProductName = "Premium Blend",
-                    ProductBrand = "Blue Mountain",
-                    ProductType = "Espresso",
-                    ProductDisplayName = "Premium Blend (Blue Mountain)",
-                    CurrentStockGrams = 100m,
-                    TotalPurchasedGrams = 1000m,
-                    TotalConsumedGrams = 900m,
-                    ConsumptionPercentage = 90m,
-                    UpdatedAt = _clock.UtcNow
-                },
-                new StockLevelDto
-                {
-                    Id = Guid.NewGuid(),
-                    ProductName = "House Roast",
-                    ProductBrand = "Local Roasters",
-                    ProductType = "Filter",
-                    ProductDisplayName = "House Roast (Local Roasters)",
-                    CurrentStockGrams = 400m,
-                    TotalPurchasedGrams = 500m,
-                    TotalConsumedGrams = 100m,
-                    ConsumptionPercentage = 20m,
-                    UpdatedAt = _clock.UtcNow
-                }
+                Id = Guid.NewGuid(),
+                ProductName = "Premium Blend",
+                ProductBrand = "Blue Mountain",
+                ProductType = "Espresso",
+                ProductDisplayName = "Premium Blend (Blue Mountain)",
+                CurrentStockGrams = 100m,
+                TotalPurchasedGrams = 1000m,
+                TotalConsumedGrams = 900m,
+                ConsumptionPercentage = 90m,
+                UpdatedAt = _clock.UtcNow
             },
-            RecentPurchases = new List<StockPurchaseDto>()
+            new StockLevelDto
+            {
+                Id = Guid.NewGuid(),
+                ProductName = "House Roast",
+                ProductBrand = "Local Roasters",
+                ProductType = "Filter",
+                ProductDisplayName = "House Roast (Local Roasters)",
+                CurrentStockGrams = 400m,
+                TotalPurchasedGrams = 500m,
+                TotalConsumedGrams = 100m,
+                ConsumptionPercentage = 20m,
+                UpdatedAt = _clock.UtcNow
+            }
         };
     }
 

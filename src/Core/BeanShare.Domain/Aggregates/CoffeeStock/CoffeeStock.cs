@@ -1,6 +1,5 @@
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Events;
-using BeanShare.Domain.Entities;
 using BeanShare.Domain.ValueObjects;
 using BeanShare.Domain.Exceptions;
 

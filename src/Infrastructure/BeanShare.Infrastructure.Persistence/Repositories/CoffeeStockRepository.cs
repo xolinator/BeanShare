@@ -17,18 +17,14 @@ public sealed class CoffeeStockRepository : ICoffeeStockRepository
 
     public async Task<CoffeeStock?> GetBySpaceIdAsync(SpaceId spaceId, CancellationToken cancellationToken = default)
     {
-        return await _context.CoffeeStocks
-            .Include(cs => cs.Purchases)
-            .Include(cs => cs.StockLevels)
-            .FirstOrDefaultAsync(cs => cs.SpaceId == spaceId, cancellationToken);
+        var specification = new CoffeeStockBySpaceSpecification(spaceId);
+        return await GetSingleBySpecAsync(specification, cancellationToken);
     }
 
     public async Task<CoffeeStock?> GetByIdAsync(CoffeeStockId id, CancellationToken cancellationToken = default)
     {
-        return await _context.CoffeeStocks
-            .Include(cs => cs.Purchases)
-            .Include(cs => cs.StockLevels)
-            .FirstOrDefaultAsync(cs => cs.Id == id, cancellationToken);
+        var specification = new CoffeeStockByIdSpecification(id);
+        return await GetSingleBySpecAsync(specification, cancellationToken);
     }
 
     public async Task<CoffeeStock?> GetSingleBySpecAsync<TSpec>(TSpec specification, CancellationToken cancellationToken = default)
@@ -66,7 +62,8 @@ public sealed class CoffeeStockRepository : ICoffeeStockRepository
 
     public async Task<bool> ExistsForSpaceAsync(SpaceId spaceId, CancellationToken cancellationToken = default)
     {
+        var specification = new CoffeeStockBySpaceSpecification(spaceId);
         return await _context.CoffeeStocks
-            .AnyAsync(cs => cs.SpaceId == spaceId, cancellationToken);
+            .AnyAsync(specification.Criteria, cancellationToken);
     }
 }

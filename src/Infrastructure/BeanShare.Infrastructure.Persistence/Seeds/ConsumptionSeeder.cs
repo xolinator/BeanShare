@@ -11,15 +11,16 @@ public class ConsumptionSeeder : IDataSeeder
 
     public async Task SeedAsync(BeanShareDbContext context, CancellationToken cancellationToken = default)
     {
-        if (await context.ConsumptionEntries.AnyAsync(cancellationToken))
+        if (await context.Consumptions.AnyAsync(cancellationToken))
             return;
 
-        var consumptionEntries = GetSeedConsumptionEntries();
-        await context.ConsumptionEntries.AddRangeAsync(consumptionEntries, cancellationToken);
+        var clock = new FixedClock(DateTime.UtcNow);
+        var consumptionEntries = GetSeedConsumptionEntries(clock);
+        await context.Consumptions.AddRangeAsync(consumptionEntries, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static List<ConsumptionEntry> GetSeedConsumptionEntries()
+    private static List<ConsumptionEntry> GetSeedConsumptionEntries(IClock clock)
     {
         var entries = new List<ConsumptionEntry>();
         var random = new Random(42);
@@ -37,27 +38,27 @@ public class ConsumptionSeeder : IDataSeeder
 
             AddUserConsumption(entries, engineeringSpaceId,
                 new UserId(new Guid("11111111-1111-1111-1111-111111111111")),
-                date, 3 + random.Next(2), "Strong preference for espresso");
+                date, 3 + random.Next(2), clock, random);
 
             if (random.Next(100) > 10)
                 AddUserConsumption(entries, engineeringSpaceId,
                     new UserId(new Guid("22222222-2222-2222-2222-222222222222")),
-                    date, 2 + random.Next(2), "Cappuccino lover");
+                    date, 2 + random.Next(2), clock, random);
 
             if (random.Next(100) > 20)
                 AddUserConsumption(entries, engineeringSpaceId,
                     new UserId(new Guid("33333333-3333-3333-3333-333333333333")),
-                    date, 2, "Black coffee only");
+                    date, 2, clock, random);
 
             if (random.Next(100) > 15)
                 AddUserConsumption(entries, engineeringSpaceId,
                     new UserId(new Guid("44444444-4444-4444-4444-444444444444")),
-                    date, 1 + random.Next(2), "Prefers latte");
+                    date, 1 + random.Next(2), clock, random);
 
             if (random.Next(100) > 25)
                 AddUserConsumption(entries, engineeringSpaceId,
                     new UserId(new Guid("55555555-5555-5555-5555-555555555555")),
-                    date, random.Next(4), "Experimental with coffee types");
+                    date, random.Next(4), clock, random);
         }
 
         var marketingSpaceId = new SpaceId(new Guid("bbbb2222-bbbb-2222-bbbb-222222222222"));
@@ -71,17 +72,17 @@ public class ConsumptionSeeder : IDataSeeder
 
             AddUserConsumption(entries, marketingSpaceId,
                 new UserId(new Guid("22222222-2222-2222-2222-222222222222")),
-                date, 2 + random.Next(2), "Morning meetings need coffee");
+                date, 2 + random.Next(2), clock, random);
 
             if (random.Next(100) > 50)
                 AddUserConsumption(entries, marketingSpaceId,
                     new UserId(new Guid("44444444-4444-4444-4444-444444444444")),
-                    date, 1 + random.Next(2), "Afternoon coffee");
+                    date, 1 + random.Next(2), clock, random);
 
             if (random.Next(100) > 10)
                 AddUserConsumption(entries, marketingSpaceId,
                     new UserId(new Guid("66666666-6666-6666-6666-666666666666")),
-                    date, 2, "Consistent coffee routine");
+                    date, 2, clock, random);
         }
 
         var remoteSpaceId = new SpaceId(new Guid("cccc3333-cccc-3333-cccc-333333333333"));
@@ -94,21 +95,21 @@ public class ConsumptionSeeder : IDataSeeder
             {
                 AddUserConsumption(entries, remoteSpaceId,
                     new UserId(new Guid("33333333-3333-3333-3333-333333333333")),
-                    date, 1 + random.Next(3), "Home office setup");
+                    date, 1 + random.Next(3), clock, random);
             }
 
             if (random.Next(100) > 40)
             {
                 AddUserConsumption(entries, remoteSpaceId,
                     new UserId(new Guid("88888888-8888-8888-8888-888888888888")),
-                    date, random.Next(4), "Testing different blends");
+                    date, random.Next(4), clock, random);
             }
 
             if (random.Next(100) > 60)
             {
                 AddUserConsumption(entries, remoteSpaceId,
                     new UserId(new Guid("55555555-5555-5555-5555-555555555555")),
-                    date, 1 + random.Next(2), "Afternoon boost");
+                    date, 1 + random.Next(2), clock, random);
             }
         }
 
@@ -117,16 +118,17 @@ public class ConsumptionSeeder : IDataSeeder
         for (int daysAgo = 15; daysAgo >= 0; daysAgo--)
         {
             var date = DateTime.UtcNow.AddDays(-daysAgo).Date;
-            if (random.Next(100) > 20) 
+
+            if (random.Next(100) > 20)
             {
                 AddUserConsumption(entries, startupSpaceId,
                     new UserId(new Guid("55555555-5555-5555-5555-555555555555")),
-                    date, 3 + random.Next(3), "Coding fuel");
+                    date, 3 + random.Next(3), clock, random);
 
                 if (random.Next(100) > 30)
                     AddUserConsumption(entries, startupSpaceId,
                         new UserId(new Guid("33333333-3333-3333-3333-333333333333")),
-                        date, 2 + random.Next(2), "Late night debugging");
+                        date, 2 + random.Next(2), clock, random);
             }
         }
 
@@ -143,21 +145,21 @@ public class ConsumptionSeeder : IDataSeeder
             {
                 AddUserConsumption(entries, executiveSpaceId,
                     new UserId(new Guid("11111111-1111-1111-1111-111111111111")),
-                    date, 1, "Morning executive briefing");
+                    date, 1, clock, random);
             }
 
             if (random.Next(100) > 30)
             {
                 AddUserConsumption(entries, executiveSpaceId,
                     new UserId(new Guid("22222222-2222-2222-2222-222222222222")),
-                    date, 1, "Board meeting preparation");
+                    date, 1, clock, random);
             }
 
             if (random.Next(100) > 40)
             {
                 AddUserConsumption(entries, executiveSpaceId,
                     new UserId(new Guid("44444444-4444-4444-4444-444444444444")),
-                    date, 1, "Strategic planning session");
+                    date, 1, clock, random);
             }
         }
 
@@ -170,36 +172,58 @@ public class ConsumptionSeeder : IDataSeeder
         UserId userId,
         DateTime date,
         int cupsCount,
-        string notes)
+        IClock clock,
+        Random random)
     {
         if (cupsCount <= 0) return;
 
-        var coffeeTypes = new[] { "Espresso", "Cappuccino", "Latte", "Americano", "Flat White", "Macchiato" };
-        var random = new Random((int)(date.Ticks % int.MaxValue) + userId.Value.GetHashCode());
+        var coffeeProducts = new[]
+        {
+            CoffeeProduct.Create("Super Crema", "Lavazza", CoffeeType.Espresso),
+            CoffeeProduct.Create("Pike Place", "Starbucks", CoffeeType.Filter),
+            CoffeeProduct.Create("Classico", "Illy", CoffeeType.Filter),
+            CoffeeProduct.Create("Death Wish", "Death Wish Coffee", CoffeeType.Espresso),
+            CoffeeProduct.Create("Breakfast Blend", "Green Mountain", CoffeeType.Filter)
+        };
+
+        var localRandom = new Random((int)(date.Ticks % int.MaxValue) + userId.Value.GetHashCode());
 
         for (int i = 0; i < cupsCount; i++)
         {
             var hour = i switch
             {
-                0 => 8 + random.Next(2),
-                1 => 10 + random.Next(3),
-                2 => 13 + random.Next(3),
-                _ => 15 + random.Next(4)
+                0 => 8 + localRandom.Next(2),
+                1 => 10 + localRandom.Next(3),
+                2 => 13 + localRandom.Next(3),
+                _ => 15 + localRandom.Next(4)
             };
 
-            var consumedAt = date.AddHours(hour).AddMinutes(random.Next(60));
+            var consumedAt = date.AddHours(hour).AddMinutes(localRandom.Next(60));
 
-            entries.Add(new ConsumptionEntry
-            {
-                Id = Guid.NewGuid(),
-                SpaceId = spaceId,
-                UserId = userId,
-                ConsumedAt = consumedAt,
-                Quantity = new Quantity(1, "cup"),
-                CoffeeType = coffeeTypes[random.Next(coffeeTypes.Length)],
-                Notes = i == 0 ? notes : null,
-                CreatedAt = consumedAt
-            });
+            var quantity = Weight.FromGrams(15 + localRandom.Next(8));
+
+            var product = coffeeProducts[localRandom.Next(coffeeProducts.Length)];
+
+            var entry = ConsumptionEntry.Create(
+                spaceId,
+                userId,
+                product,
+                quantity,
+                consumedAt,
+                clock
+            );
+
+            entries.Add(entry);
+        }
+    }
+
+    private class FixedClock : IClock
+    {
+        public DateTime UtcNow { get; }
+
+        public FixedClock(DateTime utcNow)
+        {
+            UtcNow = utcNow;
         }
     }
 }

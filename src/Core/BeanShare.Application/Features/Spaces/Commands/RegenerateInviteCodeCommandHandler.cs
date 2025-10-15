@@ -47,22 +47,15 @@ public sealed class RegenerateInviteCodeCommandHandler : IRequestHandler<Regener
 
         if (!space.IsActive)
         {
-            return Result<SpaceDto>.Failure(Error.ValidationFailure("IsActive", "Cannot regenerate invite code for deactivated space"));
+            return Result<SpaceDto>.Failure(Error.ValidationFailure(nameof(space.IsActive), "Cannot regenerate invite code for deactivated space"));
         }
 
-        try
-        {
-            var newInviteCode = await _inviteCodeGenerator.GenerateAsync(cancellationToken);
-            space.RegenerateInviteCode(newInviteCode);
+        var newInviteCode = await _inviteCodeGenerator.GenerateAsync(cancellationToken);
+        space.RegenerateInviteCode(newInviteCode);
 
-            await _spaceRepository.UpdateAsync(space, cancellationToken);
+        await _spaceRepository.UpdateAsync(space, cancellationToken);
 
-            var dto = _mapper.Map<SpaceDto>(space);
-            return Result<SpaceDto>.Success(dto);
-        }
-        catch (Exception)
-        {
-            return Result<SpaceDto>.Failure(Error.SystemFailure("regenerate invite code"));
-        }
+        var dto = _mapper.Map<SpaceDto>(space);
+        return Result<SpaceDto>.Success(dto);
     }
 }

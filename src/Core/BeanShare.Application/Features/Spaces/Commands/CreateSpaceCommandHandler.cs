@@ -33,20 +33,27 @@ public sealed class CreateSpaceCommandHandler : IRequestHandler<CreateSpaceComma
             return Result<CreateSpaceResult>.Failure(Error.ValidationFailure(nameof(request.Name), "Space name is required"));
         }
 
-        var spaceId = SpaceId.New();
-        var inviteCode = await _inviteCodeGenerator.GenerateAsync(cancellationToken);
-        
-        var space = Space.Create(
-            spaceId,
-            request.Name.Trim(),
-            _userContext.CurrentUserId,
-            inviteCode,
-            _clock);
+        try
+        {
+            var spaceId = SpaceId.New();
+            var inviteCode = await _inviteCodeGenerator.GenerateAsync(cancellationToken);
 
-        await _spaceRepository.AddAsync(space, cancellationToken);
+            var space = Space.Create(
+                spaceId,
+                request.Name.Trim(),
+                _userContext.CurrentUserId,
+                inviteCode,
+                _clock);
 
-        return Result<CreateSpaceResult>.Success(new CreateSpaceResult(
-            spaceId.Value,
-            inviteCode.Value));
+            await _spaceRepository.AddAsync(space, cancellationToken);
+
+            return Result<CreateSpaceResult>.Success(new CreateSpaceResult(
+                spaceId.Value,
+                inviteCode.Value));
+        }
+        catch (ArgumentException ex)
+        {
+            return Result<CreateSpaceResult>.Failure(Error.ValidationFailure(nameof(Space), ex.Message));
+        }
     }
 }

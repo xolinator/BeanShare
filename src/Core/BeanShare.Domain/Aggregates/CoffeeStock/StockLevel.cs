@@ -2,7 +2,7 @@ using BeanShare.Domain.Common;
 using BeanShare.Domain.ValueObjects;
 using BeanShare.Domain.Exceptions;
 
-namespace BeanShare.Domain.Entities;
+namespace BeanShare.Domain.Aggregates.CoffeeStock;
 
 public sealed class StockLevel : Entity
 {

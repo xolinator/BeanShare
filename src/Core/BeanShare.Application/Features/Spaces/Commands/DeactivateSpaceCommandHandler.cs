@@ -47,20 +47,13 @@ public sealed class DeactivateSpaceCommandHandler : IRequestHandler<DeactivateSp
 
         if (!space.IsActive)
         {
-            return Result<SpaceDto>.Failure(Error.ValidationFailure("IsActive", "Space is already deactivated"));
+            return Result<SpaceDto>.Failure(Error.ValidationFailure(nameof(space.IsActive), "Space is already deactivated"));
         }
 
-        try
-        {
-            space.Deactivate(_clock);
-            await _spaceRepository.UpdateAsync(space, cancellationToken);
+        space.Deactivate(_clock);
+        await _spaceRepository.UpdateAsync(space, cancellationToken);
 
-            var dto = _mapper.Map<SpaceDto>(space);
-            return Result<SpaceDto>.Success(dto);
-        }
-        catch (Exception)
-        {
-            return Result<SpaceDto>.Failure(Error.SystemFailure("deactivate space"));
-        }
+        var dto = _mapper.Map<SpaceDto>(space);
+        return Result<SpaceDto>.Success(dto);
     }
 }

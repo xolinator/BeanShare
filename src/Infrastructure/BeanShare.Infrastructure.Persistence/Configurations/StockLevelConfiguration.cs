@@ -1,4 +1,4 @@
-using BeanShare.Domain.Entities;
+using BeanShare.Domain.Aggregates.CoffeeStock;
 using BeanShare.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

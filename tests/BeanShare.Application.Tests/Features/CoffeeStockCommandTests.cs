@@ -53,7 +53,7 @@ public class CoffeeStockCommandTests
 
         result.IsSuccess.Should().BeTrue();
         await coffeeStockRepository.Received(1).AddAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
-        await coffeeStockRepository.Received(1).UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

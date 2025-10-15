@@ -1,105 +1,117 @@
-using BeanShare.Domain.Aggregates;
+using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
-using BeanShare.Domain.Entities;
+using BeanShare.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 namespace BeanShare.Infrastructure.Persistence.Seeds;
 
 public class SpaceSeeder : IDataSeeder
 {
-    public int Order => 2; // Spaces depend on Users
+    public int Order => 2;
 
     public async Task SeedAsync(BeanShareDbContext context, CancellationToken cancellationToken = default)
     {
-        // Check if spaces already exist
         if (await context.Spaces.AnyAsync(cancellationToken))
             return;
 
-        var spaces = GetSeedSpaces();
+        var clock = new FixedClock(DateTime.UtcNow.AddMonths(-6));
+        var spaces = GetSeedSpaces(clock);
         await context.Spaces.AddRangeAsync(spaces, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static List<Space> GetSeedSpaces()
+    private static List<Space> GetSeedSpaces(IClock clock)
     {
         var spaces = new List<Space>();
 
-        // Engineering Team Space
         var engineeringSpace = Space.Create(
+            new SpaceId(new Guid("aaaa1111-aaaa-1111-aaaa-111111111111")),
             "Engineering Team",
-            new UserId(new Guid("11111111-1111-1111-1111-111111111111")) // John Smith as admin
+            new UserId(new Guid("11111111-1111-1111-1111-111111111111")),
+            new InviteCode("ENG2K24"),
+            clock
         );
-        engineeringSpace.Id = new SpaceId(new Guid("aaaa1111-aaaa-1111-aaaa-111111111111"));
-        engineeringSpace.InviteCode = "ENG2024";
 
-        // Add members to Engineering Team
-        engineeringSpace.AddMember(new UserId(new Guid("22222222-2222-2222-2222-222222222222")), "Member"); // Sarah
-        engineeringSpace.AddMember(new UserId(new Guid("33333333-3333-3333-3333-333333333333")), "Member"); // Mike
-        engineeringSpace.AddMember(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), "Admin");  // Emma as admin
-        engineeringSpace.AddMember(new UserId(new Guid("55555555-5555-5555-5555-555555555555")), "Member"); // Alex
-        engineeringSpace.AddMember(new UserId(new Guid("88888888-8888-8888-8888-888888888888")), "Member"); // Test User
+        engineeringSpace.Join(new UserId(new Guid("22222222-2222-2222-2222-222222222222")), clock);
+        engineeringSpace.Join(new UserId(new Guid("33333333-3333-3333-3333-333333333333")), clock);
+        engineeringSpace.Join(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), clock);
+        engineeringSpace.PromoteMember(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), clock);
+        engineeringSpace.Join(new UserId(new Guid("55555555-5555-5555-5555-555555555555")), clock);
+        engineeringSpace.Join(new UserId(new Guid("88888888-8888-8888-8888-888888888888")), clock);
 
         spaces.Add(engineeringSpace);
 
-        // Marketing Office Space
         var marketingSpace = Space.Create(
+            new SpaceId(new Guid("bbbb2222-bbbb-2222-bbbb-222222222222")),
             "Marketing Office",
-            new UserId(new Guid("22222222-2222-2222-2222-222222222222")) // Sarah as admin
+            new UserId(new Guid("22222222-2222-2222-2222-222222222222")),
+            new InviteCode("MKT2K24"),
+            clock
         );
-        marketingSpace.Id = new SpaceId(new Guid("bbbb2222-bbbb-2222-bbbb-222222222222"));
-        marketingSpace.InviteCode = "MKT2024";
 
-        // Add members to Marketing Office
-        marketingSpace.AddMember(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), "Member"); // Emma
-        marketingSpace.AddMember(new UserId(new Guid("66666666-6666-6666-6666-666666666666")), "Admin");  // Lisa as admin
-        marketingSpace.AddMember(new UserId(new Guid("77777777-7777-7777-7777-777777777777")), "Member"); // David
+        marketingSpace.Join(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), clock);
+        marketingSpace.Join(new UserId(new Guid("66666666-6666-6666-6666-666666666666")), clock);
+        marketingSpace.PromoteMember(new UserId(new Guid("66666666-6666-6666-6666-666666666666")), clock);
+        marketingSpace.Join(new UserId(new Guid("77777777-7777-7777-7777-777777777777")), clock);
 
         spaces.Add(marketingSpace);
 
-        // Remote Workers Hub
         var remoteSpace = Space.Create(
+            new SpaceId(new Guid("cccc3333-cccc-3333-cccc-333333333333")),
             "Remote Workers Hub",
-            new UserId(new Guid("33333333-3333-3333-3333-333333333333")) // Mike as admin
+            new UserId(new Guid("33333333-3333-3333-3333-333333333333")),
+            new InviteCode("RMTE24"),
+            clock
         );
-        remoteSpace.Id = new SpaceId(new Guid("cccc3333-cccc-3333-cccc-333333333333"));
-        remoteSpace.InviteCode = "REMOTE24";
 
-        // Add members to Remote Workers Hub
-        remoteSpace.AddMember(new UserId(new Guid("11111111-1111-1111-1111-111111111111")), "Member"); // John
-        remoteSpace.AddMember(new UserId(new Guid("55555555-5555-5555-5555-555555555555")), "Member"); // Alex
-        remoteSpace.AddMember(new UserId(new Guid("66666666-6666-6666-6666-666666666666")), "Member"); // Lisa
-        remoteSpace.AddMember(new UserId(new Guid("88888888-8888-8888-8888-888888888888")), "Admin");  // Test User as admin
+        remoteSpace.Join(new UserId(new Guid("11111111-1111-1111-1111-111111111111")), clock);
+        remoteSpace.Join(new UserId(new Guid("55555555-5555-5555-5555-555555555555")), clock);
+        remoteSpace.Join(new UserId(new Guid("66666666-6666-6666-6666-666666666666")), clock);
+        remoteSpace.Join(new UserId(new Guid("88888888-8888-8888-8888-888888888888")), clock);
+        remoteSpace.PromoteMember(new UserId(new Guid("88888888-8888-8888-8888-888888888888")), clock);
 
         spaces.Add(remoteSpace);
 
-        // Startup Garage
         var startupSpace = Space.Create(
+            new SpaceId(new Guid("dddd4444-dddd-4444-dddd-444444444444")),
             "Startup Garage",
-            new UserId(new Guid("55555555-5555-5555-5555-555555555555")) // Alex as admin
+            new UserId(new Guid("55555555-5555-5555-5555-555555555555")),
+            new InviteCode("STRTUP"),
+            clock
         );
-        startupSpace.Id = new SpaceId(new Guid("dddd4444-dddd-4444-dddd-444444444444"));
-        startupSpace.InviteCode = "STARTUP1";
 
-        // Smaller team
-        startupSpace.AddMember(new UserId(new Guid("11111111-1111-1111-1111-111111111111")), "Member"); // John
-        startupSpace.AddMember(new UserId(new Guid("33333333-3333-3333-3333-333333333333")), "Admin");  // Mike as admin
+        startupSpace.Join(new UserId(new Guid("11111111-1111-1111-1111-111111111111")), clock);
+        startupSpace.Join(new UserId(new Guid("33333333-3333-3333-3333-333333333333")), clock);
+        startupSpace.PromoteMember(new UserId(new Guid("33333333-3333-3333-3333-333333333333")), clock);
 
         spaces.Add(startupSpace);
 
-        // Executive Lounge (exclusive)
         var executiveSpace = Space.Create(
+            new SpaceId(new Guid("eeee5555-eeee-5555-eeee-555555555555")),
             "Executive Lounge",
-            new UserId(new Guid("11111111-1111-1111-1111-111111111111")) // John as admin
+            new UserId(new Guid("11111111-1111-1111-1111-111111111111")),
+            new InviteCode("EXEC2K24"),
+            clock
         );
-        executiveSpace.Id = new SpaceId(new Guid("eeee5555-eeee-5555-eeee-555555555555"));
-        executiveSpace.InviteCode = "EXEC2024";
 
-        // Only executives
-        executiveSpace.AddMember(new UserId(new Guid("22222222-2222-2222-2222-222222222222")), "Admin"); // Sarah as admin
-        executiveSpace.AddMember(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), "Admin"); // Emma as admin
+        executiveSpace.Join(new UserId(new Guid("22222222-2222-2222-2222-222222222222")), clock);
+        executiveSpace.PromoteMember(new UserId(new Guid("22222222-2222-2222-2222-222222222222")), clock);
+        executiveSpace.Join(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), clock);
+        executiveSpace.PromoteMember(new UserId(new Guid("44444444-4444-4444-4444-444444444444")), clock);
 
         spaces.Add(executiveSpace);
 
         return spaces;
+    }
+
+    private class FixedClock : IClock
+    {
+        public DateTime UtcNow { get; }
+
+        public FixedClock(DateTime utcNow)
+        {
+            UtcNow = utcNow;
+        }
     }
 }

@@ -1,5 +1,5 @@
 using BeanShare.Application.Features.CoffeeStock.Dtos;
-using BeanShare.Domain.Entities;
+using BeanShare.Domain.Aggregates.CoffeeStock;
 using Mapster;
 
 namespace BeanShare.Application.Features.CoffeeStock;

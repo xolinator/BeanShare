@@ -1,7 +1,7 @@
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Enums;
 
-namespace BeanShare.Domain.Entities;
+namespace BeanShare.Domain.Aggregates.Space;
 
 public sealed class SpaceMembership
 {

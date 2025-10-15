@@ -1,7 +1,6 @@
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Events;
 using BeanShare.Domain.ValueObjects;
-using BeanShare.Domain.Entities;
 using BeanShare.Domain.Enums;
 using BeanShare.Domain.Exceptions;
 
@@ -21,7 +20,6 @@ public sealed class Space : AggregateRoot
 
     private Space()
     {
-        // Required for EF Core
     }
     
     internal Space(SpaceId id, string name, InviteCode inviteCode, UserId creatorUserId, DateTime createdAt)
