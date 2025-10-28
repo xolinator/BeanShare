@@ -1,4 +1,5 @@
 using BeanShare.Application.Abstractions;
+using BeanShare.Application.Services;
 using BeanShare.Infrastructure.Persistence.Repositories;
 using BeanShare.Infrastructure.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,9 @@ public static class DependencyInjection
             services.AddDbContext<BeanShareDbContext>(options =>
                 options.UseInMemoryDatabase("BeanShareInMemory")
                        .EnableSensitiveDataLogging()
-                       .EnableDetailedErrors());
+                       .EnableDetailedErrors()
+                       .ConfigureWarnings(warnings =>
+                           warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning)));
         }
         else
         {
@@ -28,7 +31,10 @@ public static class DependencyInjection
         services.AddScoped<ISpaceRepository, SpaceRepository>();
         services.AddScoped<ICoffeeStockRepository, CoffeeStockRepository>();
         services.AddScoped<IConsumptionRepository, ConsumptionRepository>();
+        services.AddScoped<IBillingPeriodRepository, BillingPeriodRepository>();
+        services.AddScoped<ISettlementRepository, SettlementRepository>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
+        services.AddScoped<ICostCalculationService, CostCalculationService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;

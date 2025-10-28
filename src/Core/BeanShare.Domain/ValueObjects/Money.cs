@@ -5,51 +5,47 @@ namespace BeanShare.Domain.ValueObjects;
 public sealed record Money
 {
     public decimal Amount { get; private init; }
-    public string Currency { get; private init; }
+    public Currency Currency { get; private init; }
 
-    private Money(decimal amount, string currency)
+    private Money(decimal amount, Currency currency)
     {
         Amount = amount;
         Currency = currency;
     }
 
-    public static Money Create(decimal amount, string currency = "USD")
+    public static Money Create(decimal amount, Currency currency)
     {
         if (amount < 0)
         {
             throw new ArgumentException("Amount cannot be negative", nameof(amount));
         }
 
-        if (string.IsNullOrWhiteSpace(currency))
+        if (currency == null)
         {
             throw new ArgumentException("Currency is required", nameof(currency));
         }
 
-        if (currency.Length != 3)
-        {
-            throw new ArgumentException("Currency must be 3 characters", nameof(currency));
-        }
-
-        return new Money(Math.Round(amount, 2), currency.ToUpperInvariant());
+        var rounded = Math.Round(amount, currency.DecimalPlaces);
+        return new Money(rounded, currency);
     }
 
-    public static Money Zero(string currency = "USD") => new(0, currency);
+    public static Money Zero(Currency currency) => new(0, currency);
 
     public Money Add(Money other)
     {
         if (Currency != other.Currency)
         {
-            throw new InvalidOperationException($"Cannot add different currencies: {Currency} and {other.Currency}");
+            throw new InvalidOperationException($"Cannot add different currencies: {Currency.Code} and {other.Currency.Code}");
         }
 
-        return new Money(Amount + other.Amount, Currency);
+        return Money.Create(Amount + other.Amount, Currency);
     }
 
     public Money Subtract(Money other)
     {
         if (Currency != other.Currency)
         {
-            throw new InvalidOperationException($"Cannot subtract different currencies: {Currency} and {other.Currency}");
+            throw new InvalidOperationException($"Cannot subtract different currencies: {Currency.Code} and {other.Currency.Code}");
         }
 
         var result = Amount - other.Amount;
@@ -58,7 +54,7 @@ public sealed record Money
             throw new InvalidOperationException("Result cannot be negative");
         }
 
-        return new Money(result, Currency);
+        return Money.Create(result, Currency);
     }
 
     public Money Multiply(decimal factor)
@@ -68,7 +64,7 @@ public sealed record Money
             throw new ArgumentException("Factor cannot be negative", nameof(factor));
         }
 
-        return new Money(Math.Round(Amount * factor, 2), Currency);
+        return Money.Create(Amount * factor, Currency);
     }
 
     public Money Divide(decimal divisor)
@@ -78,19 +74,24 @@ public sealed record Money
             throw new ArgumentException("Divisor must be positive", nameof(divisor));
         }
 
-        return new Money(Math.Round(Amount / divisor, 2), Currency);
+        return Money.Create(Amount / divisor, Currency);
     }
 
     public override string ToString()
     {
-        return $"{Amount:F2} {Currency}";
+        return Currency.FormatAmount(Amount);
+    }
+
+    public string Format()
+    {
+        return Currency.FormatAmount(Amount);
     }
 
     public static bool operator >(Money left, Money right)
     {
         if (left.Currency != right.Currency)
         {
-            throw new InvalidOperationException($"Cannot compare different currencies: {left.Currency} and {right.Currency}");
+            throw new InvalidOperationException($"Cannot compare different currencies: {left.Currency.Code} and {right.Currency.Code}");
         }
 
         return left.Amount > right.Amount;
@@ -100,7 +101,7 @@ public sealed record Money
     {
         if (left.Currency != right.Currency)
         {
-            throw new InvalidOperationException($"Cannot compare different currencies: {left.Currency} and {right.Currency}");
+            throw new InvalidOperationException($"Cannot compare different currencies: {left.Currency.Code} and {right.Currency.Code}");
         }
 
         return left.Amount < right.Amount;

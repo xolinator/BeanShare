@@ -32,7 +32,7 @@ public class SpaceCommandTests
         clock.UtcNow.Returns(DateTime.UtcNow);
 
         var handler = new CreateSpaceCommandHandler(spaceRepository, inviteCodeGenerator, userContext, clock);
-        var command = new CreateSpaceCommand("My Coffee Space");
+        var command = new CreateSpaceCommand("My Coffee Space", "USD");
 
         var result = await handler.Handle(command, default);
 
@@ -56,7 +56,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(userId);
         clock.UtcNow.Returns(DateTime.UtcNow);
         
-        var space = Space.Create(spaceId, "Test Space", creatorId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, creatorId, inviteCode, clock);
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
 
         var handler = new JoinSpaceCommandHandler(spaceRepository, userContext, clock);
@@ -83,7 +83,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId);
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
         space.Join(memberId, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
@@ -115,7 +115,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(unauthorizedUserId);
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
         space.Join(memberId, clock);
         space.Join(unauthorizedUserId, clock);
 
@@ -146,7 +146,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId);
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
 
@@ -175,7 +175,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId);
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
         space.Join(targetAdminId, clock);
         space.PromoteMember(targetAdminId, clock);
 
@@ -206,7 +206,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId);
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
         space.Join(targetAdminId, clock);
         space.PromoteMember(targetAdminId, clock);
 
@@ -237,7 +237,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId);
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
 
@@ -266,7 +266,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId);
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
         space.Join(memberId, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
@@ -297,7 +297,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(memberId); // Member removing themselves
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
         space.Join(memberId, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
@@ -328,7 +328,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId); // Admin trying to remove themselves (last admin)
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
 
@@ -359,7 +359,7 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(memberId); // Non-admin trying to remove someone else
         clock.UtcNow.Returns(DateTime.UtcNow);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
         space.Join(memberId, clock);
         space.Join(otherMemberId, clock);
 
@@ -391,11 +391,12 @@ public class SpaceCommandTests
         userContext.CurrentUserId.Returns(adminId);
         inviteCodeGenerator.GenerateAsync(Arg.Any<CancellationToken>()).Returns(newInviteCode);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, oldInviteCode, TestClock.Instance);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, oldInviteCode, TestClock.Instance);
         var expectedDto = new SpaceDto
         {
             Id = spaceId,
             Name = "Test Space",
+            CurrencyCode = "USD",
             InviteCode = "BREW45",
             IsActive = true,
             CreatedBy = adminId,
@@ -433,7 +434,7 @@ public class SpaceCommandTests
 
         userContext.CurrentUserId.Returns(memberId); // Non-admin user
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, TestClock.Instance);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, TestClock.Instance);
         space.Join(memberId, TestClock.Instance);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
@@ -462,7 +463,7 @@ public class SpaceCommandTests
 
         userContext.CurrentUserId.Returns(adminId);
 
-        var space = Space.Create(spaceId, "Test Space", adminId, inviteCode, TestClock.Instance);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, TestClock.Instance);
         space.Deactivate(TestClock.Instance); // Deactivate the space
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);

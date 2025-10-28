@@ -1,3 +1,4 @@
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
@@ -458,11 +459,13 @@
     private void ToggleUserDropdown()
     {
         isUserDropdownOpen = !isUserDropdownOpen;
+        StateHasChanged();
     }
 
     private void CloseDropdown()
     {
         isUserDropdownOpen = false;
+        StateHasChanged();
     }
 
     private async Task Search()
@@ -476,6 +479,7 @@
     private void NavigateTo(string url)
     {
         isUserDropdownOpen = false;
+        StateHasChanged();
         Navigation.NavigateTo(url);
     }
 

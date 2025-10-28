@@ -93,15 +93,15 @@
         }
     }
 
-    private async Task HandleCreateSpace(string name)
+    private async Task HandleCreateSpace((string Name, string CurrencyCode) spaceData)
     {
         try
         {
-            var result = await Mediator.Send(new CreateSpaceCommand(name));
+            var result = await Mediator.Send(new CreateSpaceCommand(spaceData.Name, spaceData.CurrencyCode));
             if (result.IsSuccess)
             {
                 showCreateModal = false;
-                ShowToast(false, "Success", $"Space '{name}' created successfully!");
+                ShowToast(false, "Success", $"Space '{spaceData.Name}' created successfully!");
                 await LoadSpaces();
             }
             else

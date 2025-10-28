@@ -1,4 +1,5 @@
 using BeanShare.Application.Abstractions;
+using BeanShare.Application.Services;
 using BeanShare.Domain.Common;
 using BeanShare.Infrastructure.Persistence;
 using BeanShare.Infrastructure.Services;
@@ -13,6 +14,9 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
 
         services.AddPersistence(connectionString, useInMemoryDatabase);
+
+        services.AddScoped<IUserService, UserService>();
+        services.AddMemoryCache();
 
         // services.AddIdentity();
         // services.AddCommunication();

@@ -27,7 +27,7 @@ public sealed class DbContextTests : IClassFixture<DatabaseFixture>
         var userId = new UserId(Guid.NewGuid());
         var inviteCode = new InviteCode("DEFGHJ");
         
-        var space = Space.Create(spaceId, "Value Object Test", userId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Value Object Test", Currency.USD, userId, inviteCode, clock);
 
         context.Spaces.Add(space);
         await context.SaveChangesAsync();
@@ -53,7 +53,7 @@ public sealed class DbContextTests : IClassFixture<DatabaseFixture>
         var memberId = new UserId(Guid.NewGuid());
         var inviteCode = new InviteCode("KLMNPQ");
 
-        var space = Space.Create(spaceId, "Owned Entity Test", creatorId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Owned Entity Test", Currency.USD, creatorId, inviteCode, clock);
         space.Join(memberId, clock);
 
         context.Spaces.Add(space);
@@ -81,7 +81,7 @@ public sealed class DbContextTests : IClassFixture<DatabaseFixture>
         var memberId = new UserId(Guid.NewGuid());
         var inviteCode = new InviteCode("RSTUVW");
 
-        var space = Space.Create(spaceId, "Repository Query Test", creatorId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Repository Query Test", Currency.USD, creatorId, inviteCode, clock);
         space.Join(adminId, clock);
         space.PromoteMember(adminId, clock);
         space.Join(memberId, clock);

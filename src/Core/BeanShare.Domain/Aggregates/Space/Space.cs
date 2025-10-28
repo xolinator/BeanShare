@@ -12,6 +12,7 @@ public sealed class Space : AggregateRoot
 
     public SpaceId Id { get; private set; } = default!;
     public string Name { get; private set; } = default!;
+    public Currency Currency { get; private set; } = default!;
     public InviteCode InviteCode { get; private set; } = default!;
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -22,17 +23,18 @@ public sealed class Space : AggregateRoot
     {
     }
     
-    internal Space(SpaceId id, string name, InviteCode inviteCode, UserId creatorUserId, DateTime createdAt)
+    internal Space(SpaceId id, string name, Currency currency, InviteCode inviteCode, UserId creatorUserId, DateTime createdAt)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new SpaceDomainException("Space name cannot be empty");
-            
+
         Id = id;
         Name = name.Trim();
+        Currency = currency ?? throw new SpaceDomainException("Currency is required for a space");
         InviteCode = inviteCode;
         IsActive = true;
         CreatedAt = createdAt;
-        
+
         var creatorMembership = SpaceMembership.Create(creatorUserId, SpaceRole.Admin, createdAt);
         _members.Add(creatorMembership);
     }
@@ -49,16 +51,17 @@ public sealed class Space : AggregateRoot
     public static Space Create(
         SpaceId id,
         string name,
+        Currency currency,
         UserId creatorUserId,
         InviteCode inviteCode,
         IClock clock)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new SpaceDomainException("Space name cannot be empty");
-            
+
         var createdAt = clock.UtcNow;
-        
-        var space = new Space(id, name, inviteCode, creatorUserId, createdAt);
+
+        var space = new Space(id, name, currency, inviteCode, creatorUserId, createdAt);
         
         space.RaiseDomainEvent(new SpaceCreated(
             id,

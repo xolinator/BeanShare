@@ -20,7 +20,7 @@ public class SpaceMappingTests
         var clock = Substitute.For<IClock>();
         clock.UtcNow.Returns(DateTime.UtcNow);
         
-        var space = Space.Create(SpaceId.New(), "Coffee Space", userId, new InviteCode("CAFE23"), clock);
+        var space = Space.Create(SpaceId.New(), "Coffee Space", Currency.USD, userId, new InviteCode("CAFE23"), clock);
         var dto = space.Adapt<SpaceDto>(config);
 
         dto.Name.Should().Be("Coffee Space");
@@ -37,7 +37,7 @@ public class SpaceMappingTests
         var clock = Substitute.For<IClock>();
         clock.UtcNow.Returns(DateTime.UtcNow);
         
-        var space = Space.Create(SpaceId.New(), "Team Space", userId, new InviteCode("CAFE23"), clock);
+        var space = Space.Create(SpaceId.New(), "Team Space", Currency.USD, userId, new InviteCode("CAFE23"), clock);
         var summary = space.Adapt<SpaceSummaryDto>(config);
 
         summary.Name.Should().Be("Team Space");

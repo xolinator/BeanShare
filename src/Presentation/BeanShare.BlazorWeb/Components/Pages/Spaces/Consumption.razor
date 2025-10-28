@@ -4,6 +4,9 @@
 @using BeanShare.Application.Features.Spaces.Queries
 @using BeanShare.Application.Features.Consumption.Queries
 @using BeanShare.Application.Features.Consumption.Commands
+@using BeanShare.Application.Features.CoffeeStock.Queries
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.AspNetCore.Authorization
 @*@attribute [Authorize]*@
 @inject IMediator Mediator
@@ -55,7 +58,8 @@ else
                             MyTotalCost="@myTotalCost"
                             RemainingStockGrams="@remainingStock" />
 
-            <ConsumptionForm OnSubmit="HandleLogConsumption" />
+            <ConsumptionForm OnSubmit="HandleLogConsumption"
+                           StockProducts="@stockProducts" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -79,6 +83,7 @@ else
     private bool isLoadingConsumption;
 
     private List<ConsumptionEntryDto> recentConsumptions = new();
+    private List<StockLevelDto> stockProducts = new();
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
     private int remainingStock = 0;
@@ -93,6 +98,7 @@ else
         if (!string.IsNullOrEmpty(SpaceId))
         {
             await LoadSpace();
+            await LoadStock();
             await LoadConsumption();
         }
     }
@@ -110,6 +116,22 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to load space: {ex.Message}");
+        }
+    }
+
+    private async Task LoadStock()
+    {
+        try
+        {
+            var result = await Mediator.Send(new GetSpaceStockQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                stockProducts = result.Value.StockLevels.Where(s => s.CurrentStockGrams > 0).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load stock: {ex.Message}");
         }
     }
 
@@ -152,22 +174,25 @@ else
         }
     }
 
-    private async Task HandleLogConsumption(ConsumptionForm.ConsumptionFormModel model)
+    private async Task HandleLogConsumption(ConsumptionFormModel model)
     {
         try
         {
+            var consumedAtUtc = model.ConsumedAt.ToUniversalTime();
+
             var result = await Mediator.Send(new RecordConsumptionCommand(
                 Guid.Parse(SpaceId),
-                "Coffee",
-                "Generic",
-                "Ground",
+                model.ProductName,
+                model.ProductBrand,
+                model.ProductType,
                 model.Grams,
-                model.ConsumedAt
+                consumedAtUtc
             ));
 
             if (result.IsSuccess)
             {
                 ShowToast(false, "Success", "Consumption logged successfully!");
+                await LoadStock();
                 await LoadConsumption();
             }
             else

@@ -31,13 +31,14 @@ public class SpaceQueryTests
         userContext.CurrentUserId.Returns(userId);
         clock.UtcNow.Returns(DateTime.UtcNow);
         
-        var space = Space.Create(spaceId, "Test Space", userId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, userId, inviteCode, clock);
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
         
         var spaceDto = new SpaceDto
         {
             Id = spaceId,
             Name = "Test Space",
+            CurrencyCode = "USD",
             InviteCode = "CAFE23",
             IsActive = true,
             CreatedBy = userId,
@@ -91,7 +92,7 @@ public class SpaceQueryTests
         userContext.CurrentUserId.Returns(userId);
         clock.UtcNow.Returns(DateTime.UtcNow);
         
-        var space = Space.Create(spaceId, "Test Space", userId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, userId, inviteCode, clock);
         var spaces = new List<Space> { space };
         
         spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(spaces);

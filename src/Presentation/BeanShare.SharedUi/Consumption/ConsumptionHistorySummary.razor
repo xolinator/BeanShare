@@ -1,0 +1,221 @@
+@using BeanShare.Application.Features.Consumption.Dtos
+
+<div class="history-summary">
+    @if (Summary != null)
+    {
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="card-icon">
+                    <i class="bi bi-cup-hot"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.TotalEntries</div>
+                    <div class="card-label">Total Cups</div>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="card-icon">
+                    <i class="bi bi-droplet-half"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.TotalGrams.ToString("F0")g</div>
+                    <div class="card-label">Total Coffee</div>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="card-icon">
+                    <i class="bi bi-calendar-week"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.UniqueDays</div>
+                    <div class="card-label">Active Days</div>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="card-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.AverageGramsPerDay.ToString("F1")g</div>
+                    <div class="card-label">Daily Average</div>
+                </div>
+            </div>
+        </div>
+
+        @if (Summary.ConsumptionByType.Any())
+        {
+            <div class="type-breakdown">
+                <h6 class="mb-3">Consumption by Type</h6>
+                <div class="type-bars">
+                    @foreach (var type in Summary.ConsumptionByType.OrderByDescending(x => x.Value))
+                    {
+                        var percentage = Summary.TotalEntries > 0
+                            ? (type.Value * 100.0 / Summary.TotalEntries)
+                            : 0;
+
+                        <div class="type-bar-item">
+                            <div class="type-bar-header">
+                                <span class="type-name">@type.Key</span>
+                                <span class="type-count">@type.Value cups</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: @percentage%"
+                                     aria-valuenow="@percentage"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                    @percentage.ToString("F0")%
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Summary.ConsumptionGramsBySpace.Any())
+        {
+            <div class="space-breakdown">
+                <h6 class="mb-3">Consumption by Space</h6>
+                <div class="space-list">
+                    @foreach (var space in Summary.ConsumptionGramsBySpace.OrderByDescending(x => x.Value))
+                    {
+                        <div class="space-item">
+                            <span class="space-name">
+                                <i class="bi bi-building"></i> @space.Key
+                            </span>
+                            <span class="space-amount">
+                                @space.Value.ToString("F0")g
+                            </span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .history-summary {
+        margin-bottom: 2rem;
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bs-white);
+        border: 1px solid var(--bs-gray-200);
+        border-radius: 0.375rem;
+    }
+
+    .card-icon {
+        font-size: 2rem;
+        color: var(--bs-primary);
+        opacity: 0.8;
+    }
+
+    .card-content {
+        flex: 1;
+    }
+
+    .card-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--bs-dark);
+    }
+
+    .card-label {
+        font-size: 0.875rem;
+        color: var(--bs-secondary);
+    }
+
+    .type-breakdown,
+    .space-breakdown {
+        background: var(--bs-white);
+        border: 1px solid var(--bs-gray-200);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .type-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .type-bar-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .type-bar-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.875rem;
+    }
+
+    .type-name {
+        font-weight: 500;
+    }
+
+    .type-count {
+        color: var(--bs-secondary);
+    }
+
+    .space-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .space-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background: var(--bs-light);
+        border-radius: 0.25rem;
+    }
+
+    .space-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+
+    .space-amount {
+        font-weight: 600;
+        color: var(--bs-primary);
+    }
+
+    @@media (max-width: 768px) {
+        .summary-cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .summary-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public ConsumptionHistorySummaryDto? Summary { get; set; }
+}

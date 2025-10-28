@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Get connection string
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Database=beanshare_dev;Username=postgres;Password=postgres";
+    ?? "Host=localhost;Database=beanshare_dev;Username=beanshare;Password=beanshare123";
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -17,8 +17,8 @@ builder.Services.AddRazorComponents()
 
 // Add Application and Infrastructure layers
 builder.Services.AddApplication();
-// Use in-memory database for development (no PostgreSQL needed)
-builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: true);
+// Use PostgreSQL database with seeded data
+builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: false);
 
 // Add authentication and authorization
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
@@ -28,15 +28,8 @@ builder.Services.AddCascadingAuthenticationState();
 
 var app = builder.Build();
 
-// Ensure database is created and seeded for in-memory provider
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<BeanShare.Infrastructure.Persistence.BeanShareDbContext>();
-    await db.Database.EnsureCreatedAsync();
-
-    // Seed the database with sample data
-    await app.Services.SeedDatabaseAsync();
-}
+// Database seeding is handled by the API on startup
+// No need to seed here when using PostgreSQL
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

@@ -2,6 +2,7 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Specifications;
+using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Api.Infrastructure.Mocks;
 
@@ -13,6 +14,18 @@ public sealed class MockSpaceRepository : ISpaceRepository
     public MockSpaceRepository(IClock clock)
     {
         _clock = clock;
+        SeedData();
+    }
+
+    private void SeedData()
+    {
+        var spaceId = new SpaceId(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+        var userId = new UserId(Guid.Parse("22222222-2222-2222-2222-222222222222"));
+        var inviteCode = new InviteCode("ABCD2345");
+
+        var space = Space.Create(spaceId, "Office Coffee Group", Currency.USD, userId, inviteCode, _clock);
+
+        _spaces.Add(space);
     }
 
     public Task<Space?> GetSingleBySpecAsync(ISpec<Space> specification, CancellationToken ct = default)

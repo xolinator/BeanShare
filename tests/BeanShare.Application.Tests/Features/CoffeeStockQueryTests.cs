@@ -110,7 +110,7 @@ public sealed class CoffeeStockQueryTests
         var differentUserId = new UserId(Guid.NewGuid());
         var spaceId = new SpaceId(Guid.NewGuid());
         var inviteCode = new InviteCode("ABCDEF");
-        var space = Space.Create(spaceId, "Test Space", differentUserId, inviteCode, _clock);
+        var space = Space.Create(spaceId, "Test Space", Currency.USD, differentUserId, inviteCode, _clock);
 
         _spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
             .Returns(space);
@@ -187,9 +187,8 @@ public sealed class CoffeeStockQueryTests
 
     private Space CreateMockSpace()
     {
-        // Create a real space since it cannot be mocked (sealed class)
         var inviteCode = new InviteCode("ABCDEF");
-        var space = Space.Create(_spaceId, "Test Space", _userId, inviteCode, _clock);
+        var space = Space.Create(_spaceId, "Test Space", Currency.USD, _userId, inviteCode, _clock);
         return space;
     }
 
@@ -197,7 +196,6 @@ public sealed class CoffeeStockQueryTests
     {
         var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
 
-        // Add some sample purchases to create stock levels
         var product1 = CoffeeProduct.Create("Premium Blend", "Blue Mountain", CoffeeType.Espresso);
         var product2 = CoffeeProduct.Create("House Roast", "Local Roasters", CoffeeType.Filter);
 
@@ -219,7 +217,6 @@ public sealed class CoffeeStockQueryTests
             _clock.UtcNow.AddDays(-2),
             _clock);
 
-        // Simulate some consumption to create realistic stock levels
         coffeeStock.ConsumeStock(product1, Weight.FromGrams(900), _clock); // Low stock
         coffeeStock.ConsumeStock(product2, Weight.FromGrams(100), _clock); // Good stock
 

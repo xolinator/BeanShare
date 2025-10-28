@@ -25,6 +25,13 @@ if (useMockServices)
     builder.Services.AddSingleton<BeanShare.Application.Abstractions.ISpaceRepository, MockSpaceRepository>();
     builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUnitOfWork, MockUnitOfWork>();
     builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUserContext, MockUserContext>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IBillingPeriodRepository, MockBillingPeriodRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ISettlementRepository, MockSettlementRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ICoffeeStockRepository, MockCoffeeStockRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IConsumptionRepository, MockConsumptionRepository>();
+    builder.Services.AddSingleton<BeanShare.Domain.Services.ICostingPolicy, BeanShare.Domain.Services.WeightedAverageCostingPolicy>();
+    builder.Services.AddSingleton<BeanShare.Application.Services.IUserService, MockUserService>();
+    builder.Services.AddSingleton<BeanShare.Application.Services.ICostCalculationService, MockCostCalculationService>();
 }
 else
 {
@@ -36,6 +43,7 @@ else
     if (useMockAuthentication)
     {
         builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, MockUserContext>();
     }
     else
     {
@@ -110,5 +118,19 @@ app.UseFastEndpoints(c =>
     c.Errors.UseProblemDetails();
     c.Serializer.Options.PropertyNamingPolicy = null;
 });
+
+// Seed database in development mode
+if (app.Environment.IsDevelopment() && !useMockServices)
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<BeanShare.Infrastructure.Persistence.BeanShareDbContext>();
+        await context.Database.EnsureCreatedAsync();
+
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder>>();
+        var seeder = new BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder(context, logger);
+        await seeder.SeedAsync();
+    }
+}
 
 app.Run();

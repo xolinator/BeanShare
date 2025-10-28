@@ -8,4 +8,19 @@ public sealed class MockUnitOfWork : IUnitOfWork
     {
         return Task.FromResult(1);
     }
+
+    public Task BeginTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task CommitTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
 }

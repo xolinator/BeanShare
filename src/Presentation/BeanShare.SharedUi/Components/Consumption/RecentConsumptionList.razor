@@ -28,7 +28,7 @@
                     <div class="bs-flex bs-justify-between bs-items-center">
                         <div>
                             <p class="bs-font-medium" style="margin: 0;">
-                                @(string.IsNullOrEmpty(log.PresetName) ? "Custom" : log.PresetName) · @log.CoffeeGrams g
+                                @(string.IsNullOrEmpty(log.PresetName) ? "Custom log" : log.PresetName) · @log.CoffeeGrams g
                             </p>
                             <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.75rem;">
                                 @FormatDate(log.ConsumedAt)

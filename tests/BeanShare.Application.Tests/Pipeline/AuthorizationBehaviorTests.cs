@@ -61,7 +61,7 @@ public sealed class AuthorizationBehaviorTests
         var userId = UserId.New();
         var request = new TestRequest { SpaceId = spaceId.Value };
 
-        var space = Space.Create(SpaceId.New(), "Test Space", userId, new InviteCode("CAFE23"), Substitute.For<IClock>());
+        var space = Space.Create(SpaceId.New(), "Test Space", Currency.USD, userId, new InviteCode("CAFE23"), Substitute.For<IClock>());
 
         _userContext.CurrentUserId.Returns(userId);
         _spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>()).Returns(space);
@@ -79,7 +79,7 @@ public sealed class AuthorizationBehaviorTests
         var userId = UserId.New();
         var request = new AdminTestRequest { SpaceId = spaceId.Value };
 
-        var space = Space.Create(SpaceId.New(), "Test Space", userId, new InviteCode("CAFE23"), Substitute.For<IClock>());
+        var space = Space.Create(SpaceId.New(), "Test Space", Currency.USD, userId, new InviteCode("CAFE23"), Substitute.For<IClock>());
         var behavior = new AuthorizationBehavior<AdminTestRequest, Result<string>>(_userContext, _spaceRepository);
 
         _userContext.CurrentUserId.Returns(userId);
@@ -99,7 +99,7 @@ public sealed class AuthorizationBehaviorTests
         var memberUserId = UserId.New();
         var request = new AdminTestRequest { SpaceId = spaceId.Value };
 
-        var space = Space.Create(SpaceId.New(), "Test Space", adminUserId, new InviteCode("CAFE23"), Substitute.For<IClock>());
+        var space = Space.Create(SpaceId.New(), "Test Space", Currency.USD, adminUserId, new InviteCode("CAFE23"), Substitute.For<IClock>());
         space.Join(memberUserId, Substitute.For<IClock>());
 
         var behavior = new AuthorizationBehavior<AdminTestRequest, Result<string>>(_userContext, _spaceRepository);

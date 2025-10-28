@@ -1,0 +1,240 @@
+@page "/spaces/{SpaceId:guid}/billing"
+@using BeanShare.Contracts.Billing
+@inject IBillingService BillingService
+@inject ISettlementService SettlementService
+@inject NavigationManager Navigation
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Billing Periods</h3>
+        <button class="btn btn-primary" @onclick="ShowCreateModal">
+            <i class="bi bi-plus-circle me-1"></i> New Period
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!billingPeriods.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No billing periods yet. Create your first one to start tracking costs!
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var period in billingPeriods)
+            {
+                var cardClass = period.State switch
+                {
+                    "Draft" => "border-secondary",
+                    "Open" => "border-success",
+                    "Closed" => "border-warning",
+                    "Settled" => "border-primary",
+                    _ => "border-secondary"
+                };
+
+                <div class="col-md-6">
+                    <div class="card @cardClass">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">@period.Name</h5>
+                                <span class="badge bg-@GetStateBadgeColor(period.State)">@period.State</span>
+                            </div>
+
+                            <div class="text-muted small mb-3">
+                                @period.StartDate.ToString("MMM dd, yyyy") - @period.EndDate.ToString("MMM dd, yyyy")
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="p-2 bg-light rounded text-center">
+                                        <div class="fw-bold">@period.ConsumptionCount</div>
+                                        <small class="text-muted">Entries</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-light rounded text-center">
+                                        <div class="fw-bold">@period.TotalCoffeeGrams g</div>
+                                        <small class="text-muted">Coffee</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (period.State == "Open" && period.DaysRemaining >= 0)
+                            {
+                                <div class="alert alert-info py-2 small mb-3">
+                                    <i class="bi bi-clock me-1"></i>
+                                    @period.DaysRemaining days remaining
+                                </div>
+                            }
+
+                            <div class="btn-group w-100" role="group">
+                                @if (period.State == "Draft")
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => OpenPeriod(period.Id)">
+                                        <i class="bi bi-unlock me-1"></i> Open Period
+                                    </button>
+                                }
+                                else if (period.State == "Open")
+                                {
+                                    <button class="btn btn-sm btn-warning" @onclick="() => ClosePeriod(period.Id)">
+                                        <i class="bi bi-lock me-1"></i> Close Period
+                                    </button>
+                                }
+                                else if (period.State == "Closed")
+                                {
+                                    <button class="btn btn-sm btn-primary" @onclick="() => GenerateSettlement(period.Id)">
+                                        <i class="bi bi-calculator me-1"></i> Generate Settlement
+                                    </button>
+                                }
+                                else if (period.State == "Settled")
+                                {
+                                    <button class="btn btn-sm btn-info" @onclick="() => ViewSettlement(period.Id)">
+                                        <i class="bi bi-file-text me-1"></i> View Settlement
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (showCreateModal)
+    {
+        <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Create Billing Period</h5>
+                        <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" @bind="newPeriodName" placeholder="e.g., January 2025" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control" @bind="newPeriodStart" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-control" @bind="newPeriodEnd" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseCreateModal">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="CreatePeriod">Create</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid SpaceId { get; set; }
+
+    private bool isLoading = true;
+    private List<BillingPeriodSummaryDto> billingPeriods = new();
+    private bool showCreateModal = false;
+    private string newPeriodName = string.Empty;
+    private DateTime newPeriodStart = DateTime.Today.AddDays(-DateTime.Today.Day + 1);
+    private DateTime newPeriodEnd = DateTime.Today.AddDays(-DateTime.Today.Day + 1).AddMonths(1).AddDays(-1);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadBillingPeriods();
+    }
+
+    private async Task LoadBillingPeriods()
+    {
+        isLoading = true;
+        try
+        {
+            billingPeriods = await BillingService.GetSpaceBillingPeriodsAsync(SpaceId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ShowCreateModal()
+    {
+        newPeriodName = $"{DateTime.Today:MMMM yyyy}";
+        showCreateModal = true;
+    }
+
+    private void CloseCreateModal()
+    {
+        showCreateModal = false;
+    }
+
+    private async Task CreatePeriod()
+    {
+        var dto = new CreateBillingPeriodDto
+        {
+            Name = newPeriodName,
+            StartDate = newPeriodStart,
+            EndDate = newPeriodEnd
+        };
+
+        await BillingService.CreateBillingPeriodAsync(SpaceId, dto);
+        await LoadBillingPeriods();
+        CloseCreateModal();
+    }
+
+    private async Task OpenPeriod(Guid periodId)
+    {
+        await BillingService.OpenBillingPeriodAsync(periodId);
+        await LoadBillingPeriods();
+    }
+
+    private async Task ClosePeriod(Guid periodId)
+    {
+        await BillingService.CloseBillingPeriodAsync(periodId);
+        await LoadBillingPeriods();
+    }
+
+    private async Task GenerateSettlement(Guid periodId)
+    {
+        try
+        {
+            var settlement = await SettlementService.GenerateSettlementAsync(periodId);
+            if (settlement != null)
+            {
+                await LoadBillingPeriods();
+                Navigation.NavigateTo($"/spaces/{SpaceId}/settlements");
+            }
+        }
+        catch
+        {
+            // TODO: Show error toast
+        }
+    }
+
+    private void ViewSettlement(Guid periodId)
+    {
+        Navigation.NavigateTo($"/spaces/{SpaceId}/settlements");
+    }
+
+    private string GetStateBadgeColor(string state) => state switch
+    {
+        "Draft" => "secondary",
+        "Open" => "success",
+        "Closed" => "warning",
+        "Settled" => "primary",
+        _ => "secondary"
+    };
+}

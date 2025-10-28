@@ -28,7 +28,7 @@ public sealed class CreateSpaceEndpoint : Endpoint<CreateSpaceRequest, CreateSpa
 
     public override async Task HandleAsync(CreateSpaceRequest req, CancellationToken ct)
     {
-        var command = new CreateSpaceCommand(req.Name);
+        var command = new CreateSpaceCommand(req.Name, req.CurrencyCode);
         var result = await _mediator.Send(command, ct);
 
         if (result.IsFailure)

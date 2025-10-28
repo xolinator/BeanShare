@@ -21,12 +21,12 @@
 
         @if (showCreateSpaceModal)
         {
-            <BeanShare.SharedUi.Components.Spaces.CreateSpaceModal OnClose="@CloseCreateSpaceModal" OnSpaceCreated="@OnSpaceCreated" />
+            <BeanShare.SharedUi.Components.Spaces.CreateSpaceModal OnClose="CloseCreateSpaceModal" OnSpaceCreated="OnSpaceCreated" />
         }
 
         @if (showJoinSpaceModal)
         {
-            <BeanShare.SharedUi.Components.Spaces.JoinSpaceModal OnClose="@CloseJoinSpaceModal" OnSpaceJoined="@OnSpaceJoined" />
+            <BeanShare.SharedUi.Components.Spaces.JoinSpaceModal OnClose="CloseJoinSpaceModal" OnSpaceJoined="OnSpaceJoined" />
         }
     </Authorized>
     <NotAuthorized>

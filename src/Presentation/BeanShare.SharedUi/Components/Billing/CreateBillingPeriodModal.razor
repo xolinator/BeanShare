@@ -1,0 +1,109 @@
+@using System.ComponentModel.DataAnnotations
+
+@if (IsVisible)
+{
+    <div class="bs-modal-backdrop" @onclick="Cancel">
+        <div class="bs-modal" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h3 class="bs-modal-title">Create Billing Period</h3>
+            </div>
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="periodName">Period Name</label>
+                    <InputText id="periodName"
+                              class="bs-input"
+                              @bind-Value="model.Name"
+                              placeholder="e.g., November 2025" />
+                    <ValidationMessage For="@(() => model.Name)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="startDate">Start Date</label>
+                    <InputDate id="startDate"
+                              class="bs-input"
+                              @bind-Value="model.StartDate" />
+                    <ValidationMessage For="@(() => model.StartDate)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="endDate">End Date</label>
+                    <InputDate id="endDate"
+                              class="bs-input"
+                              @bind-Value="model.EndDate" />
+                    <ValidationMessage For="@(() => model.EndDate)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Cancel">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bs-btn bs-btn-primary bs-flex-1" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span>Creating...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined">add_circle</span>
+                            <span>Create Period</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<CreateBillingPeriodModel> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private CreateBillingPeriodModel model = new();
+    private bool isSubmitting;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible && string.IsNullOrEmpty(model.Name))
+        {
+            var now = DateTime.UtcNow;
+            model.StartDate = new DateTime(now.Year, now.Month, 1);
+            model.EndDate = model.StartDate.AddMonths(1).AddDays(-1);
+            model.Name = model.StartDate.ToString("MMMM yyyy");
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        await OnSubmit.InvokeAsync(model);
+        isSubmitting = false;
+        model = new CreateBillingPeriodModel();
+    }
+
+    private async Task Cancel()
+    {
+        model = new CreateBillingPeriodModel();
+        await OnCancel.InvokeAsync();
+    }
+
+    public class CreateBillingPeriodModel
+    {
+        [Required(ErrorMessage = "Period name is required")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Period name must be between 2 and 100 characters")]
+        public string Name { get; set; } = "";
+
+        [Required(ErrorMessage = "Start date is required")]
+        public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
+
+        [Required(ErrorMessage = "End date is required")]
+        public DateTime EndDate { get; set; } = DateTime.UtcNow.Date.AddMonths(1).AddDays(-1);
+    }
+}

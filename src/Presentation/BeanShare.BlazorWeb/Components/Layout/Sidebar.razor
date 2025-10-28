@@ -1,3 +1,4 @@
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
@@ -17,8 +18,13 @@
         <AuthorizeView>
             <Authorized>
                 <div class="sidebar-section">
+                    <NavLink class="sidebar-link" href="/dashboard">
+                        <span class="material-symbols-outlined">insights</span>
+                        <span class="sidebar-link-text">Dashboard</span>
+                    </NavLink>
+
                     <NavLink class="sidebar-link" href="/spaces" Match="NavLinkMatch.All">
-                        <span class="material-symbols-outlined">dashboard</span>
+                        <span class="material-symbols-outlined">groups</span>
                         <span class="sidebar-link-text">My Spaces</span>
                     </NavLink>
 
@@ -35,18 +41,6 @@
                             }
                         </div>
                     }
-                </div>
-
-                <div class="sidebar-section">
-                    <button class="sidebar-link" @onclick="ShowCreateSpace">
-                        <span class="material-symbols-outlined">add_circle</span>
-                        <span class="sidebar-link-text">Create Space</span>
-                    </button>
-
-                    <button class="sidebar-link" @onclick="ShowJoinSpace">
-                        <span class="material-symbols-outlined">group_add</span>
-                        <span class="sidebar-link-text">Join Space</span>
-                    </button>
                 </div>
 
                 <div class="sidebar-section sidebar-section-bottom">

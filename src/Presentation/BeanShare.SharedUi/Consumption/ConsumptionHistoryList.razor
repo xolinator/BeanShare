@@ -1,0 +1,259 @@
+@using BeanShare.Application.Features.Consumption.Dtos
+
+<div class="consumption-history">
+    @if (History == null)
+    {
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!History.Items.Any())
+    {
+        <div class="text-center p-5">
+            <i class="bi bi-cup-hot fs-1 text-muted"></i>
+            <h4 class="mt-3">No consumption history</h4>
+            <p class="text-muted">Start logging your coffee consumption to see your history here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="history-timeline">
+            @{
+                var groupedByDate = History.Items
+                    .GroupBy(i => i.ConsumedAt.Date)
+                    .OrderByDescending(g => g.Key);
+            }
+
+            @foreach (var dateGroup in groupedByDate)
+            {
+                <div class="date-group">
+                    <div class="date-header">
+                        <span class="date-label">
+                            @if (dateGroup.Key.Date == DateTime.Today)
+                            {
+                                <text>Today</text>
+                            }
+                            else if (dateGroup.Key.Date == DateTime.Today.AddDays(-1))
+                            {
+                                <text>Yesterday</text>
+                            }
+                            else
+                            {
+                                @dateGroup.Key.ToString("dddd, MMMM d")
+                            }
+                        </span>
+                        <span class="date-count">@dateGroup.Count() @(dateGroup.Count() == 1 ? "cup" : "cups")</span>
+                    </div>
+
+                    <div class="timeline-items">
+                        @foreach (var item in dateGroup.OrderByDescending(i => i.ConsumedAt))
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="item-header">
+                                        <span class="item-time">@item.ConsumedAt.ToString("HH:mm")</span>
+                                        <span class="item-space badge bg-secondary">@item.SpaceName</span>
+                                    </div>
+                                    <div class="item-details">
+                                        <strong>@item.ProductName</strong>
+                                        <span class="text-muted">by @item.ProductBrand</span>
+                                    </div>
+                                    <div class="item-metrics">
+                                        <span class="metric">
+                                            <i class="bi bi-droplet-half"></i> @item.QuantityGrams.ToString("F0")g
+                                        </span>
+                                        <span class="metric">
+                                            <span class="badge bg-info">@item.ProductType</span>
+                                        </span>
+                                        @if (item.EstimatedCost.HasValue)
+                                        {
+                                            <span class="metric text-success">
+                                                <i class="bi bi-cash"></i> @item.Currency @item.EstimatedCost.Value.ToString("F2")
+                                            </span>
+                                        }
+                                    </div>
+                                    @if (item.BillingPeriodId.HasValue)
+                                    {
+                                        <div class="item-billing">
+                                            <small class="text-muted">
+                                                <i class="bi bi-calendar-check"></i>
+                                                @(item.BillingPeriodName ?? "Billing Period")
+                                            </small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (History.TotalCount > History.PageSize)
+        {
+            <nav aria-label="History pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(History.PageNumber == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => OnPageChange.InvokeAsync(History.PageNumber - 1)"
+                                disabled="@(History.PageNumber == 1)">
+                            Previous
+                        </button>
+                    </li>
+
+                    @{
+                        var totalPages = (int)Math.Ceiling(History.TotalCount / (double)History.PageSize);
+                        for (int i = 1; i <= Math.Min(totalPages, 5); i++)
+                        {
+                            var pageNum = i;
+                            <li class="page-item @(History.PageNumber == pageNum ? "active" : "")">
+                                <button class="page-link" @onclick="() => OnPageChange.InvokeAsync(pageNum)">
+                                    @pageNum
+                                </button>
+                            </li>
+                        }
+                    }
+
+                    <li class="page-item @(History.PageNumber * History.PageSize >= History.TotalCount ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => OnPageChange.InvokeAsync(History.PageNumber + 1)"
+                                disabled="@(History.PageNumber * History.PageSize >= History.TotalCount)">
+                            Next
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</div>
+
+<style>
+    .consumption-history {
+        padding: 1rem;
+    }
+
+    .history-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+
+    .history-timeline::before {
+        content: '';
+        position: absolute;
+        left: 10px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--bs-gray-300);
+    }
+
+    .date-group {
+        margin-bottom: 2rem;
+    }
+
+    .date-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 0.5rem 1rem;
+        background: var(--bs-light);
+        border-radius: 0.375rem;
+        margin-left: -2rem;
+    }
+
+    .date-label {
+        font-weight: 600;
+        color: var(--bs-dark);
+    }
+
+    .date-count {
+        color: var(--bs-secondary);
+        font-size: 0.875rem;
+    }
+
+    .timeline-items {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-left: 1.5rem;
+    }
+
+    .timeline-dot {
+        position: absolute;
+        left: -25px;
+        top: 0.5rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--bs-primary);
+        border: 2px solid var(--bs-white);
+        box-shadow: 0 0 0 2px var(--bs-gray-300);
+    }
+
+    .timeline-content {
+        background: var(--bs-white);
+        border: 1px solid var(--bs-gray-200);
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .item-time {
+        color: var(--bs-secondary);
+        font-size: 0.875rem;
+    }
+
+    .item-details {
+        margin-bottom: 0.5rem;
+    }
+
+    .item-metrics {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.875rem;
+    }
+
+    .metric {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .item-billing {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--bs-gray-200);
+    }
+
+    @@media (max-width: 576px) {
+        .history-timeline {
+            padding-left: 1.5rem;
+        }
+
+        .timeline-dot {
+            left: -20px;
+        }
+
+        .item-metrics {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public ConsumptionHistoryDto? History { get; set; }
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+}

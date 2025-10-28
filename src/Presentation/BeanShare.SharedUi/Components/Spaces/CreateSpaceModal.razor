@@ -15,6 +15,25 @@
                               placeholder="e.g., Engineering Team" />
                     <ValidationMessage For="@(() => model.Name)" class="bs-validation-message" />
                 </div>
+                <div class="bs-form-group">
+                    <label class="bs-label" for="currency">Currency</label>
+                    <InputSelect id="currency"
+                                class="bs-input"
+                                @bind-Value="model.CurrencyCode">
+                        <option value="">Select currency...</option>
+                        <option value="USD">USD - US Dollar ($)</option>
+                        <option value="EUR">EUR - Euro (€)</option>
+                        <option value="GBP">GBP - British Pound (£)</option>
+                        <option value="CZK">CZK - Czech Koruna (Kč)</option>
+                        <option value="JPY">JPY - Japanese Yen (¥)</option>
+                        <option value="CHF">CHF - Swiss Franc (Fr)</option>
+                        <option value="CAD">CAD - Canadian Dollar (C$)</option>
+                        <option value="AUD">AUD - Australian Dollar (A$)</option>
+                        <option value="PLN">PLN - Polish Zloty (zł)</option>
+                        <option value="SEK">SEK - Swedish Krona (kr)</option>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => model.CurrencyCode)" class="bs-validation-message" />
+                </div>
                 <div class="bs-modal-footer">
                     <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Cancel">
                         Cancel
@@ -41,7 +60,7 @@
     public bool IsVisible { get; set; }
 
     [Parameter]
-    public EventCallback<string> OnSubmit { get; set; }
+    public EventCallback<(string Name, string CurrencyCode)> OnSubmit { get; set; }
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
@@ -52,7 +71,7 @@
     private async Task HandleSubmit()
     {
         isSubmitting = true;
-        await OnSubmit.InvokeAsync(model.Name);
+        await OnSubmit.InvokeAsync((model.Name, model.CurrencyCode));
         isSubmitting = false;
         model = new CreateSpaceModel();
     }
@@ -68,5 +87,8 @@
         [Required(ErrorMessage = "Space name is required")]
         [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be between 2 and 100 characters")]
         public string Name { get; set; } = "";
+
+        [Required(ErrorMessage = "Currency is required")]
+        public string CurrencyCode { get; set; } = "";
     }
 }

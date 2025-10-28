@@ -24,6 +24,13 @@ public sealed class SpaceConfiguration : IEntityTypeConfiguration<Space>
             .HasMaxLength(100)
             .IsRequired();
 
+        builder.Property(s => s.Currency)
+            .HasConversion(
+                currency => currency.Code,
+                code => Currency.Create(code))
+            .HasMaxLength(3)
+            .IsRequired();
+
         builder.Property(s => s.InviteCode)
             .HasConversion(
                 code => code.Value,

@@ -79,15 +79,15 @@
         Navigation.NavigateTo($"/spaces/{spaceId}");
     }
 
-    private async Task HandleCreateSpace(string name)
+    private async Task HandleCreateSpace((string Name, string CurrencyCode) spaceData)
     {
         try
         {
-            var spaceId = await SpacesService.CreateSpaceAsync(name);
+            var spaceId = await SpacesService.CreateSpaceAsync(spaceData.Name, spaceData.CurrencyCode);
             if (spaceId.HasValue)
             {
                 showCreateModal = false;
-                ShowToast(false, "Success", $"Space '{name}' created successfully!");
+                ShowToast(false, "Success", $"Space '{spaceData.Name}' created successfully!");
                 await LoadSpaces();
             }
             else

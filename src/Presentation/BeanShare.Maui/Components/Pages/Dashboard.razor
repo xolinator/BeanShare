@@ -1,0 +1,570 @@
+@page "/dashboard"
+@using MediatR
+@using BeanShare.Application.Abstractions
+@using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics
+@using BeanShare.Domain.Common
+@using BeanShare.Domain.ValueObjects
+@using System.Linq
+@inject NavigationManager Navigation
+@inject IMediator Mediator
+@inject IUserContext UserContext
+
+<div class="mobile-dashboard">
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading your dashboard...</p>
+        </div>
+    }
+    else if (statistics == null)
+    {
+        <div class="empty-state">
+            <span class="material-symbols-outlined">coffee</span>
+            <h2>No Data Yet</h2>
+            <p>Start tracking your coffee consumption!</p>
+            <button class="btn-primary" @onclick="NavigateToSpaces">
+                Join a Space
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <h1>Dashboard</h1>
+            <p class="subtitle">Your coffee insights</p>
+        </div>
+
+        <!-- KPI Cards - Mobile Optimized -->
+        <div class="kpi-grid-mobile">
+            <div class="kpi-card-mobile" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="kpi-content-mobile">
+                    <span class="material-symbols-outlined">local_cafe</span>
+                    <div class="kpi-value-mobile">@statistics.TotalCups</div>
+                    <div class="kpi-label-mobile">Total Cups</div>
+                </div>
+            </div>
+
+            <div class="kpi-card-mobile" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="kpi-content-mobile">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                    <div class="kpi-value-mobile">@statistics.CupsThisMonth</div>
+                    <div class="kpi-label-mobile">This Month</div>
+                </div>
+            </div>
+
+            <div class="kpi-card-mobile" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="kpi-content-mobile">
+                    <span class="material-symbols-outlined">trending_up</span>
+                    <div class="kpi-value-mobile">@statistics.AverageCupsPerDay.ToString("F1")</div>
+                    <div class="kpi-label-mobile">Daily Avg</div>
+                </div>
+            </div>
+
+            <div class="kpi-card-mobile" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="kpi-content-mobile">
+                    <span class="material-symbols-outlined">payments</span>
+                    <div class="kpi-value-mobile">@GetShortCost()</div>
+                    <div class="kpi-label-mobile">Total Cost</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Stats -->
+        <div class="section-card">
+            <h2>Today</h2>
+            <div class="today-stats">
+                <div class="today-stat-item">
+                    <span class="material-symbols-outlined">today</span>
+                    <div>
+                        <div class="stat-value">@statistics.CupsToday</div>
+                        <div class="stat-label">Cups Today</div>
+                    </div>
+                </div>
+                <div class="today-stat-item">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <div>
+                        <div class="stat-value">@statistics.CupsThisWeek</div>
+                        <div class="stat-label">This Week</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Favorite Coffee -->
+        <div class="section-card">
+            <h2>Favorite Coffee</h2>
+            <div class="favorite-coffee">
+                <div class="coffee-icon">
+                    <span class="material-symbols-outlined">emoji_events</span>
+                </div>
+                <div class="coffee-info">
+                    <div class="coffee-name">@(statistics.MostConsumedCoffeeType ?? "None yet")</div>
+                    <div class="coffee-subtitle">Your most consumed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coffee Types Breakdown -->
+        @if (statistics.CoffeeTypeBreakdown.Any())
+        {
+            <div class="section-card">
+                <h2>Top Coffee Types</h2>
+                <div class="coffee-types-mobile">
+                    @{
+                        var totalCups = statistics.CoffeeTypeBreakdown.Values.Sum();
+                        var topTypes = statistics.CoffeeTypeBreakdown.Take(5);
+                    }
+                    @foreach (var (coffeeName, count) in topTypes)
+                    {
+                        var percentage = totalCups > 0 ? (count * 100.0 / totalCups) : 0;
+                        <div class="coffee-type-mobile">
+                            <div class="coffee-type-header">
+                                <span class="coffee-name">@coffeeName</span>
+                                <span class="coffee-count">@count</span>
+                            </div>
+                            <div class="coffee-bar">
+                                <div class="coffee-fill" style="width: @(percentage)%"></div>
+                            </div>
+                            <div class="coffee-percentage">@percentage.ToString("F0")%</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Consumption Trend - Simplified for Mobile -->
+        @if (statistics.DailyConsumptionTrend.Any())
+        {
+            <div class="section-card">
+                <h2>Last 7 Days</h2>
+                <div class="mini-chart">
+                    @{
+                        var last7Days = Enumerable.Range(0, 7)
+                            .Select(i => DateTime.UtcNow.Date.AddDays(-6 + i))
+                            .ToList();
+                        var maxValue = last7Days
+                            .Select(day => statistics.DailyConsumptionTrend.ContainsKey(day)
+                                ? statistics.DailyConsumptionTrend[day]
+                                : 0)
+                            .Max();
+                        maxValue = maxValue > 0 ? maxValue : 1;
+                    }
+                    @foreach (var day in last7Days)
+                    {
+                        var count = statistics.DailyConsumptionTrend.ContainsKey(day)
+                            ? statistics.DailyConsumptionTrend[day]
+                            : 0;
+                        var height = (count * 100.0 / maxValue);
+                        <div class="mini-bar-container">
+                            <div class="mini-bar" style="height: @(height)%;">
+                                @if (count > 0)
+                                {
+                                    <span class="mini-bar-value">@count</span>
+                                }
+                            </div>
+                            <div class="mini-bar-label">@day.ToString("ddd")</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Quick Actions -->
+        <div class="section-card">
+            <h2>Quick Actions</h2>
+            <div class="action-buttons-mobile">
+                <button class="action-btn-mobile" @onclick="NavigateToSpaces">
+                    <span class="material-symbols-outlined">groups</span>
+                    <span>My Spaces</span>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .mobile-dashboard {
+        padding: 1rem;
+        background: #f8fafc;
+        min-height: 100vh;
+    }
+
+    .mobile-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .mobile-header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .subtitle {
+        color: #64748b;
+        margin: 0;
+        font-size: 0.875rem;
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 1rem;
+        color: #64748b;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #4169E1;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        background: white;
+        border-radius: 12px;
+        margin: 1rem 0;
+    }
+
+    .empty-state span {
+        font-size: 3rem;
+        color: #cbd5e1;
+    }
+
+    .empty-state h2 {
+        font-size: 1.25rem;
+        color: #1e293b;
+        margin: 1rem 0;
+    }
+
+    .empty-state p {
+        color: #64748b;
+        margin-bottom: 1.5rem;
+    }
+
+    .kpi-grid-mobile {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .kpi-card-mobile {
+        border-radius: 12px;
+        padding: 1.25rem;
+        color: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        min-height: 110px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .kpi-content-mobile {
+        text-align: center;
+        width: 100%;
+    }
+
+    .kpi-content-mobile span {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 0.5rem;
+        opacity: 0.9;
+    }
+
+    .kpi-value-mobile {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .kpi-label-mobile {
+        font-size: 0.75rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-card h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 1rem 0;
+    }
+
+    .today-stats {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .today-stat-item {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .today-stat-item span {
+        font-size: 2rem;
+        color: #4169E1;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+    }
+
+    .favorite-coffee {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-radius: 8px;
+    }
+
+    .coffee-icon {
+        width: 48px;
+        height: 48px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #f59e0b;
+        font-size: 1.5rem;
+    }
+
+    .coffee-info {
+        flex: 1;
+    }
+
+    .coffee-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #78350f;
+    }
+
+    .coffee-subtitle {
+        font-size: 0.75rem;
+        color: #92400e;
+        margin-top: 0.125rem;
+    }
+
+    .coffee-types-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .coffee-type-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .coffee-type-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .coffee-name {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 0.875rem;
+    }
+
+    .coffee-count {
+        font-weight: 600;
+        color: #4169E1;
+        font-size: 0.875rem;
+    }
+
+    .coffee-bar {
+        height: 6px;
+        background: #f1f5f9;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .coffee-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4169E1 0%, #667eea 100%);
+        transition: width 0.3s;
+    }
+
+    .coffee-percentage {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-align: right;
+    }
+
+    .mini-chart {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        height: 120px;
+        gap: 4px;
+        padding: 0.5rem 0;
+    }
+
+    .mini-bar-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+    }
+
+    .mini-bar {
+        width: 100%;
+        background: linear-gradient(180deg, #4169E1 0%, #667eea 100%);
+        border-radius: 4px 4px 0 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 2px;
+        min-height: 4px;
+    }
+
+    .mini-bar-value {
+        font-size: 0.625rem;
+        font-weight: 600;
+        color: white;
+    }
+
+    .mini-bar-label {
+        font-size: 0.625rem;
+        color: #64748b;
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    .action-buttons-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .action-btn-mobile {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: #4169E1;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .action-btn-mobile:active {
+        background: #3058c7;
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #4169E1;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-primary:active {
+        background: #3058c7;
+    }
+</style>
+
+@code {
+    private UserStatisticsDto? statistics;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboard();
+    }
+
+    private async Task LoadDashboard()
+    {
+        isLoading = true;
+        try
+        {
+            var currentUserId = UserContext.CurrentUserId;
+            if (currentUserId.Value != Guid.Empty)
+            {
+                var query = new GetUserStatisticsQuery(currentUserId);
+                statistics = await Mediator.Send(query);
+            }
+        }
+        catch
+        {
+            statistics = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetShortCost()
+    {
+        if (statistics?.TotalCost == null)
+            return "N/A";
+
+        var amount = statistics.TotalCost.Amount;
+        var symbol = statistics.TotalCost.Currency.Symbol;
+
+        if (amount >= 1000)
+            return $"{symbol}{(amount / 1000):F1}k";
+
+        return $"{symbol}{amount:F0}";
+    }
+
+    private void NavigateToSpaces()
+    {
+        Navigation.NavigateTo("/spaces");
+    }
+}

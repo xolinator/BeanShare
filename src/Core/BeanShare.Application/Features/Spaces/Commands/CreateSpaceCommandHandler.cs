@@ -33,14 +33,21 @@ public sealed class CreateSpaceCommandHandler : IRequestHandler<CreateSpaceComma
             return Result<CreateSpaceResult>.Failure(Error.ValidationFailure(nameof(request.Name), "Space name is required"));
         }
 
+        if (string.IsNullOrWhiteSpace(request.CurrencyCode))
+        {
+            return Result<CreateSpaceResult>.Failure(Error.ValidationFailure(nameof(request.CurrencyCode), "Currency is required"));
+        }
+
         try
         {
             var spaceId = SpaceId.New();
             var inviteCode = await _inviteCodeGenerator.GenerateAsync(cancellationToken);
+            var currency = Currency.Create(request.CurrencyCode);
 
             var space = Space.Create(
                 spaceId,
                 request.Name.Trim(),
+                currency,
                 _userContext.CurrentUserId,
                 inviteCode,
                 _clock);

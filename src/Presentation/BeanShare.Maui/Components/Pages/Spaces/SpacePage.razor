@@ -1,4 +1,5 @@
 @page "/spaces/{SpaceId}"
+@using BeanShare.SharedUi.Components.Consumption.Models
 @inject ISpacesService SpacesService
 @inject IStockService StockService
 @inject IConsumptionService ConsumptionService
@@ -107,7 +108,7 @@ else
     private bool isAdmin;
     private string activeTab = "members";
 
-    private bool isLoadingMembers;
+    private bool isLoadingMembers = false;
     private bool isLoadingStock;
     private bool isLoadingConsumption;
 
@@ -258,7 +259,7 @@ else
         }
     }
 
-    private async Task HandleLogConsumption(ConsumptionForm.ConsumptionFormModel model)
+    private async Task HandleLogConsumption(ConsumptionFormModel model)
     {
         try
         {

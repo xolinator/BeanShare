@@ -1,0 +1,221 @@
+@page "/history"
+@using BeanShare.Application.Features.Consumption.Dtos
+@using BeanShare.Application.Features.Spaces.Dtos
+@inject IConsumptionService ConsumptionService
+@inject ISpacesService SpacesService
+
+<div class="container mt-4">
+    <h3 class="mb-4">My Consumption History</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading history...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Filters</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Space</label>
+                        <select class="form-select" @bind="selectedSpaceId">
+                            <option value="">All Spaces</option>
+                            @foreach (var space in spaces)
+                            {
+                                <option value="@space.Id">@space.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" @bind="startDate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" @bind="endDate" />
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" @onclick="ApplyFilters">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (history != null && history.Items.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Summary</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center p-3">
+                                <h2 class="text-primary mb-0">@history.Summary.TotalEntries</h2>
+                                <small class="text-muted">Total Entries</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3">
+                                <h2 class="text-success mb-0">@history.Summary.TotalGrams g</h2>
+                                <small class="text-muted">Total Coffee</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3">
+                                <h2 class="text-info mb-0">@history.Summary.UniqueDays</h2>
+                                <small class="text-muted">Days Active</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3">
+                                <h2 class="text-warning mb-0">@history.Summary.AverageGramsPerDay.ToString("F1") g</h2>
+                                <small class="text-muted">Avg/Day</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Consumption Timeline</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Space</th>
+                                    <th>Product</th>
+                                    <th>Amount</th>
+                                    <th>Est. Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in history.Items)
+                                {
+                                    <tr>
+                                        <td>@item.ConsumedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                        <td>@item.SpaceName</td>
+                                        <td>
+                                            <div>@item.ProductName</div>
+                                            <small class="text-muted">@item.ProductBrand</small>
+                                        </td>
+                                        <td><strong>@item.QuantityGrams g</strong></td>
+                                        <td>
+                                            @if (item.EstimatedCost.HasValue)
+                                            {
+                                                <span>@item.EstimatedCost.Value.ToString("C2")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">N/A</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @{
+                        var totalPages = (int)Math.Ceiling((double)history.TotalCount / history.PageSize);
+                    }
+                    @if (totalPages > 1)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div>
+                                <small class="text-muted">
+                                    Showing @((history.PageNumber - 1) * history.PageSize + 1) to @Math.Min(history.PageNumber * history.PageSize, history.TotalCount) of @history.TotalCount entries
+                                </small>
+                            </div>
+                            <nav>
+                                <ul class="pagination pagination-sm mb-0">
+                                    <li class="page-item @(history.PageNumber == 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(history.PageNumber - 1)">Previous</button>
+                                    </li>
+                                    @for (int i = 1; i <= totalPages; i++)
+                                    {
+                                        var pageNum = i;
+                                        <li class="page-item @(history.PageNumber == pageNum ? "active" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(pageNum)">@pageNum</button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(history.PageNumber == totalPages ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(history.PageNumber + 1)">Next</button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No consumption history found. Start logging your coffee consumption!
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private ConsumptionHistoryDto? history;
+    private List<SpaceSummaryDto> spaces = new();
+    private string? selectedSpaceId;
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private int currentPage = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSpaces();
+        await LoadHistory();
+    }
+
+    private async Task LoadSpaces()
+    {
+        var result = await SpacesService.GetUserSpacesAsync();
+        spaces = result?.ToList() ?? new List<SpaceSummaryDto>();
+    }
+
+    private async Task LoadHistory()
+    {
+        isLoading = true;
+        try
+        {
+            Guid? spaceId = string.IsNullOrEmpty(selectedSpaceId) ? null : Guid.Parse(selectedSpaceId);
+            history = await ConsumptionService.GetUserHistoryAsync(
+                spaceId: spaceId,
+                startDate: startDate,
+                endDate: endDate,
+                billingPeriodId: null,
+                pageNumber: currentPage,
+                pageSize: 20
+            );
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadHistory();
+    }
+
+    private async Task ChangePage(int page)
+    {
+        currentPage = page;
+        await LoadHistory();
+    }
+}

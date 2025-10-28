@@ -25,8 +25,8 @@ public sealed class MockUserContext : IUserContext
                 return new UserId(userId);
             }
 
-            // Default test user
-            return new UserId(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+            // Default test user (matches the user that creates the space)
+            return new UserId(Guid.Parse("22222222-2222-2222-2222-222222222222"));
         }
     }
 

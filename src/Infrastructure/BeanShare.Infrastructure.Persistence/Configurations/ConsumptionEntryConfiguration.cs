@@ -1,8 +1,10 @@
+using BeanShare.Domain.Aggregates.BillingPeriod;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
 using BeanShare.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BeanShare.Infrastructure.Persistence.Configurations;
 
@@ -34,6 +36,8 @@ internal sealed class ConsumptionEntryConfiguration : IEntityTypeConfiguration<C
 
         builder.OwnsOne(x => x.Product, productBuilder =>
         {
+            productBuilder.WithOwner();
+
             productBuilder.Property(p => p.Name)
                 .HasColumnName("ProductName")
                 .HasMaxLength(200)
@@ -65,6 +69,9 @@ internal sealed class ConsumptionEntryConfiguration : IEntityTypeConfiguration<C
         builder.Property(x => x.CreatedAt)
             .HasColumnType("timestamptz")
             .IsRequired();
+
+        // Configure nullable BillingPeriodId - Ignore it for now since it's causing issues
+        builder.Ignore(x => x.BillingPeriodId);
 
         builder.HasIndex(x => x.SpaceId)
             .HasDatabaseName("IX_Consumptions_SpaceId");

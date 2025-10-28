@@ -29,7 +29,7 @@ public class CoffeeStockCommandTests
 
         userContext.CurrentUserId.Returns(adminId);
 
-        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", adminId, new InviteCode("CAFE23"), TestClock.Instance);
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), TestClock.Instance);
         spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
             .Returns(space);
 
@@ -71,7 +71,7 @@ public class CoffeeStockCommandTests
 
         userContext.CurrentUserId.Returns(memberId);
 
-        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", adminId, new InviteCode("CAFE23"), TestClock.Instance);
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), TestClock.Instance);
         space.Join(memberId, TestClock.Instance);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
@@ -148,7 +148,7 @@ public class CoffeeStockCommandTests
 
         userContext.CurrentUserId.Returns(adminId);
 
-        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", adminId, new InviteCode("CAFE23"), TestClock.Instance);
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), TestClock.Instance);
         spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
             .Returns(space);
 
@@ -192,7 +192,7 @@ public class CoffeeStockCommandTests
 
         userContext.CurrentUserId.Returns(adminId);
 
-        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", adminId, new InviteCode("CAFE23"), TestClock.Instance);
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), TestClock.Instance);
         spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
             .Returns(space);
 

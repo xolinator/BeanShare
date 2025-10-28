@@ -47,6 +47,15 @@ public sealed class User
         return new User(new UserId(Guid.NewGuid()), email, name, "Email", null, passwordHash, null);
     }
 
+    public static User CreateWithIdAndPassword(Guid id, string email, string name, string passwordHash)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
+
+        return new User(new UserId(id), email, name, "Email", null, passwordHash, null);
+    }
+
     public static User CreateWithProvider(string email, string name, string provider, string providerUserId, string? pictureUrl = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);

@@ -1,5 +1,7 @@
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Aggregates.CoffeeStock;
+using BeanShare.Domain.Aggregates.BillingPeriod;
+using BeanShare.Domain.Aggregates.Settlement;
 using BeanShare.Domain.Entities;
 using BeanShare.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +14,8 @@ public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> opti
     public DbSet<Space> Spaces => Set<Space>();
     public DbSet<CoffeeStock> CoffeeStocks => Set<CoffeeStock>();
     public DbSet<ConsumptionEntry> Consumptions => Set<ConsumptionEntry>();
+    public DbSet<BillingPeriod> BillingPeriods => Set<BillingPeriod>();
+    public DbSet<Settlement> Settlements => Set<Settlement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,5 +27,7 @@ public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> opti
         modelBuilder.ApplyConfiguration(new PurchaseConfiguration());
         modelBuilder.ApplyConfiguration(new StockLevelConfiguration());
         modelBuilder.ApplyConfiguration(new ConsumptionEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new BillingPeriodConfiguration());
+        modelBuilder.ApplyConfiguration(new SettlementConfiguration());
     }
 }

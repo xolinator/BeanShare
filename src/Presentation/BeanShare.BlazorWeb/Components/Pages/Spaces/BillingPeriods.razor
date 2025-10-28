@@ -1,0 +1,204 @@
+@page "/spaces/{SpaceId}/billing"
+@rendermode InteractiveServer
+@using MediatR
+@using BeanShare.Application.Features.Billing.Queries.GetSpaceBillingPeriods
+@using BeanShare.Application.Features.Billing.Commands.CreateBillingPeriod
+@using BeanShare.Application.Features.Billing.Dtos
+@using BeanShare.SharedUi.Components.Billing
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Billing Periods - BeanShare</PageTitle>
+
+<div style="position: sticky; top: 0; z-index: 10; background: var(--bs-background-light); border-bottom: 1px solid var(--bs-border); padding: 1rem 0;">
+    <div class="bs-container">
+        <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
+            <button class="bs-btn-sm" style="background: transparent; border: none; cursor: pointer;" @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}"))'>
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">Billing Periods</h1>
+            <div style="width: 2rem;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="bs-container" style="padding: 2rem 0;">
+    @if (isLoading)
+    {
+        <div style="text-align: center; padding: 2rem;">
+            <div class="bs-skeleton" style="width: 100%; height: 6rem; margin-bottom: 1rem;"></div>
+            <div class="bs-skeleton" style="width: 100%; height: 6rem; margin-bottom: 1rem;"></div>
+            <div class="bs-skeleton" style="width: 100%; height: 6rem;"></div>
+        </div>
+    }
+    else if (periods == null || !periods.Any())
+    {
+        <div style="text-align: center; padding: 4rem 2rem;">
+            <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--bs-text-subtle); margin-bottom: 1rem;">calendar_month</span>
+            <h2 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600;">No Billing Periods Yet</h2>
+            <p class="bs-text-subtle" style="margin-bottom: 2rem;">Create your first billing period to start tracking coffee costs.</p>
+            <button class="bs-btn bs-btn-primary" @onclick="() => showCreateModal = true">
+                <span class="material-symbols-outlined">add_circle</span>
+                Create Billing Period
+            </button>
+        </div>
+    }
+    else
+    {
+        <div style="margin-bottom: 1.5rem;">
+            <button class="bs-btn bs-btn-primary" @onclick="() => showCreateModal = true">
+                <span class="material-symbols-outlined">add_circle</span>
+                Create Billing Period
+            </button>
+        </div>
+
+        <div class="bs-flex bs-flex-col bs-gap-4">
+            @foreach (var period in periods)
+            {
+                <div class="bs-card" style="padding: 1.5rem; cursor: pointer; transition: all 0.2s;" @onclick="() => HandlePeriodSelected(period.Id)">
+                    <div class="bs-flex bs-items-start bs-justify-between" style="margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="margin: 0 0 0.25rem 0; font-size: 1.125rem; font-weight: 600;">@period.Name</h3>
+                            <p class="bs-text-subtle" style="font-size: 0.875rem; margin: 0;">
+                                @period.StartDate.ToString("MMM dd, yyyy") - @period.EndDate.ToString("MMM dd, yyyy")
+                            </p>
+                        </div>
+                        <span class="bs-badge" style="background: @GetStateColor(period.State); color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+                            @period.State
+                        </span>
+                    </div>
+
+                    <div class="bs-flex bs-gap-4" style="margin-top: 1rem;">
+                        <div>
+                            <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Consumption Entries</p>
+                            <p style="font-size: 1.25rem; font-weight: 700; margin: 0;">@period.ConsumptionCount</p>
+                        </div>
+                        <div>
+                            <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Total Coffee</p>
+                            <p style="font-size: 1.25rem; font-weight: 700; margin: 0;">@period.TotalCoffeeGrams.ToString("F0")g</p>
+                        </div>
+                        @if (period.DaysRemaining >= 0 && period.State == "Open")
+                        {
+                            <div>
+                                <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Days Remaining</p>
+                                <p style="font-size: 1.25rem; font-weight: 700; margin: 0;">@period.DaysRemaining</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<CreateBillingPeriodModal IsVisible="@showCreateModal"
+                          OnSubmit="HandleCreateBillingPeriod"
+                          OnCancel="@(() => showCreateModal = false)" />
+
+<Toast IsVisible="@showToast"
+       IsError="@isToastError"
+       Title="@toastTitle"
+       Message="@toastMessage"
+       OnClose="@(() => showToast = false)" />
+
+@code {
+    [Parameter]
+    public string SpaceId { get; set; } = "";
+
+    private List<BillingPeriodSummaryDto>? periods;
+    private bool isLoading = true;
+    private bool showCreateModal = false;
+    private bool showToast;
+    private bool isToastError;
+    private string toastTitle = "";
+    private string toastMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBillingPeriods();
+    }
+
+    private async Task LoadBillingPeriods()
+    {
+        isLoading = true;
+        try
+        {
+            var query = new GetSpaceBillingPeriodsQuery(Guid.Parse(SpaceId));
+            var result = await Mediator.Send(query);
+
+            if (result.IsSuccess)
+            {
+                periods = result.Value;
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load billing periods: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void HandlePeriodSelected(Guid periodId)
+    {
+        Navigation.NavigateTo($"/spaces/{SpaceId}/billing/{periodId}");
+    }
+
+    private async Task HandleCreateBillingPeriod(CreateBillingPeriodModal.CreateBillingPeriodModel model)
+    {
+        try
+        {
+            var command = new CreateBillingPeriodCommand(
+                Guid.Parse(SpaceId),
+                model.Name,
+                model.StartDate.ToUniversalTime(),
+                model.EndDate.ToUniversalTime()
+            );
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                showCreateModal = false;
+                ShowToast(false, "Success", $"Billing period '{model.Name}' created successfully!");
+                await LoadBillingPeriods();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to create billing period: {ex.Message}");
+        }
+    }
+
+    private string GetStateColor(string state)
+    {
+        return state switch
+        {
+            "Draft" => "var(--bs-gray-400)",
+            "Open" => "var(--bs-success)",
+            "Closed" => "var(--bs-warning)",
+            "Settled" => "var(--bs-primary)",
+            _ => "var(--bs-gray-400)"
+        };
+    }
+
+    private void ShowToast(bool isError, string title, string message)
+    {
+        isToastError = isError;
+        toastTitle = title;
+        toastMessage = message;
+        showToast = true;
+    }
+}

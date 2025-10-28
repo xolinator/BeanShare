@@ -51,7 +51,7 @@ public class SpaceBusinessRuleTests
     {
         var creatorId = UserId.New();
         var inviteCode = new InviteCode("CAFE23");
-        return Space.Create(id, "Test Coffee Space", creatorId, inviteCode, TestClock.Instance);
+        return Space.Create(id, "Test Coffee Space", Currency.USD, creatorId, inviteCode, TestClock.Instance);
     }
 }
 

@@ -24,14 +24,14 @@ public class UserSeeder : IDataSeeder
 
         return new List<User>
         {
-            User.CreateWithPassword("john.smith@beanshare.com", "John Smith", passwordHash),
-            User.CreateWithPassword("sarah.johnson@beanshare.com", "Sarah Johnson", passwordHash),
-            User.CreateWithPassword("mike.wilson@beanshare.com", "Mike Wilson", passwordHash),
-            User.CreateWithPassword("emma.davis@beanshare.com", "Emma Davis", passwordHash),
-            User.CreateWithPassword("alex.brown@beanshare.com", "Alex Brown", passwordHash),
-            User.CreateWithPassword("lisa.martinez@beanshare.com", "Lisa Martinez", passwordHash),
-            User.CreateWithPassword("david.garcia@beanshare.com", "David Garcia", passwordHash),
-            User.CreateWithPassword("test@beanshare.com", "Test User", testPasswordHash)
+            User.CreateWithIdAndPassword(new Guid("11111111-1111-1111-1111-111111111111"), "john.smith@beanshare.com", "John Smith", passwordHash),
+            User.CreateWithIdAndPassword(new Guid("22222222-2222-2222-2222-222222222222"), "sarah.johnson@beanshare.com", "Sarah Johnson", passwordHash),
+            User.CreateWithIdAndPassword(new Guid("33333333-3333-3333-3333-333333333333"), "mike.wilson@beanshare.com", "Mike Wilson", passwordHash),
+            User.CreateWithIdAndPassword(new Guid("44444444-4444-4444-4444-444444444444"), "emma.davis@beanshare.com", "Emma Davis", passwordHash),
+            User.CreateWithIdAndPassword(new Guid("55555555-5555-5555-5555-555555555555"), "alex.brown@beanshare.com", "Alex Brown", passwordHash),
+            User.CreateWithIdAndPassword(new Guid("66666666-6666-6666-6666-666666666666"), "lisa.martinez@beanshare.com", "Lisa Martinez", passwordHash),
+            User.CreateWithIdAndPassword(new Guid("77777777-7777-7777-7777-777777777777"), "david.garcia@beanshare.com", "David Garcia", passwordHash),
+            User.CreateWithIdAndPassword(new Guid("88888888-8888-8888-8888-888888888888"), "test@beanshare.com", "Test User", testPasswordHash)
         };
     }
 }

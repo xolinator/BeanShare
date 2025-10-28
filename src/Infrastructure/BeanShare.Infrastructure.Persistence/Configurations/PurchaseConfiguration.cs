@@ -55,6 +55,9 @@ public sealed class PurchaseConfiguration : IEntityTypeConfiguration<Purchase>
                 .IsRequired();
 
             cb.Property(m => m.Currency)
+                .HasConversion(
+                    currency => currency.Code,
+                    code => Currency.Create(code))
                 .HasColumnName("CostCurrency")
                 .HasMaxLength(3)
                 .IsRequired();

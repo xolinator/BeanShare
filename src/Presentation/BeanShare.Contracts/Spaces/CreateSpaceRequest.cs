@@ -3,6 +3,7 @@ namespace BeanShare.Contracts.Spaces;
 public sealed record CreateSpaceRequest
 {
     public required string Name { get; init; }
+    public string CurrencyCode { get; init; } = "USD"; // Default to USD if not specified
 }
 
 public sealed record CreateSpaceResponse

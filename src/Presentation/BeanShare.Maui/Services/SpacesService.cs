@@ -37,11 +37,11 @@ public class SpacesService : ISpacesService
         }
     }
 
-    public async Task<Guid?> CreateSpaceAsync(string name)
+    public async Task<Guid?> CreateSpaceAsync(string name, string currencyCode)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/api/spaces", new { Name = name });
+            var response = await _httpClient.PostAsJsonAsync("/api/spaces", new { Name = name, CurrencyCode = currencyCode });
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<CreateSpaceResponse>();

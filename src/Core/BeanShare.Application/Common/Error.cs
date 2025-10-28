@@ -1,3 +1,5 @@
+using static BeanShare.Application.Common.Error;
+
 namespace BeanShare.Application.Common;
 
 public readonly record struct Error(string Code, string Message)
@@ -17,6 +19,11 @@ public readonly record struct Error(string Code, string Message)
         public const string MemberNotFound = "MEMBER_NOT_FOUND";
         public const string CannotPromoteMember = "CANNOT_PROMOTE_MEMBER";
         public const string CannotDemoteMember = "CANNOT_DEMOTE_MEMBER";
+        public const string BillingPeriodOverlap = "BILLING_PERIOD_OVERLAP";
+        public const string BillingPeriodNotFound = "BILLING_PERIOD_NOT_FOUND";
+        public const string InvalidBillingPeriodState = "INVALID_BILLING_PERIOD_STATE";
+        public const string SettlementAlreadyExists = "SETTLEMENT_ALREADY_EXISTS";
+        public const string NoConsumptionsInPeriod = "NO_CONSUMPTIONS_IN_PERIOD";
     }
 
     public static Error SpaceNotFound(Guid spaceId) =>
@@ -57,4 +64,19 @@ public readonly record struct Error(string Code, string Message)
 
     public static Error CannotDemoteMember(string reason) =>
         new(Codes.CannotDemoteMember, $"Cannot demote member: {reason}");
+
+    public static Error BillingPeriodOverlap() =>
+        new(Codes.BillingPeriodOverlap, "The specified date range overlaps with an existing billing period");
+
+    public static Error BillingPeriodNotFound(Guid billingPeriodId) =>
+        new(Codes.BillingPeriodNotFound, $"Billing period with ID {billingPeriodId} was not found");
+
+    public static Error InvalidBillingPeriodState(string action, string currentState) =>
+        new(Codes.InvalidBillingPeriodState, $"Cannot {action} billing period in {currentState} state");
+
+    public static Error SettlementAlreadyExists(Guid billingPeriodId) =>
+        new(Codes.SettlementAlreadyExists, $"Settlement already exists for billing period {billingPeriodId}");
+
+    public static Error NoConsumptionsInPeriod() =>
+        new(Codes.NoConsumptionsInPeriod, "No consumptions found in the billing period to generate settlement");
 }

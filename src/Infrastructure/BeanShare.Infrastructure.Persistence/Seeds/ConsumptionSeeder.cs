@@ -16,8 +16,13 @@ public class ConsumptionSeeder : IDataSeeder
 
         var clock = new FixedClock(DateTime.UtcNow);
         var consumptionEntries = GetSeedConsumptionEntries(clock);
-        await context.Consumptions.AddRangeAsync(consumptionEntries, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
+
+        foreach (var entry in consumptionEntries)
+        {
+            await context.Consumptions.AddAsync(entry, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            context.ChangeTracker.Clear();
+        }
     }
 
     private static List<ConsumptionEntry> GetSeedConsumptionEntries(IClock clock)
@@ -29,7 +34,7 @@ public class ConsumptionSeeder : IDataSeeder
 
         for (int daysAgo = 30; daysAgo >= 0; daysAgo--)
         {
-            var date = DateTime.UtcNow.AddDays(-daysAgo).Date;
+            var date = clock.UtcNow.AddDays(-daysAgo).Date;
 
             if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
             {
@@ -65,7 +70,7 @@ public class ConsumptionSeeder : IDataSeeder
 
         for (int daysAgo = 25; daysAgo >= 0; daysAgo--)
         {
-            var date = DateTime.UtcNow.AddDays(-daysAgo).Date;
+            var date = clock.UtcNow.AddDays(-daysAgo).Date;
 
             if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
                 continue;
@@ -89,7 +94,7 @@ public class ConsumptionSeeder : IDataSeeder
 
         for (int daysAgo = 20; daysAgo >= 0; daysAgo--)
         {
-            var date = DateTime.UtcNow.AddDays(-daysAgo).Date;
+            var date = clock.UtcNow.AddDays(-daysAgo).Date;
 
             if (random.Next(100) > 30)
             {
@@ -117,7 +122,7 @@ public class ConsumptionSeeder : IDataSeeder
 
         for (int daysAgo = 15; daysAgo >= 0; daysAgo--)
         {
-            var date = DateTime.UtcNow.AddDays(-daysAgo).Date;
+            var date = clock.UtcNow.AddDays(-daysAgo).Date;
 
             if (random.Next(100) > 20)
             {
@@ -136,7 +141,7 @@ public class ConsumptionSeeder : IDataSeeder
 
         for (int daysAgo = 10; daysAgo >= 0; daysAgo--)
         {
-            var date = DateTime.UtcNow.AddDays(-daysAgo).Date;
+            var date = clock.UtcNow.AddDays(-daysAgo).Date;
 
             if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
                 continue;
@@ -199,6 +204,9 @@ public class ConsumptionSeeder : IDataSeeder
             };
 
             var consumedAt = date.AddHours(hour).AddMinutes(localRandom.Next(60));
+
+            if (consumedAt > clock.UtcNow)
+                consumedAt = clock.UtcNow.AddMinutes(-localRandom.Next(30, 120));
 
             var quantity = Weight.FromGrams(15 + localRandom.Next(8));
 

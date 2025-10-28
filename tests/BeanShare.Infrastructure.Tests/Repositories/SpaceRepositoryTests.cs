@@ -28,7 +28,7 @@ public sealed class SpaceRepositoryTests : IClassFixture<DatabaseFixture>
         var spaceId = SpaceId.New();
         var creatorId = new UserId(Guid.NewGuid());
         var inviteCode = new InviteCode("CAFE23");
-        var space = Space.Create(spaceId, "Test Coffee Space", creatorId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Test Coffee Space", Currency.USD, creatorId, inviteCode, clock);
 
         await repository.AddAsync(space);
         await context.SaveChangesAsync();
@@ -53,7 +53,7 @@ public sealed class SpaceRepositoryTests : IClassFixture<DatabaseFixture>
         var spaceId = SpaceId.New();
         var creatorId = new UserId(Guid.NewGuid());
         var inviteCode = new InviteCode("BREW42");
-        var space = Space.Create(spaceId, "Brew Space", creatorId, inviteCode, clock);
+        var space = Space.Create(spaceId, "Brew Space", Currency.USD, creatorId, inviteCode, clock);
 
         await repository.AddAsync(space);
         await context.SaveChangesAsync();
@@ -76,8 +76,8 @@ public sealed class SpaceRepositoryTests : IClassFixture<DatabaseFixture>
         var userId = new UserId(Guid.NewGuid());
         var creatorId = new UserId(Guid.NewGuid());
         
-        var space1 = Space.Create(SpaceId.New(), "Space 1", userId, new InviteCode("BCDEFG"), clock);
-        var space2 = Space.Create(SpaceId.New(), "Space 2", creatorId, new InviteCode("HJKLMN"), clock);
+        var space1 = Space.Create(SpaceId.New(), "Space 1", Currency.USD, userId, new InviteCode("BCDEFG"), clock);
+        var space2 = Space.Create(SpaceId.New(), "Space 2", Currency.USD, creatorId, new InviteCode("HJKLMN"), clock);
         space2.Join(userId, clock);
 
         await repository.AddAsync(space1);

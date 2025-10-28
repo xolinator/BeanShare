@@ -131,7 +131,7 @@ public sealed class CoffeeStock : AggregateRoot
             p.Product.Type == product.Type).ToList();
 
         if (!productPurchases.Any())
-            return Money.Zero();
+            return Money.Zero(Currency.USD);
 
         var totalCost = productPurchases.First().Cost.Currency;
         var totalAmount = 0m;

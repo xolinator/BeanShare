@@ -11,6 +11,7 @@ public sealed class SpaceMappingProfile : IRegister
         config.NewConfig<Space, SpaceDto>()
             .Map(dest => dest.Id, src => src.Id)
             .Map(dest => dest.Name, src => src.Name)
+            .Map(dest => dest.CurrencyCode, src => src.Currency.Code)
             .Map(dest => dest.InviteCode, src => src.InviteCode.Value)
             .Map(dest => dest.CreatedBy, src => src.Members.First(m => m.Role == Domain.Enums.SpaceRole.Admin).UserId)
             .Map(dest => dest.CreatedAt, src => src.CreatedAt)

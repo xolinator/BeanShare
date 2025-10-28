@@ -13,13 +13,14 @@ public sealed class ConsumptionEntry : AggregateRoot
     public Weight Quantity { get; private set; }
     public DateTime ConsumedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public BillingPeriodId? BillingPeriodId { get; private set; }
 
     private ConsumptionEntry()
     {
         Id = default!;
         SpaceId = default;
         UserId = default;
-        Product = null!;
+        Product = CoffeeProduct.Create("Unknown", "Unknown", CoffeeType.Espresso);
         Quantity = default;
     }
 
@@ -57,7 +58,8 @@ public sealed class ConsumptionEntry : AggregateRoot
             throw new ArgumentException("Consumption quantity must be positive", nameof(quantity));
         }
 
-        if (consumedAt > clock.UtcNow)
+        // Allow a small tolerance of 1 minute for timezone conversion and clock drift
+        if (consumedAt > clock.UtcNow.AddMinutes(1))
         {
             throw new ArgumentException("Consumption time cannot be in the future", nameof(consumedAt));
         }
@@ -77,5 +79,17 @@ public sealed class ConsumptionEntry : AggregateRoot
             clock.UtcNow));
 
         return entry;
+    }
+
+    public void AssignToBillingPeriod(BillingPeriodId billingPeriodId)
+    {
+        ArgumentNullException.ThrowIfNull(billingPeriodId);
+
+        if (BillingPeriodId != null)
+        {
+            throw new InvalidOperationException("Consumption is already assigned to a billing period");
+        }
+
+        BillingPeriodId = billingPeriodId;
     }
 }

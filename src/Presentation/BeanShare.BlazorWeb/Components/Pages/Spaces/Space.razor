@@ -6,6 +6,7 @@
 @using BeanShare.Application.Features.CoffeeStock.Commands
 @using BeanShare.Application.Features.Consumption.Queries
 @using BeanShare.Application.Features.Consumption.Commands
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IMediator Mediator
@@ -114,7 +115,7 @@ else
     private bool isAdmin;
     private string activeTab = "members";
 
-    private bool isLoadingMembers;
+    private bool isLoadingMembers = false;
     private bool isLoadingStock;
     private bool isLoadingConsumption;
 
@@ -269,7 +270,7 @@ else
         }
     }
 
-    private async Task HandleLogConsumption(ConsumptionForm.ConsumptionFormModel model)
+    private async Task HandleLogConsumption(ConsumptionFormModel model)
     {
         try
         {

@@ -6,6 +6,6 @@ public interface ISpacesService
 {
     Task<List<SpaceSummaryDto>> GetUserSpacesAsync();
     Task<SpaceDto?> GetSpaceByIdAsync(Guid spaceId);
-    Task<Guid?> CreateSpaceAsync(string name);
+    Task<Guid?> CreateSpaceAsync(string name, string currencyCode);
     Task<bool> JoinSpaceAsync(string inviteCode);
 }

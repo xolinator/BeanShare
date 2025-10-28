@@ -25,6 +25,23 @@
     </div>
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
+    <script>
+        window.addEventListener('error', function(event) {
+            console.error('Global error:', event.error);
+            console.error('Message:', event.message);
+            console.error('Source:', event.filename);
+            console.error('Line:', event.lineno, 'Column:', event.colno);
+            console.error('Stack:', event.error?.stack);
+            alert('JS Error: ' + event.message + '\n' + (event.error?.stack || ''));
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            alert('Promise Error: ' + event.reason);
+        });
+
+        console.log('Blazor WebView index.html loaded - waiting for MAUI to initialize Blazor...');
+    </script>
 
 </body>
 

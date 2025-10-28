@@ -1,4 +1,5 @@
 using BeanShare.Application.Abstractions;
+using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
@@ -23,6 +24,16 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
     public async Task<IEnumerable<ConsumptionEntry>> GetBySpaceIdAsync(SpaceId spaceId, CancellationToken cancellationToken = default)
     {
         var specification = new ConsumptionBySpaceSpecification(spaceId);
+        return await _context.Consumptions
+            .Where(specification.Criteria)
+            .OrderByDescending(c => c.ConsumedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ConsumptionEntry>> GetBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+
         return await _context.Consumptions
             .Where(specification.Criteria)
             .OrderByDescending(c => c.ConsumedAt)

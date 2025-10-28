@@ -28,6 +28,7 @@ public class SpaceSeeder : IDataSeeder
         var engineeringSpace = Space.Create(
             new SpaceId(new Guid("aaaa1111-aaaa-1111-aaaa-111111111111")),
             "Engineering Team",
+            Currency.USD,
             new UserId(new Guid("11111111-1111-1111-1111-111111111111")),
             new InviteCode("ENG2K24"),
             clock
@@ -45,6 +46,7 @@ public class SpaceSeeder : IDataSeeder
         var marketingSpace = Space.Create(
             new SpaceId(new Guid("bbbb2222-bbbb-2222-bbbb-222222222222")),
             "Marketing Office",
+            Currency.EUR,
             new UserId(new Guid("22222222-2222-2222-2222-222222222222")),
             new InviteCode("MKT2K24"),
             clock
@@ -60,6 +62,7 @@ public class SpaceSeeder : IDataSeeder
         var remoteSpace = Space.Create(
             new SpaceId(new Guid("cccc3333-cccc-3333-cccc-333333333333")),
             "Remote Workers Hub",
+            Currency.CZK,
             new UserId(new Guid("33333333-3333-3333-3333-333333333333")),
             new InviteCode("RMTE24"),
             clock
@@ -76,6 +79,7 @@ public class SpaceSeeder : IDataSeeder
         var startupSpace = Space.Create(
             new SpaceId(new Guid("dddd4444-dddd-4444-dddd-444444444444")),
             "Startup Garage",
+            Currency.GBP,
             new UserId(new Guid("55555555-5555-5555-5555-555555555555")),
             new InviteCode("STRTUP"),
             clock
@@ -90,6 +94,7 @@ public class SpaceSeeder : IDataSeeder
         var executiveSpace = Space.Create(
             new SpaceId(new Guid("eeee5555-eeee-5555-eeee-555555555555")),
             "Executive Lounge",
+            Currency.USD,
             new UserId(new Guid("11111111-1111-1111-1111-111111111111")),
             new InviteCode("EXEC2K24"),
             clock

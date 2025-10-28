@@ -22,6 +22,62 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BeanShare.Domain.Aggregates.BillingPeriod.BillingPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("Id");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ClosedBy");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatedBy");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SettledBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("SettledBy");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("SpaceId");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpaceId");
+
+                    b.HasIndex("SpaceId", "StartDate", "EndDate");
+
+                    b.ToTable("BillingPeriods", (string)null);
+                });
+
             modelBuilder.Entity("BeanShare.Domain.Aggregates.CoffeeStock.CoffeeStock", b =>
                 {
                     b.Property<Guid>("Id")
@@ -95,6 +151,46 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.HasIndex("UpdatedAt");
 
                     b.ToTable("StockLevels", (string)null);
+                });
+
+            modelBuilder.Entity("BeanShare.Domain.Aggregates.Settlement.Settlement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("Id");
+
+                    b.Property<Guid>("BillingPeriodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("BillingPeriodId");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GeneratedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("GeneratedBy");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("SpaceId");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillingPeriodId")
+                        .IsUnique();
+
+                    b.HasIndex("SpaceId");
+
+                    b.ToTable("Settlements", (string)null);
                 });
 
             modelBuilder.Entity("BeanShare.Domain.Aggregates.Space.Space", b =>
@@ -219,6 +315,29 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.OwnsOne("BeanShare.Domain.ValueObjects.Money", "Cost", b1 =>
+                        {
+                            b1.Property<Guid>("PurchaseId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasColumnType("decimal(10,2)")
+                                .HasColumnName("CostAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("CostCurrency");
+
+                            b1.HasKey("PurchaseId");
+
+                            b1.ToTable("Purchases");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PurchaseId");
+                        });
+
                     b.OwnsOne("BeanShare.Domain.ValueObjects.CoffeeProduct", "Product", b1 =>
                         {
                             b1.Property<Guid>("PurchaseId")
@@ -257,29 +376,6 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Grams")
                                 .HasColumnType("decimal(10,1)")
                                 .HasColumnName("QuantityGrams");
-
-                            b1.HasKey("PurchaseId");
-
-                            b1.ToTable("Purchases");
-
-                            b1.WithOwner()
-                                .HasForeignKey("PurchaseId");
-                        });
-
-                    b.OwnsOne("BeanShare.Domain.ValueObjects.Money", "Cost", b1 =>
-                        {
-                            b1.Property<Guid>("PurchaseId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<decimal>("Amount")
-                                .HasColumnType("decimal(10,2)")
-                                .HasColumnName("CostAmount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("character varying(3)")
-                                .HasColumnName("CostCurrency");
 
                             b1.HasKey("PurchaseId");
 
@@ -379,6 +475,72 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
 
                     b.Navigation("TotalPurchased")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("BeanShare.Domain.Aggregates.Settlement.Settlement", b =>
+                {
+                    b.OwnsMany("BeanShare.Domain.Aggregates.Settlement.SettlementLine", "Lines", b1 =>
+                        {
+                            b1.Property<Guid>("SettlementId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("UserId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("UserId");
+
+                            b1.Property<DateTime>("CreatedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("TotalCoffeeGrams")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)");
+
+                            b1.Property<decimal?>("TotalMilkMl")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)");
+
+                            b1.HasKey("SettlementId", "UserId");
+
+                            b1.ToTable("SettlementLines", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("SettlementId");
+
+                            b1.OwnsOne("BeanShare.Domain.ValueObjects.Money", "AmountDue", b2 =>
+                                {
+                                    b2.Property<Guid>("SettlementLineSettlementId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<Guid>("SettlementLineUserId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasPrecision(18, 4)
+                                        .HasColumnType("numeric(18,4)")
+                                        .HasColumnName("AmountDue");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("Currency");
+
+                                    b2.HasKey("SettlementLineSettlementId", "SettlementLineUserId");
+
+                                    b2.ToTable("SettlementLines");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("SettlementLineSettlementId", "SettlementLineUserId");
+                                });
+
+                            b1.Navigation("AmountDue")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("BeanShare.Domain.Aggregates.Space.Space", b =>

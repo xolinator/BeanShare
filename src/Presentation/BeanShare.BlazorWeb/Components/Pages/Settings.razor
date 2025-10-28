@@ -27,10 +27,6 @@
                 <span class="material-symbols-outlined">lock</span>
                 Privacy & Security
             </button>
-            <button class="@GetNavClass("integrations")" @onclick='() => SetActiveTab("integrations")'>
-                <span class="material-symbols-outlined">extension</span>
-                Integrations
-            </button>
             <button class="@GetNavClass("advanced")" @onclick='() => SetActiveTab("advanced")'>
                 <span class="material-symbols-outlined">settings</span>
                 Advanced
@@ -75,55 +71,6 @@
                             </div>
                         </div>
 
-                        <div class="setting-group">
-                            <h3>Accent Color</h3>
-                            <div class="color-selector">
-                                <button class="color-option" style="background: #4169E1" @onclick='() => SetAccentColor("#4169E1")'>
-                                    @if (accentColor == "#4169E1") { <span class="material-symbols-outlined">check</span> }
-                                </button>
-                                <button class="color-option" style="background: #10b981" @onclick='() => SetAccentColor("#10b981")'>
-                                    @if (accentColor == "#10b981") { <span class="material-symbols-outlined">check</span> }
-                                </button>
-                                <button class="color-option" style="background: #f59e0b" @onclick='() => SetAccentColor("#f59e0b")'>
-                                    @if (accentColor == "#f59e0b") { <span class="material-symbols-outlined">check</span> }
-                                </button>
-                                <button class="color-option" style="background: #ef4444" @onclick='() => SetAccentColor("#ef4444")'>
-                                    @if (accentColor == "#ef4444") { <span class="material-symbols-outlined">check</span> }
-                                </button>
-                                <button class="color-option" style="background: #8b5cf6" @onclick='() => SetAccentColor("#8b5cf6")'>
-                                    @if (accentColor == "#8b5cf6") { <span class="material-symbols-outlined">check</span> }
-                                </button>
-                                <button class="color-option" style="background: #ec4899" @onclick='() => SetAccentColor("#ec4899")'>
-                                    @if (accentColor == "#ec4899") { <span class="material-symbols-outlined">check</span> }
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="setting-group">
-                            <h3>Display Options</h3>
-                            <div class="toggle-list">
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Compact Mode</label>
-                                        <p>Reduce spacing between elements</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="compactMode" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Animations</label>
-                                        <p>Enable smooth transitions and animations</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="enableAnimations" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     break;
 
@@ -177,22 +124,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div class="setting-group">
-                            <h3>Push Notifications</h3>
-                            <div class="toggle-list">
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Enable Push Notifications</label>
-                                        <p>Receive notifications in your browser</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="enablePushNotifications" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     break;
 
@@ -207,52 +138,6 @@
                                 <span class="material-symbols-outlined">lock</span>
                                 Change Password
                             </button>
-                        </div>
-
-                        <div class="setting-group">
-                            <h3>Two-Factor Authentication</h3>
-                            <div class="two-factor-status @(twoFactorEnabled ? "enabled" : "disabled")">
-                                <span class="material-symbols-outlined">
-                                    @(twoFactorEnabled ? "verified_user" : "security")
-                                </span>
-                                <div>
-                                    <p class="status-label">@(twoFactorEnabled ? "Enabled" : "Disabled")</p>
-                                    <p class="status-description">
-                                        @(twoFactorEnabled
-                                            ? "Your account is protected with 2FA"
-                                            : "Add an extra layer of security to your account")
-                                    </p>
-                                </div>
-                                <button class="btn-secondary" @onclick="Toggle2FA">
-                                    @(twoFactorEnabled ? "Disable" : "Enable")
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="setting-group">
-                            <h3>Privacy</h3>
-                            <div class="toggle-list">
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Profile Visibility</label>
-                                        <p>Make your profile visible to other users</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="profileVisible" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Show Coffee Stats</label>
-                                        <p>Display your coffee consumption stats on your profile</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="showStats" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="setting-group">
@@ -272,48 +157,6 @@
                                     </div>
                                     <button class="btn-secondary">Connect</button>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    break;
-
-                case "integrations":
-                    <div class="panel-content">
-                        <h2>Integrations</h2>
-                        <p class="panel-description">Connect BeanShare with other services</p>
-
-                        <div class="integration-grid">
-                            <div class="integration-card">
-                                <div class="integration-icon">
-                                    <span class="material-symbols-outlined">calendar_month</span>
-                                </div>
-                                <h3>Calendar</h3>
-                                <p>Sync coffee meetings with your calendar</p>
-                                <button class="btn-secondary">Configure</button>
-                            </div>
-                            <div class="integration-card">
-                                <div class="integration-icon">
-                                    <span class="material-symbols-outlined">chat</span>
-                                </div>
-                                <h3>Slack</h3>
-                                <p>Get notifications in Slack channels</p>
-                                <button class="btn-secondary">Configure</button>
-                            </div>
-                            <div class="integration-card">
-                                <div class="integration-icon">
-                                    <span class="material-symbols-outlined">webhook</span>
-                                </div>
-                                <h3>Webhooks</h3>
-                                <p>Send events to your own endpoints</p>
-                                <button class="btn-secondary">Configure</button>
-                            </div>
-                            <div class="integration-card">
-                                <div class="integration-icon">
-                                    <span class="material-symbols-outlined">api</span>
-                                </div>
-                                <h3>API Access</h3>
-                                <p>Generate API keys for programmatic access</p>
-                                <button class="btn-secondary">Configure</button>
                             </div>
                         </div>
                     </div>
@@ -966,19 +809,11 @@
     private string activeTab = "appearance";
 
     private string theme = "light";
-    private string accentColor = "#4169E1";
-    private bool compactMode = false;
-    private bool enableAnimations = true;
 
     private bool notifyNewCoffee = true;
     private bool notifyLowStock = true;
     private bool notifyInvitations = true;
     private bool notifyWeeklySummary = false;
-    private bool enablePushNotifications = false;
-
-    private bool twoFactorEnabled = false;
-    private bool profileVisible = true;
-    private bool showStats = true;
 
     private string language = "en";
     private string timeZone = "UTC";
@@ -1013,11 +848,6 @@
         theme = newTheme;
     }
 
-    private void SetAccentColor(string color)
-    {
-        accentColor = color;
-    }
-
     private void ChangePassword()
     {
         showPasswordModal = true;
@@ -1037,11 +867,6 @@
         {
             ClosePasswordModal();
         }
-    }
-
-    private async Task Toggle2FA()
-    {
-        twoFactorEnabled = !twoFactorEnabled;
     }
 
     private void Cancel()

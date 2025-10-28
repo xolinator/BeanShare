@@ -1,0 +1,416 @@
+@page "/profile"
+@using Microsoft.AspNetCore.Components.Authorization
+@using MediatR
+@using BeanShare.Application.Abstractions
+@using BeanShare.Application.Features.Spaces.Queries
+@using BeanShare.Application.Features.Spaces.Dtos
+@using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics
+@using BeanShare.Domain.Common
+@using System.Linq
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IMediator Mediator
+@inject IUserContext UserContext
+
+<div class="mobile-profile">
+    <div class="mobile-profile-header">
+        <div class="profile-avatar-container">
+            @if (!string.IsNullOrEmpty(userProfile?.PictureUrl))
+            {
+                <img src="@userProfile.PictureUrl" alt="@userProfile.Name" class="profile-avatar" />
+            }
+            else
+            {
+                <div class="profile-avatar-placeholder">
+                    <span class="material-symbols-outlined">account_circle</span>
+                </div>
+            }
+        </div>
+        <h1 class="profile-name">@(userProfile?.Name ?? "Loading...")</h1>
+        <p class="profile-email">@(userProfile?.Email ?? "")</p>
+        <p class="profile-joined">Member since @(userProfile?.JoinedDate.ToString("MMMM yyyy") ?? "")</p>
+    </div>
+
+    <div class="mobile-stats-section">
+        <h2>Coffee Statistics</h2>
+        <div class="mobile-stats-grid">
+            <div class="mobile-stat-card">
+                <span class="material-symbols-outlined">local_cafe</span>
+                <div class="stat-value">@(statistics?.TotalCups ?? 0)</div>
+                <div class="stat-label">Total Cups</div>
+            </div>
+            <div class="mobile-stat-card">
+                <span class="material-symbols-outlined">calendar_month</span>
+                <div class="stat-value">@(statistics?.CupsThisMonth ?? 0)</div>
+                <div class="stat-label">This Month</div>
+            </div>
+            <div class="mobile-stat-card">
+                <span class="material-symbols-outlined">groups</span>
+                <div class="stat-value">@(statistics?.ActiveSpacesCount ?? 0)</div>
+                <div class="stat-label">Active Spaces</div>
+            </div>
+            <div class="mobile-stat-card">
+                <span class="material-symbols-outlined">trending_up</span>
+                <div class="stat-value">@(statistics?.AverageCupsPerDay.ToString("F1") ?? "0.0")</div>
+                <div class="stat-label">Daily Average</div>
+            </div>
+        </div>
+
+        @if (statistics?.CoffeeTypeBreakdown != null && statistics.CoffeeTypeBreakdown.Any())
+        {
+            <div class="coffee-types-section">
+                <h3>Favorite Coffee Types</h3>
+                <div class="coffee-types-list">
+                    @foreach (var type in statistics.CoffeeTypeBreakdown.Take(5))
+                    {
+                        <div class="coffee-type-item">
+                            <span class="coffee-type-name">@type.Key</span>
+                            <span class="coffee-type-count">@type.Value cups</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (statistics?.TotalCost != null)
+        {
+            <div class="cost-section">
+                <h3>Total Cost</h3>
+                <div class="total-cost-value">
+                    @statistics.TotalCost.Currency.Symbol@statistics.TotalCost.Amount.ToString("F2")
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="mobile-spaces-section">
+        <div class="section-header">
+            <h2>My Spaces</h2>
+            <span class="badge">@userSpaces.Count</span>
+        </div>
+        @if (userSpaces.Any())
+        {
+            <div class="mobile-spaces-list">
+                @foreach (var space in userSpaces)
+                {
+                    <div class="mobile-space-card" @onclick="() => NavigateToSpace(space.Id)">
+                        <div class="space-info">
+                            <h3>@space.Name</h3>
+                            <p>@space.MemberCount members</p>
+                        </div>
+                        <span class="material-symbols-outlined">chevron_right</span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <p>You haven't joined any spaces yet.</p>
+                <button class="btn-primary" @onclick="NavigateToSpaces">
+                    Browse Spaces
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .mobile-profile {
+        padding: 1rem;
+        max-width: 100%;
+    }
+
+    .mobile-profile-header {
+        text-align: center;
+        padding: 2rem 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem;
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+
+    .profile-avatar-container {
+        margin-bottom: 1rem;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .profile-avatar-placeholder {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .profile-avatar-placeholder .material-symbols-outlined {
+        font-size: 60px;
+        color: white;
+    }
+
+    .profile-name {
+        font-size: 1.5rem;
+        margin: 0.5rem 0;
+        font-weight: 600;
+    }
+
+    .profile-email {
+        opacity: 0.9;
+        margin: 0.25rem 0;
+    }
+
+    .profile-joined {
+        opacity: 0.8;
+        font-size: 0.9rem;
+    }
+
+    .mobile-stats-section {
+        margin-bottom: 2rem;
+    }
+
+    .mobile-stats-section h2 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .mobile-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .mobile-stat-card {
+        background: var(--surface-color);
+        padding: 1.25rem;
+        border-radius: 0.75rem;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .mobile-stat-card .material-symbols-outlined {
+        font-size: 2rem;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    .coffee-types-section,
+    .cost-section {
+        background: var(--surface-color);
+        padding: 1.25rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .coffee-types-section h3,
+    .cost-section h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .coffee-types-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .coffee-type-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .coffee-type-item:last-child {
+        border-bottom: none;
+    }
+
+    .coffee-type-name {
+        color: var(--text-primary);
+    }
+
+    .coffee-type-count {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .total-cost-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .mobile-spaces-section {
+        margin-bottom: 2rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.25rem;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .badge {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .mobile-spaces-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .mobile-space-card {
+        background: var(--surface-color);
+        padding: 1rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .mobile-space-card:active {
+        background: var(--hover-color);
+    }
+
+    .space-info h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+
+    .space-info p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        margin-top: 1rem;
+    }
+</style>
+
+@code {
+    private UserProfileDto? userProfile;
+    private UserStatisticsDto? statistics;
+    private List<SpaceSummaryDto> userSpaces = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+    }
+
+    private async Task LoadProfile()
+    {
+        try
+        {
+            isLoading = true;
+
+            // Get current user
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                // Load user profile
+                userProfile = new UserProfileDto
+                {
+                    Name = user.Identity.Name ?? "Unknown User",
+                    Email = user.FindFirst("email")?.Value ?? "",
+                    JoinedDate = DateTime.UtcNow.AddMonths(-6), // Mock data
+                    PictureUrl = null
+                };
+
+                // Load user statistics
+                var userId = UserContext.CurrentUserId;
+                var query = new GetUserStatisticsQuery(userId);
+                statistics = await Mediator.Send(query);
+
+                // Load user spaces
+                var spacesQuery = new GetUserSpacesQuery();
+                var spacesResult = await Mediator.Send(spacesQuery);
+                if (spacesResult.IsSuccess)
+                {
+                    userSpaces = spacesResult.Value.Spaces.ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading profile: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void NavigateToSpace(Guid spaceId)
+    {
+        Navigation.NavigateTo($"/spaces/{spaceId}");
+    }
+
+    private void NavigateToSpaces()
+    {
+        Navigation.NavigateTo("/spaces");
+    }
+
+    private class UserProfileDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public DateTime JoinedDate { get; set; }
+        public string? PictureUrl { get; set; }
+    }
+}

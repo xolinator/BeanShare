@@ -2,9 +2,16 @@ namespace BeanShare.Domain.ValueObjects;
 
 public sealed record CoffeeProduct
 {
-    public string Name { get; private init; }
-    public string Brand { get; private init; }
-    public CoffeeType Type { get; private init; }
+    public string Name { get; init; }
+    public string Brand { get; init; }
+    public CoffeeType Type { get; init; }
+
+    private CoffeeProduct()
+    {
+        Name = string.Empty;
+        Brand = string.Empty;
+        Type = CoffeeType.Espresso;
+    }
 
     private CoffeeProduct(string name, string brand, CoffeeType type)
     {

@@ -1,6 +1,9 @@
 @page "/spaces/{SpaceId}/consumption"
+@using BeanShare.SharedUi.Components.Consumption.Models
+@using BeanShare.Application.Features.CoffeeStock.Dtos
 @inject ISpacesService SpacesService
 @inject IConsumptionService ConsumptionService
+@inject IStockService StockService
 @inject NavigationManager Navigation
 
 <PageTitle>Consumption - @spaceName - BeanShare</PageTitle>
@@ -49,7 +52,7 @@ else
                             MyTotalCost="@myTotalCost"
                             RemainingStockGrams="@remainingStock" />
 
-            <ConsumptionForm OnSubmit="HandleLogConsumption" />
+            <ConsumptionForm OnSubmit="HandleLogConsumption" StockProducts="@stockProducts" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -73,6 +76,7 @@ else
     private bool isLoadingConsumption;
 
     private List<ConsumptionEntryDto> recentConsumptions = new();
+    private List<StockLevelDto> stockProducts = new();
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
     private int remainingStock = 0;
@@ -87,6 +91,7 @@ else
         if (!string.IsNullOrEmpty(SpaceId))
         {
             await LoadSpace();
+            await LoadStock();
             await LoadConsumption();
         }
     }
@@ -130,6 +135,22 @@ else
         }
     }
 
+    private async Task LoadStock()
+    {
+        try
+        {
+            var stockData = await StockService.GetSpaceStockAsync(Guid.Parse(SpaceId));
+            if (stockData != null && stockData.StockLevels != null)
+            {
+                stockProducts = stockData.StockLevels.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load stock: {ex.Message}");
+        }
+    }
+
     private async Task HandleTabChange(string newTab)
     {
         if (newTab == "members")
@@ -142,20 +163,23 @@ else
         }
     }
 
-    private async Task HandleLogConsumption(ConsumptionForm.ConsumptionFormModel model)
+    private async Task HandleLogConsumption(ConsumptionFormModel model)
     {
         try
         {
+            var consumedAtUtc = model.ConsumedAt.ToUniversalTime();
+
             var success = await ConsumptionService.RecordConsumptionAsync(
                 Guid.Parse(SpaceId),
                 model.Grams,
-                model.ConsumedAt
+                consumedAtUtc
             );
 
             if (success)
             {
                 ShowToast(false, "Success", "Consumption logged successfully!");
                 await LoadConsumption();
+                await LoadStock();
             }
             else
             {

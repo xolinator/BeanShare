@@ -4,6 +4,8 @@
 @using MediatR
 @using BeanShare.Application.Abstractions
 @using BeanShare.Application.Features.Spaces.Queries
+@using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics
+@using BeanShare.Domain.Common
 @using System.Linq
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
@@ -26,10 +28,6 @@
                         <span class="material-symbols-outlined">account_circle</span>
                     </div>
                 }
-                <button class="btn-change-avatar">
-                    <span class="material-symbols-outlined">photo_camera</span>
-                    Change Photo
-                </button>
             </div>
             <div class="profile-info">
                 <h1>@(userProfile?.Name ?? "Loading...")</h1>
@@ -46,28 +44,28 @@
                 <div class="stat-card">
                     <span class="stat-icon material-symbols-outlined">local_cafe</span>
                     <div class="stat-content">
-                        <div class="stat-value">@totalCups</div>
+                        <div class="stat-value">@(statistics?.TotalCups ?? 0)</div>
                         <div class="stat-label">Total Cups</div>
                     </div>
                 </div>
                 <div class="stat-card">
                     <span class="stat-icon material-symbols-outlined">calendar_month</span>
                     <div class="stat-content">
-                        <div class="stat-value">@cupsThisMonth</div>
+                        <div class="stat-value">@(statistics?.CupsThisMonth ?? 0)</div>
                         <div class="stat-label">This Month</div>
                     </div>
                 </div>
                 <div class="stat-card">
                     <span class="stat-icon material-symbols-outlined">groups</span>
                     <div class="stat-content">
-                        <div class="stat-value">@(userSpaces?.Count ?? 0)</div>
+                        <div class="stat-value">@(statistics?.ActiveSpacesCount ?? 0)</div>
                         <div class="stat-label">Active Spaces</div>
                     </div>
                 </div>
                 <div class="stat-card">
                     <span class="stat-icon material-symbols-outlined">trending_up</span>
                     <div class="stat-content">
-                        <div class="stat-value">@avgCupsPerDay.ToString("F1")</div>
+                        <div class="stat-value">@(statistics?.AverageCupsPerDay.ToString("F1") ?? "0.0")</div>
                         <div class="stat-label">Daily Average</div>
                     </div>
                 </div>
@@ -242,24 +240,6 @@
     .profile-avatar-placeholder span {
         font-size: 80px;
         color: #94a3b8;
-    }
-
-    .btn-change-avatar {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 8px;
-        color: white;
-        font-size: 0.875rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-change-avatar:hover {
-        background: rgba(255, 255, 255, 0.3);
     }
 
     .profile-info h1 {
@@ -605,9 +585,7 @@
 @code {
     private UserProfile? userProfile;
     private List<UserSpace>? userSpaces;
-    private int totalCups = 0;
-    private int cupsThisMonth = 0;
-    private double avgCupsPerDay = 0;
+    private UserStatisticsDto? statistics;
 
     private bool isEditing = false;
     private string editName = "";
@@ -668,10 +646,20 @@
 
     private async Task LoadStatistics()
     {
-        // Sample statistics for demonstration
-        totalCups = 234;
-        cupsThisMonth = 45;
-        avgCupsPerDay = 2.3;
+        try
+        {
+            var currentUserId = UserContext.CurrentUserId;
+            if (currentUserId.Value != Guid.Empty)
+            {
+                var query = new GetUserStatisticsQuery(currentUserId);
+                statistics = await Mediator.Send(query);
+            }
+        }
+        catch
+        {
+            // If query fails, statistics will remain null and UI will show 0 values
+            statistics = null;
+        }
     }
 
     private void StartEdit()

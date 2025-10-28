@@ -1,69 +1,105 @@
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.SharedUi.Components.Consumption.Models
+
 <div class="bs-card">
     <EditForm Model="@model" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
 
-        <div class="bs-form-group">
-            <label class="bs-label">Preset</label>
-            <div class="bs-flex bs-gap-2" style="flex-wrap: wrap;">
-                @foreach (var preset in presets)
-                {
-                    <button type="button"
-                            class="bs-btn bs-btn-sm @(selectedPreset == preset.Name ? "bs-btn-primary" : "bs-btn-secondary")"
-                            @onclick="() => SelectPreset(preset)">
-                        @preset.Name · @preset.Grams g
-                    </button>
-                }
-                <button type="button"
-                        class="bs-btn bs-btn-sm @(isCustomMode ? "bs-btn-primary" : "bs-btn-secondary")"
-                        @onclick="SelectCustom">
-                    Custom
-                </button>
-            </div>
-        </div>
-
-        @if (isCustomMode)
+        @if (StockProducts == null || !StockProducts.Any())
         {
-            <div class="bs-form-group">
-                <label class="bs-label" for="gramsInput">Coffee (grams)</label>
-                <div style="position: relative;">
-                    <InputNumber id="gramsInput"
-                                class="bs-input"
-                                @bind-Value="model.Grams"
-                                placeholder="12" />
-                    <span style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--bs-text-subtle); font-size: 0.875rem;">
-                        g
-                    </span>
-                </div>
-                <ValidationMessage For="@(() => model.Grams)" class="bs-validation-message" />
+            <div style="padding: 1rem; background: var(--bs-warning-light); border-radius: 0.5rem; margin-bottom: 1rem;">
+                <p style="margin: 0; color: var(--bs-warning-dark); font-size: 0.875rem;">
+                    No coffee products in stock. Please add coffee to stock first.
+                </p>
             </div>
         }
-
-        <div class="bs-form-group">
-            <label class="bs-label" for="dateTimeInput">Date & Time</label>
-            <InputDate Type="InputDateType.DateTimeLocal"
-                      id="dateTimeInput"
-                      class="bs-input"
-                      @bind-Value="model.ConsumedAt" />
-            <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: var(--bs-text-subtle);">
-                Defaults to now.
-            </p>
-        </div>
-
-        <div class="bs-flex bs-gap-3 bs-mt-4">
-            <button type="submit" class="bs-btn bs-btn-primary bs-flex-1" disabled="@isSubmitting">
-                @if (isSubmitting)
+        else
+        {
+            <div class="bs-form-group">
+                <label class="bs-label" for="productSelect">Coffee Product</label>
+                <select id="productSelect"
+                        class="bs-input"
+                        @onchange="OnProductSelected"
+                        value="@selectedProductId">
+                    <option value="">-- Select a coffee product --</option>
+                    @foreach (var product in StockProducts)
+                    {
+                        <option value="@product.Id">
+                            @product.ProductDisplayName (@product.ProductType, @product.CurrentStockGrams g available)
+                        </option>
+                    }
+                </select>
+                @if (!string.IsNullOrEmpty(productSelectionError))
                 {
-                    <span>Logging...</span>
+                    <div style="color: var(--bs-danger); font-size: 0.875rem; margin-top: 0.5rem;">
+                        @productSelectionError
+                    </div>
                 }
-                else
-                {
-                    <span>Log Coffee</span>
-                }
-            </button>
-            <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Reset">
-                Cancel
-            </button>
-        </div>
+            </div>
+
+            <div class="bs-form-group">
+                <label class="bs-label">Amount</label>
+                <div class="bs-flex bs-gap-2" style="flex-wrap: wrap;">
+                    @foreach (var preset in presets)
+                    {
+                        <button type="button"
+                                class="bs-btn bs-btn-sm @(selectedPreset == preset.Name ? "bs-btn-primary" : "bs-btn-secondary")"
+                                @onclick="() => SelectPreset(preset)">
+                            @preset.Name · @preset.Grams g
+                        </button>
+                    }
+                    <button type="button"
+                            class="bs-btn bs-btn-sm @(isCustomMode ? "bs-btn-primary" : "bs-btn-secondary")"
+                            @onclick="SelectCustom">
+                        Custom
+                    </button>
+                </div>
+            </div>
+
+            @if (isCustomMode)
+            {
+                <div class="bs-form-group">
+                    <label class="bs-label" for="gramsInput">Coffee (grams)</label>
+                    <div style="position: relative;">
+                        <InputNumber id="gramsInput"
+                                    class="bs-input"
+                                    @bind-Value="model.Grams"
+                                    placeholder="12" />
+                        <span style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--bs-text-subtle); font-size: 0.875rem;">
+                            g
+                        </span>
+                    </div>
+                    <ValidationMessage For="@(() => model.Grams)" class="bs-validation-message" />
+                </div>
+            }
+
+            <div class="bs-form-group">
+                <label class="bs-label" for="dateTimeInput">Date & Time</label>
+                <InputDate Type="InputDateType.DateTimeLocal"
+                          id="dateTimeInput"
+                          class="bs-input"
+                          @bind-Value="model.ConsumedAt" />
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: var(--bs-text-subtle);">
+                    Defaults to now.
+                </p>
+            </div>
+
+            <div class="bs-flex bs-gap-3 bs-mt-4">
+                <button type="submit" class="bs-btn bs-btn-primary bs-flex-1" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span>Logging...</span>
+                    }
+                    else
+                    {
+                        <span>Log Coffee</span>
+                    }
+                </button>
+                <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Reset">
+                    Cancel
+                </button>
+            </div>
+        }
     </EditForm>
 </div>
 
@@ -71,16 +107,54 @@
     [Parameter]
     public EventCallback<ConsumptionFormModel> OnSubmit { get; set; }
 
+    [Parameter]
+    public List<StockLevelDto> StockProducts { get; set; } = new();
+
     private ConsumptionFormModel model = new() { ConsumedAt = DateTime.Now };
     private bool isSubmitting;
-    private bool isCustomMode = true;
-    private string? selectedPreset;
+    private bool isCustomMode = false;
+    private string? selectedPreset = "Espresso";
+    private StockLevelDto? selectedProduct;
+    private string selectedProductId = "";
+    private string productSelectionError = "";
 
     private List<PresetOption> presets = new()
     {
         new PresetOption { Name = "Espresso", Grams = 8 },
         new PresetOption { Name = "Large Brew", Grams = 15 }
     };
+
+    protected override void OnParametersSet()
+    {
+        if (model.Grams == 0 && !isCustomMode)
+        {
+            model.Grams = 8;
+        }
+    }
+
+    private void OnProductSelected(ChangeEventArgs e)
+    {
+        selectedProductId = e.Value?.ToString() ?? "";
+
+        if (string.IsNullOrEmpty(selectedProductId))
+        {
+            selectedProduct = null;
+            model.ProductName = "";
+            model.ProductBrand = "";
+            model.ProductType = "";
+        }
+        else
+        {
+            selectedProduct = StockProducts.FirstOrDefault(p => p.Id.ToString() == selectedProductId);
+            if (selectedProduct != null)
+            {
+                model.ProductName = selectedProduct.ProductName;
+                model.ProductBrand = selectedProduct.ProductBrand;
+                model.ProductType = selectedProduct.ProductType;
+                productSelectionError = "";
+            }
+        }
+    }
 
     private void SelectPreset(PresetOption preset)
     {
@@ -100,6 +174,17 @@
 
     private async Task HandleSubmit()
     {
+        if (selectedProduct == null)
+        {
+            productSelectionError = "Please select a coffee product";
+            return;
+        }
+
+        if (model.Grams <= 0)
+        {
+            return;
+        }
+
         isSubmitting = true;
         await OnSubmit.InvokeAsync(model);
         isSubmitting = false;
@@ -108,25 +193,11 @@
 
     private void Reset()
     {
-        model = new ConsumptionFormModel { ConsumedAt = DateTime.Now };
-        isCustomMode = true;
-        selectedPreset = null;
-    }
-
-    public class ConsumptionFormModel
-    {
-        [Range(1, 100, ErrorMessage = "Grams must be between 1 and 100")]
-        public int Grams { get; set; }
-
-        public string? PresetName { get; set; }
-
-        [Required]
-        public DateTime ConsumedAt { get; set; } = DateTime.Now;
-    }
-
-    private class PresetOption
-    {
-        public string Name { get; set; } = "";
-        public int Grams { get; set; }
+        model = new ConsumptionFormModel { ConsumedAt = DateTime.Now, Grams = 8 };
+        isCustomMode = false;
+        selectedPreset = "Espresso";
+        selectedProduct = null;
+        selectedProductId = "";
+        productSelectionError = "";
     }
 }

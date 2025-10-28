@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!-- Suppress development-time only vulnerability warnings -->
+    <!-- NU1903: Microsoft.Build packages vulnerability only affects build tools, not runtime -->
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
+
+    <!-- Suppress false positive analyzer warnings -->
+    <!-- CA2264: ArgumentNullException.ThrowIfNull on value types is intentional for runtime validation -->
+    <NoWarn>$(NoWarn);CA2264</NoWarn>
+  </PropertyGroup>
+</Project>
