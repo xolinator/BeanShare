@@ -1,9 +1,61 @@
-﻿@page "/"
+@page "/"
 @inject NavigationManager Navigation
+@implements IDisposable
+
+@if (!hasNavigated)
+{
+    <div class="bs-container" style="padding: 2rem; text-align: center;">
+        <h1>Welcome to BeanShare</h1>
+        <p>Loading your spaces...</p>
+    </div>
+}
 
 @code {
-    protected override void OnInitialized()
+    private bool hasNavigated = false;
+    private System.Threading.Timer? navigationTimer;
+
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/spaces");
+        try
+        {
+            var userId = await MainThread.InvokeOnMainThreadAsync(async () =>
+                await SecureStorage.Default.GetAsync("user_id"));
+
+            var isAuthenticated = !string.IsNullOrEmpty(userId);
+
+            navigationTimer = new System.Threading.Timer(_ =>
+            {
+                InvokeAsync(() =>
+                {
+                    if (!hasNavigated)
+                    {
+                        hasNavigated = true;
+                        var targetUrl = isAuthenticated ? "/spaces" : "/login";
+                        System.Diagnostics.Debug.WriteLine($"[Home] Navigating to {targetUrl}");
+                        Navigation.NavigateTo(targetUrl, forceLoad: true);
+                    }
+                });
+            }, null, 200, System.Threading.Timeout.Infinite);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Home] Error checking authentication: {ex.Message}");
+            navigationTimer = new System.Threading.Timer(_ =>
+            {
+                InvokeAsync(() =>
+                {
+                    if (!hasNavigated)
+                    {
+                        hasNavigated = true;
+                        Navigation.NavigateTo("/login", forceLoad: true);
+                    }
+                });
+            }, null, 200, System.Threading.Timeout.Infinite);
+        }
+    }
+
+    public void Dispose()
+    {
+        navigationTimer?.Dispose();
     }
 }

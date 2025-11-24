@@ -5,7 +5,11 @@ namespace BeanShare.Domain.Aggregates.Settlement;
 
 public sealed class SettlementLine : Entity
 {
-    private SettlementLine() { }
+    private SettlementLine()
+    {
+        UserId = default!;
+        AmountDue = default!;
+    }
 
     public Guid Id { get; private set; }
     public UserId UserId { get; private set; }

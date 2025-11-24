@@ -10,25 +10,3 @@ public abstract class DomainException : Exception
     {
     }
 }
-
-public sealed class SpaceDomainException : DomainException
-{
-    public SpaceDomainException(string message) : base(message)
-    {
-    }
-
-    public SpaceDomainException(string message, Exception innerException) : base(message, innerException)
-    {
-    }
-}
-
-public sealed class InvariantViolationException : DomainException
-{
-    public InvariantViolationException(string message) : base(message)
-    {
-    }
-
-    public InvariantViolationException(string message, Exception innerException) : base(message, innerException)
-    {
-    }
-}

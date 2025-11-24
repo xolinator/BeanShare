@@ -8,8 +8,8 @@ public sealed class CreateSpaceValidator : AbstractValidator<CreateSpaceCommand>
     {
         RuleFor(x => x.Name)
             .NotEmpty()
-            .WithMessage("Coffee space name is required")
+            .WithMessage($"{nameof(CreateSpaceCommand.Name)} is required")
             .MaximumLength(100)
-            .WithMessage("Coffee space name must not exceed 100 characters");
+            .WithMessage($"{nameof(CreateSpaceCommand.Name)} must not exceed 100 characters");
     }
 }

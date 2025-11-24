@@ -1,3 +1,4 @@
+using BeanShare.Domain.Enums;
 using BeanShare.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -57,7 +58,12 @@ public static class AccountEndpoints
                     return Results.Redirect("/login?error=authentication_failed");
                 }
 
-                var provider = externalResult.Ticket?.AuthenticationScheme ?? "Unknown";
+                var providerName = externalResult.Ticket?.AuthenticationScheme ?? "Unknown";
+
+                if (!Enum.TryParse<AuthenticationProvider>(providerName, true, out var provider))
+                {
+                    return Results.Redirect("/login?error=unsupported_provider");
+                }
 
                 var user = await authService.GetOrCreateUserAsync(externalResult.Principal, provider);
 

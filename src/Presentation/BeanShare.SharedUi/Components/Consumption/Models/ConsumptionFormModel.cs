@@ -9,6 +9,8 @@ public sealed class ConsumptionFormModel
 
     public string? PresetName { get; set; }
 
+    public Guid? PresetId { get; set; }
+
     [Required]
     public DateTime ConsumedAt { get; set; } = DateTime.Now;
 

@@ -1,9 +1,14 @@
 @page "/spaces/{SpaceId}"
 @using BeanShare.SharedUi.Components.Consumption.Models
+@using BeanShare.SharedUi.Components.Analytics
+@using BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics
+@using BeanShare.Application.Abstractions
 @inject ISpacesService SpacesService
 @inject IStockService StockService
 @inject IConsumptionService ConsumptionService
+@inject IAnalyticsService AnalyticsService
 @inject NavigationManager Navigation
+@inject IUserContext UserContext
 
 <PageTitle>@spaceName - BeanShare</PageTitle>
 
@@ -85,6 +90,20 @@ else
                                       IsLoading="@isLoadingConsumption" />
             </div>
         }
+        else if (activeTab == "analytics")
+        {
+            <SpaceAnalytics Analytics="@spaceAnalytics"
+                           IsLoading="@isLoadingAnalytics" />
+        }
+        else if (activeTab == "presets")
+        {
+            <div style="text-align: center; padding: 2rem;">
+                <p>Navigate to the presets page to manage your coffee presets.</p>
+                <button class="bs-btn bs-btn-primary" @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}/presets"))'>
+                    Go to Presets
+                </button>
+            </div>
+        }
     </div>
 }
 
@@ -111,12 +130,14 @@ else
     private bool isLoadingMembers = false;
     private bool isLoadingStock;
     private bool isLoadingConsumption;
+    private bool isLoadingAnalytics;
 
     private List<StockPurchaseDto> purchases = new();
     private List<ConsumptionEntryDto> recentConsumptions = new();
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
     private int remainingStock = 0;
+    private SpaceAnalyticsDto? spaceAnalytics;
 
     private bool showAddPurchaseModal;
     private bool showToast;
@@ -128,6 +149,11 @@ else
     {
         if (!string.IsNullOrEmpty(SpaceId))
         {
+            if (!Guid.TryParse(SpaceId, out var spaceGuid))
+            {
+                Navigation.NavigateTo("/spaces");
+                return;
+            }
             await LoadSpace();
             await LoadTabData();
         }
@@ -135,13 +161,19 @@ else
 
     private async Task LoadSpace()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         try
         {
-            space = await SpacesService.GetSpaceByIdAsync(Guid.Parse(SpaceId));
+            space = await SpacesService.GetSpaceByIdAsync(spaceGuid);
             if (space != null)
             {
-                // TODO: Get current user ID from auth context
-                isAdmin = space.Members.Any(m => m.Role == "Admin");
+                var currentUserId = UserContext.CurrentUserId.Value;
+                isAdmin = space.Members.Any(m => m.UserId == currentUserId && m.Role == "Admin");
             }
         }
         catch (Exception ex)
@@ -156,14 +188,22 @@ else
             await LoadStock();
         else if (activeTab == "consumption")
             await LoadConsumption();
+        else if (activeTab == "analytics")
+            await LoadAnalytics();
     }
 
     private async Task LoadStock()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         isLoadingStock = true;
         try
         {
-            var stockData = await StockService.GetSpaceStockAsync(Guid.Parse(SpaceId));
+            var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
             if (stockData != null)
             {
                 purchases = stockData.RecentPurchases.ToList();
@@ -181,10 +221,16 @@ else
 
     private async Task LoadConsumption()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         isLoadingConsumption = true;
         try
         {
-            var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(Guid.Parse(SpaceId));
+            var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(spaceGuid);
             if (consumptionData != null)
             {
                 recentConsumptions = consumptionData.Entries.ToList();
@@ -200,6 +246,33 @@ else
         finally
         {
             isLoadingConsumption = false;
+        }
+    }
+
+    private async Task LoadAnalytics()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
+        isLoadingAnalytics = true;
+        try
+        {
+            spaceAnalytics = await AnalyticsService.GetSpaceAnalyticsAsync(
+                spaceGuid,
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow
+            );
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load analytics: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingAnalytics = false;
         }
     }
 
@@ -231,10 +304,16 @@ else
 
     private async Task HandleAddPurchase(AddPurchaseModal.AddPurchaseModel model)
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid space ID");
+            return;
+        }
+
         try
         {
             var success = await StockService.AddStockPurchaseAsync(
-                Guid.Parse(SpaceId),
+                spaceGuid,
                 model.ProductName,
                 model.CoffeeType,
                 model.QuantityGrams,
@@ -261,10 +340,16 @@ else
 
     private async Task HandleLogConsumption(ConsumptionFormModel model)
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid space ID");
+            return;
+        }
+
         try
         {
             var success = await ConsumptionService.RecordConsumptionAsync(
-                Guid.Parse(SpaceId),
+                spaceGuid,
                 model.Grams,
                 model.ConsumedAt
             );

@@ -7,10 +7,12 @@
 @using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics
 @using BeanShare.Domain.Common
 @using System.Linq
+@using Microsoft.Extensions.Logging
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IMediator Mediator
-@inject IUserContext UserContext
+@inject BeanShare.Application.Abstractions.IUserContext UserContext
+@inject ILogger<Profile> Logger
 
 <div class="mobile-profile">
     <div class="mobile-profile-header">
@@ -344,7 +346,9 @@
     private UserProfileDto? userProfile;
     private UserStatisticsDto? statistics;
     private List<SpaceSummaryDto> userSpaces = new();
+#pragma warning disable CS0414 // Field is assigned but its value is never used
     private bool isLoading = true;
+#pragma warning restore CS0414
 
     protected override async Task OnInitializedAsync()
     {
@@ -357,13 +361,11 @@
         {
             isLoading = true;
 
-            // Get current user
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
 
             if (user?.Identity?.IsAuthenticated == true)
             {
-                // Load user profile
                 userProfile = new UserProfileDto
                 {
                     Name = user.Identity.Name ?? "Unknown User",
@@ -372,12 +374,10 @@
                     PictureUrl = null
                 };
 
-                // Load user statistics
                 var userId = UserContext.CurrentUserId;
                 var query = new GetUserStatisticsQuery(userId);
                 statistics = await Mediator.Send(query);
 
-                // Load user spaces
                 var spacesQuery = new GetUserSpacesQuery();
                 var spacesResult = await Mediator.Send(spacesQuery);
                 if (spacesResult.IsSuccess)
@@ -388,7 +388,8 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading profile: {ex.Message}");
+            Logger.LogError(ex, "Error loading profile");
+            await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("Error", "Failed to load profile data. Please try again.", "OK");
         }
         finally
         {

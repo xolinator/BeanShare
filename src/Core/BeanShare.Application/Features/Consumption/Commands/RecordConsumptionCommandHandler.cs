@@ -81,7 +81,8 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
                 QuantityGrams = consumptionEntry.Quantity.Grams,
                 RemainingGrams = remainingStock.Grams,
                 ConsumedAt = consumptionEntry.ConsumedAt,
-                CreatedAt = consumptionEntry.CreatedAt
+                CreatedAt = consumptionEntry.CreatedAt,
+                PresetName = request.PresetName
             };
 
             return Result<ConsumptionEntryDto>.Success(dto);

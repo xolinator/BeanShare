@@ -13,24 +13,3 @@ public sealed record SettlementDto(
     string Currency,
     List<SettlementLineDto> Lines
 );
-
-public sealed record SettlementLineDto(
-    Guid UserId,
-    string UserName,
-    string UserEmail,
-    decimal TotalCoffeeGrams,
-    decimal? TotalMilkMl,
-    decimal AmountDue,
-    string Currency,
-    decimal ConsumptionPercentage
-);
-
-public sealed record SettlementSummaryDto(
-    Guid Id,
-    string BillingPeriodName,
-    DateTime GeneratedAt,
-    decimal TotalAmount,
-    string Currency,
-    int UserCount,
-    decimal YourShare
-);

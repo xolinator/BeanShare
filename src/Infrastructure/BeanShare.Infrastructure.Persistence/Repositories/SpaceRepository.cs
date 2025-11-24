@@ -1,6 +1,7 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Specifications;
+using BeanShare.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeanShare.Infrastructure.Persistence.Repositories;
@@ -12,6 +13,13 @@ public sealed class SpaceRepository : ISpaceRepository
     public SpaceRepository(BeanShareDbContext context)
     {
         _context = context;
+    }
+
+    public async Task<Space?> GetByIdAsync(SpaceId id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Spaces
+            .Include(s => s.Members)
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
     public async Task<Space?> GetSingleBySpecAsync(ISpec<Space> specification, CancellationToken cancellationToken = default)

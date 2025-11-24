@@ -16,8 +16,8 @@ public class SpacesService : ISpacesService
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<List<SpaceSummaryDto>>("/api/spaces");
-            return response ?? new List<SpaceSummaryDto>();
+            var response = await _httpClient.GetFromJsonAsync<SpacesResponse>("/api/spaces");
+            return response?.Spaces?.ToList() ?? new List<SpaceSummaryDto>();
         }
         catch
         {
@@ -69,4 +69,5 @@ public class SpacesService : ISpacesService
     }
 
     private record CreateSpaceResponse(Guid SpaceId);
+    private record SpacesResponse(IReadOnlyList<SpaceSummaryDto> Spaces);
 }

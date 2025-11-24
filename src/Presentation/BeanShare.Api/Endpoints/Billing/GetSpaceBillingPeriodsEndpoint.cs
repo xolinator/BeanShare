@@ -22,7 +22,6 @@ public sealed class GetSpaceBillingPeriodsEndpoint : Endpoint<GetSpaceBillingPer
     public override void Configure()
     {
         Get("/api/spaces/{SpaceId}/billing-periods");
-        AllowAnonymous(); // TODO: Require authentication
     }
 
     public override async Task HandleAsync(GetSpaceBillingPeriodsRequest req, CancellationToken ct)

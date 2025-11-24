@@ -8,8 +8,8 @@ public sealed class JoinSpaceValidator : AbstractValidator<JoinSpaceCommand>
     {
         RuleFor(x => x.InviteCode)
             .NotEmpty()
-            .WithMessage("Invite code is required")
+            .WithMessage($"{nameof(JoinSpaceCommand.InviteCode)} is required")
             .Matches("^[A-Z0-9]{6,10}$")
-            .WithMessage("Invite code format is invalid");
+            .WithMessage($"{nameof(JoinSpaceCommand.InviteCode)} format is invalid");
     }
 }

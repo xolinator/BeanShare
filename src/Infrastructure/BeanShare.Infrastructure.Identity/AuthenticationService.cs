@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
+using BeanShare.Domain.Enums;
 using BeanShare.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -10,7 +12,7 @@ namespace BeanShare.Infrastructure.Identity;
 
 public interface IAuthenticationService
 {
-    Task<User> GetOrCreateUserAsync(ClaimsPrincipal externalPrincipal, string provider);
+    Task<User> GetOrCreateUserAsync(ClaimsPrincipal externalPrincipal, AuthenticationProvider provider);
     Task<(bool Success, User? User, string? ErrorMessage)> RegisterAsync(string email, string name, string password);
     Task<(bool Success, User? User, string? ErrorMessage)> LoginAsync(string email, string password);
     Task SignInAsync(HttpContext httpContext, User user, AuthenticationProperties? properties = null);
@@ -21,14 +23,16 @@ public sealed class AuthenticationService : IAuthenticationService
 {
     private readonly BeanShareDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IClock _clock;
 
-    public AuthenticationService(BeanShareDbContext dbContext, IPasswordHasher passwordHasher)
+    public AuthenticationService(BeanShareDbContext dbContext, IPasswordHasher passwordHasher, IClock clock)
     {
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
+        _clock = clock;
     }
 
-    public async Task<User> GetOrCreateUserAsync(ClaimsPrincipal externalPrincipal, string provider)
+    public async Task<User> GetOrCreateUserAsync(ClaimsPrincipal externalPrincipal, AuthenticationProvider provider)
     {
         var providerUserId = externalPrincipal.FindFirstValue(ClaimTypes.NameIdentifier)
                           ?? externalPrincipal.FindFirstValue("sub")
@@ -44,21 +48,18 @@ public sealed class AuthenticationService : IAuthenticationService
 
         var pictureUrl = externalPrincipal.FindFirstValue("picture");
 
-        // Try to find existing user by provider and provider user ID
         var existingUser = await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Provider == provider && u.ProviderUserId == providerUserId);
 
         if (existingUser != null)
         {
-            // Update last login and profile info
-            existingUser.UpdateLastLogin();
+            existingUser.UpdateLastLogin(_clock.UtcNow);
             existingUser.UpdateProfile(name, pictureUrl);
             await _dbContext.SaveChangesAsync();
             return existingUser;
         }
 
-        // Create new user
-        var newUser = User.CreateWithProvider(email, name, provider, providerUserId, pictureUrl);
+        var newUser = User.CreateWithProvider(email, name, provider, providerUserId, _clock.UtcNow, pictureUrl);
         _dbContext.Users.Add(newUser);
         await _dbContext.SaveChangesAsync();
 
@@ -67,7 +68,6 @@ public sealed class AuthenticationService : IAuthenticationService
 
     public async Task<(bool Success, User? User, string? ErrorMessage)> RegisterAsync(string email, string name, string password)
     {
-        // Validate inputs
         if (string.IsNullOrWhiteSpace(email))
             return (false, null, "Email is required");
 
@@ -80,18 +80,15 @@ public sealed class AuthenticationService : IAuthenticationService
         if (password.Length < 8)
             return (false, null, "Password must be at least 8 characters");
 
-        // Check if user already exists
         var existingUser = await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Email == email);
 
         if (existingUser != null)
             return (false, null, "An account with this email already exists");
 
-        // Hash the password
         var passwordHash = _passwordHasher.HashPassword(password);
 
-        // Create new user
-        var user = User.CreateWithPassword(email, name, passwordHash);
+        var user = User.CreateWithPassword(email, name, passwordHash, _clock.UtcNow);
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
 
@@ -100,26 +97,22 @@ public sealed class AuthenticationService : IAuthenticationService
 
     public async Task<(bool Success, User? User, string? ErrorMessage)> LoginAsync(string email, string password)
     {
-        // Validate inputs
         if (string.IsNullOrWhiteSpace(email))
             return (false, null, "Email is required");
 
         if (string.IsNullOrWhiteSpace(password))
             return (false, null, "Password is required");
 
-        // Find user by email
         var user = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == email && u.Provider == "Email");
+            .FirstOrDefaultAsync(u => u.Email == email && u.Provider == AuthenticationProvider.Email);
 
         if (user == null)
             return (false, null, "Invalid email or password");
 
-        // Verify password
         if (user.PasswordHash == null || !_passwordHasher.VerifyPassword(password, user.PasswordHash))
             return (false, null, "Invalid email or password");
 
-        // Update last login
-        user.UpdateLastLogin();
+        user.UpdateLastLogin(_clock.UtcNow);
         await _dbContext.SaveChangesAsync();
 
         return (true, user, null);
@@ -135,7 +128,7 @@ public sealed class AuthenticationService : IAuthenticationService
             new Claim("email", user.Email),
             new Claim(ClaimTypes.Name, user.Name),
             new Claim("name", user.Name),
-            new Claim("provider", user.Provider),
+            new Claim("provider", user.Provider.ToString()),
         };
 
         if (!string.IsNullOrEmpty(user.PictureUrl))

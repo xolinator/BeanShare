@@ -1,0 +1,233 @@
+@page "/notifications"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Notifications - BeanShare</PageTitle>
+
+<div class="bs-container" style="max-width: 800px; margin: 0 auto; padding: 2rem 1rem;">
+    <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 2rem;">
+        <h1 class="bs-font-bold" style="font-size: 2rem;">Notifications</h1>
+        @if (notifications.Any(n => !n.IsRead))
+        {
+            <button class="bs-btn bs-btn-outline" @onclick="MarkAllAsRead">
+                <span class="material-symbols-outlined" style="margin-right: 0.5rem;">done_all</span>
+                Mark all as read
+            </button>
+        }
+    </div>
+
+    @if (!notifications.Any())
+    {
+        <div class="bs-card" style="text-align: center; padding: 4rem 2rem;">
+            <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--bs-gray-400);">notifications_none</span>
+            <h3 class="bs-font-medium" style="margin: 1rem 0 0.5rem;">No notifications</h3>
+            <p class="bs-text-subtle">You're all caught up! Check back later for updates.</p>
+        </div>
+    }
+    else
+    {
+        <div class="bs-flex bs-flex-col bs-gap-3">
+            @foreach (var notification in notifications.OrderByDescending(n => n.CreatedAt))
+            {
+                <div class="notification-item @(notification.IsRead ? "notification-read" : "")" @onclick="() => MarkAsRead(notification.Id)">
+                    <div class="bs-flex bs-gap-3">
+                        <div class="notification-icon">
+                            <span class="material-symbols-outlined">@GetNotificationIcon(notification.Type)</span>
+                        </div>
+                        <div style="flex: 1;">
+                            <div class="bs-flex bs-items-start bs-justify-between">
+                                <div style="flex: 1;">
+                                    <h3 class="bs-font-medium" style="margin-bottom: 0.25rem;">@notification.Title</h3>
+                                    <p class="bs-text-subtle" style="margin-bottom: 0.5rem;">@notification.Message</p>
+                                    <span class="bs-text-subtle" style="font-size: 0.875rem;">@GetRelativeTime(notification.CreatedAt)</span>
+                                </div>
+                                @if (!notification.IsRead)
+                                {
+                                    <div class="notification-badge"></div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (hasMore)
+        {
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="bs-btn bs-btn-outline" @onclick="LoadMore">
+                    Load more
+                </button>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .notification-item {
+        background: var(--bs-white);
+        border: 1px solid var(--bs-border);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .notification-item:hover {
+        border-color: var(--bs-primary-light);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .notification-read {
+        opacity: 0.7;
+    }
+
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--bs-primary-light);
+        color: var(--bs-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .notification-badge {
+        width: 8px;
+        height: 8px;
+        background: var(--bs-primary);
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+</style>
+
+@code {
+    private List<NotificationItem> notifications = new();
+    private bool hasMore = false;
+
+    protected override void OnInitialized()
+    {
+        // Load sample notifications
+        notifications = new List<NotificationItem>
+        {
+            new NotificationItem
+            {
+                Id = Guid.NewGuid(),
+                Type = NotificationType.Stock,
+                Title = "Low stock alert",
+                Message = "Ethiopia Yirgacheffe stock is running low (150g remaining). Consider ordering more soon.",
+                CreatedAt = DateTime.UtcNow.AddHours(-2),
+                IsRead = false
+            },
+            new NotificationItem
+            {
+                Id = Guid.NewGuid(),
+                Type = NotificationType.Billing,
+                Title = "Billing period closed",
+                Message = "The November billing period has been closed. Settlement report is now available.",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                IsRead = false
+            },
+            new NotificationItem
+            {
+                Id = Guid.NewGuid(),
+                Type = NotificationType.Member,
+                Title = "New member joined",
+                Message = "Sarah Johnson has joined the 'Office Coffee Club' space.",
+                CreatedAt = DateTime.UtcNow.AddDays(-2),
+                IsRead = true
+            },
+            new NotificationItem
+            {
+                Id = Guid.NewGuid(),
+                Type = NotificationType.Settlement,
+                Title = "Settlement completed",
+                Message = "October settlement has been processed. You owe $12.50 for your coffee consumption.",
+                CreatedAt = DateTime.UtcNow.AddDays(-5),
+                IsRead = true
+            },
+            new NotificationItem
+            {
+                Id = Guid.NewGuid(),
+                Type = NotificationType.Analytics,
+                Title = "Weekly consumption report",
+                Message = "Your weekly analytics report is ready. You consumed 15 cups this week.",
+                CreatedAt = DateTime.UtcNow.AddDays(-7),
+                IsRead = true
+            }
+        };
+    }
+
+    private void MarkAsRead(Guid notificationId)
+    {
+        var notification = notifications.FirstOrDefault(n => n.Id == notificationId);
+        if (notification != null)
+        {
+            notification.IsRead = true;
+        }
+    }
+
+    private void MarkAllAsRead()
+    {
+        foreach (var notification in notifications)
+        {
+            notification.IsRead = true;
+        }
+    }
+
+    private void LoadMore()
+    {
+    }
+
+    private string GetNotificationIcon(NotificationType type)
+    {
+        return type switch
+        {
+            NotificationType.Stock => "inventory_2",
+            NotificationType.Billing => "receipt_long",
+            NotificationType.Settlement => "account_balance",
+            NotificationType.Member => "person_add",
+            NotificationType.Analytics => "analytics",
+            NotificationType.Consumption => "coffee",
+            _ => "notifications"
+        };
+    }
+
+    private string GetRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes} minute{((int)timeSpan.TotalMinutes != 1 ? "s" : "")} ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours} hour{((int)timeSpan.TotalHours != 1 ? "s" : "")} ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)timeSpan.TotalDays} day{((int)timeSpan.TotalDays != 1 ? "s" : "")} ago";
+
+        return dateTime.ToString("MMM d, yyyy");
+    }
+
+    private class NotificationItem
+    {
+        public Guid Id { get; set; }
+        public NotificationType Type { get; set; }
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public bool IsRead { get; set; }
+    }
+
+    private enum NotificationType
+    {
+        Stock,
+        Billing,
+        Settlement,
+        Member,
+        Analytics,
+        Consumption
+    }
+}

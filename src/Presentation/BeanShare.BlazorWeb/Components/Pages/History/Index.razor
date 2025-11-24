@@ -1,7 +1,9 @@
 @page "/history"
 @using BeanShare.Application.Features.Consumption.Dtos
+@using BeanShare.Application.Features.Spaces.Dtos
 @using System.Net.Http.Json
 @inject HttpClient Http
+@inject ILogger<Index> Logger
 
 <PageTitle>Consumption History</PageTitle>
 
@@ -63,6 +65,13 @@
         </div>
     </div>
 
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+        </div>
+    }
+
     @if (isLoading)
     {
         <LoadingSpinner />
@@ -99,6 +108,7 @@
     private bool isLoading = true;
     private ConsumptionHistoryDto? history;
     private List<SpaceDto>? userSpaces;
+    private string? errorMessage;
 
     private string? selectedSpaceId;
     private DateTime? startDate;
@@ -118,10 +128,12 @@
         {
             var response = await Http.GetFromJsonAsync<List<SpaceDto>>("/api/spaces");
             userSpaces = response;
+            errorMessage = null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to load spaces: {ex.Message}");
+            Logger.LogError(ex, "Failed to load spaces");
+            errorMessage = "Unable to load spaces. Please refresh the page.";
         }
     }
 
@@ -155,10 +167,12 @@
             var queryString = string.Join("&", queryParams);
             var response = await Http.GetFromJsonAsync<ConsumptionHistoryDto>($"/api/me/consumption/history?{queryString}");
             history = response;
+            errorMessage = null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to load consumption history: {ex.Message}");
+            Logger.LogError(ex, "Failed to load consumption history");
+            errorMessage = "Unable to load consumption history. Please try again.";
         }
         finally
         {
@@ -185,11 +199,5 @@
     {
         currentPage = pageNumber;
         await LoadHistory();
-    }
-
-    public class SpaceDto
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
     }
 }

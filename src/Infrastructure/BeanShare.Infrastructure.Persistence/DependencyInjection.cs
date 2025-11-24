@@ -1,5 +1,6 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Services;
+using BeanShare.Domain.Repositories;
 using BeanShare.Infrastructure.Persistence.Repositories;
 using BeanShare.Infrastructure.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IConsumptionRepository, ConsumptionRepository>();
         services.AddScoped<IBillingPeriodRepository, BillingPeriodRepository>();
         services.AddScoped<ISettlementRepository, SettlementRepository>();
+        services.AddScoped<IPresetRecipeRepository, PresetRecipeRepository>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
         services.AddScoped<ICostCalculationService, CostCalculationService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

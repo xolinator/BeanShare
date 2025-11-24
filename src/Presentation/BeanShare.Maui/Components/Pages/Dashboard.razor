@@ -1,13 +1,8 @@
 @page "/dashboard"
-@using MediatR
-@using BeanShare.Application.Abstractions
 @using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics
-@using BeanShare.Domain.Common
-@using BeanShare.Domain.ValueObjects
 @using System.Linq
 @inject NavigationManager Navigation
-@inject IMediator Mediator
-@inject IUserContext UserContext
+@inject IAnalyticsService AnalyticsService
 
 <div class="mobile-dashboard">
     @if (isLoading)
@@ -532,15 +527,11 @@
         isLoading = true;
         try
         {
-            var currentUserId = UserContext.CurrentUserId;
-            if (currentUserId.Value != Guid.Empty)
-            {
-                var query = new GetUserStatisticsQuery(currentUserId);
-                statistics = await Mediator.Send(query);
-            }
+            statistics = await AnalyticsService.GetMyStatisticsAsync();
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[Dashboard] Error loading statistics: {ex.Message}");
             statistics = null;
         }
         finally

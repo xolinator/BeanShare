@@ -23,8 +23,18 @@
        @onclick:preventDefault="@PreventNavigation">
         Billing
     </a>
-    <span class="bs-tab bs-tab-disabled" title="Coming soon">Presets</span>
-    <span class="bs-tab bs-tab-disabled" title="Coming soon">Analytics</span>
+    <a class="bs-tab @(ActiveTab == "presets" ? "bs-tab-active" : "")"
+       href="@GetTabUrl("presets")"
+       @onclick="@(() => HandleTabClick("presets"))"
+       @onclick:preventDefault="@PreventNavigation">
+        Presets
+    </a>
+    <a class="bs-tab @(ActiveTab == "analytics" ? "bs-tab-active" : "")"
+       href="@GetTabUrl("analytics")"
+       @onclick="@(() => HandleTabClick("analytics"))"
+       @onclick:preventDefault="@PreventNavigation">
+        Analytics
+    </a>
 </nav>
 
 @code {

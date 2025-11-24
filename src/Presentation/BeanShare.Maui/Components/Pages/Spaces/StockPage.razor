@@ -1,7 +1,9 @@
 @page "/spaces/{SpaceId}/stock"
+@using BeanShare.Application.Abstractions
 @inject ISpacesService SpacesService
 @inject IStockService StockService
 @inject NavigationManager Navigation
+@inject IUserContext UserContext
 
 <PageTitle>Stock - @spaceName - BeanShare</PageTitle>
 
@@ -93,6 +95,11 @@ else
     {
         if (!string.IsNullOrEmpty(SpaceId))
         {
+            if (!Guid.TryParse(SpaceId, out var spaceGuid))
+            {
+                Navigation.NavigateTo("/spaces");
+                return;
+            }
             await LoadSpace();
             await LoadStock();
         }
@@ -100,13 +107,19 @@ else
 
     private async Task LoadSpace()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         try
         {
-            space = await SpacesService.GetSpaceByIdAsync(Guid.Parse(SpaceId));
+            space = await SpacesService.GetSpaceByIdAsync(spaceGuid);
             if (space != null)
             {
-                // TODO: Get current user ID from auth context
-                isAdmin = space.Members.Any(m => m.Role == "Admin");
+                var currentUserId = UserContext.CurrentUserId.Value;
+                isAdmin = space.Members.Any(m => m.UserId == currentUserId && m.Role == "Admin");
             }
         }
         catch (Exception ex)
@@ -117,12 +130,18 @@ else
 
     private async Task LoadStock()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         isLoadingStock = true;
         StateHasChanged();
 
         try
         {
-            var stockData = await StockService.GetSpaceStockAsync(Guid.Parse(SpaceId));
+            var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
             if (stockData != null)
             {
                 purchases = stockData.RecentPurchases.ToList();
@@ -153,10 +172,16 @@ else
 
     private async Task HandleAddPurchase(AddPurchaseModal.AddPurchaseModel model)
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid space ID");
+            return;
+        }
+
         try
         {
             var success = await StockService.AddStockPurchaseAsync(
-                Guid.Parse(SpaceId),
+                spaceGuid,
                 model.ProductName,
                 model.CoffeeType,
                 model.QuantityGrams,

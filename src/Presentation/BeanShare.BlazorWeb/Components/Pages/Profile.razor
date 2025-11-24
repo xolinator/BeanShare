@@ -625,7 +625,7 @@
             {
                 userSpaces = result.Value.Spaces.Select(s => new UserSpace
                 {
-                    Id = s.Id.Value,
+                    Id = s.Id,
                     Name = s.Name,
                     Role = "Member",
                     MemberCount = s.MemberCount

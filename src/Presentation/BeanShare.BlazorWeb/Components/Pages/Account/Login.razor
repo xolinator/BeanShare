@@ -89,7 +89,7 @@
 
 @code {
     [SupplyParameterFromForm]
-    private LoginModel _model { get; set; } = new();
+    private LoginModel _model { get; set; } = default!;
 
     private bool _isLoading;
     private string? _errorMessage;

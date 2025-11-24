@@ -1,28 +1,110 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
+@using BeanShare.Maui.Components.Pages
+@using BeanShare.Maui.Components.Pages.Account
+@using BeanShare.Maui.Components.Pages.Spaces
+@using BeanShare.Maui.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
 
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(MauiProgram).Assembly">
-        <Found Context="routeData">
-            <ErrorBoundary>
-                <ChildContent>
-                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MobileLayout)" />
-                    <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-                </ChildContent>
-                <ErrorContent Context="exception">
-                    <div style="padding: 20px; background: #fee; color: #c00;">
-                        <h2>Error</h2>
-                        <p>@exception.Message</p>
-                        <pre style="white-space: pre-wrap; font-size: 12px;">@exception.StackTrace</pre>
-                    </div>
-                </ErrorContent>
-            </ErrorBoundary>
-        </Found>
-        <NotFound>
-            <PageTitle>Not found</PageTitle>
-            <LayoutView Layout="@typeof(Layout.MobileLayout)">
-                <p role="alert">Sorry, there's nothing at this address.</p>
-            </LayoutView>
-        </NotFound>
-    </Router>
+    <Router AppAssembly="@typeof(Routes).Assembly">
+    <Found Context="routeData">
+        @if (IsAuthenticated)
+        {
+            <MobileLayout>
+                <RouteView RouteData="@routeData" />
+            </MobileLayout>
+        }
+        else
+        {
+            @* Show login page for unauthenticated users *@
+            <AuthLayout>
+                @if (Navigation.Uri.Contains("/register"))
+                {
+                    <Register />
+                }
+                else
+                {
+                    <Login OnLoginSuccess="HandleLoginSuccess" />
+                }
+            </AuthLayout>
+        }
+    </Found>
+    <NotFound>
+        <MobileLayout>
+            <div style="padding: 2rem; text-align: center;">
+                <span class="material-symbols-outlined" style="font-size: 64px; color: var(--bs-gray-400);">error</span>
+                <h2 style="margin: 1rem 0;">Page Not Found</h2>
+                <p style="color: var(--bs-text-subtle);">The page you're looking for doesn't exist.</p>
+                <button class="bs-btn bs-btn-primary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                    Go to Home
+                </button>
+            </div>
+        </MobileLayout>
+    </NotFound>
+</Router>
 </CascadingAuthenticationState>
+
+@code {
+    private bool IsAuthenticated { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            var userId = await MainThread.InvokeOnMainThreadAsync(async () =>
+                await SecureStorage.Default.GetAsync("user_id"));
+
+            IsAuthenticated = !string.IsNullOrEmpty(userId);
+            System.Diagnostics.Debug.WriteLine($"[Routes] Authentication check: {IsAuthenticated}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Routes] Authentication check failed: {ex.Message}");
+            IsAuthenticated = false;
+        }
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var previousAuthState = IsAuthenticated;
+                await CheckAuthentication();
+
+                if (previousAuthState != IsAuthenticated)
+                {
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Routes] OnLocationChanged error: {ex.Message}");
+            }
+        });
+    }
+
+    private async Task HandleLoginSuccess()
+    {
+        System.Diagnostics.Debug.WriteLine("[Routes] Login success callback triggered");
+        await CheckAuthentication();
+        await InvokeAsync(StateHasChanged);
+        Navigation.NavigateTo("/spaces", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

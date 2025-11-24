@@ -8,27 +8,27 @@ public sealed class ConsumeStockValidator : AbstractValidator<ConsumeStockComman
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("SpaceId is required");
+            .WithMessage($"{nameof(ConsumeStockCommand.SpaceId)} is required");
 
         RuleFor(x => x.ProductName)
             .NotEmpty()
-            .WithMessage("Product name is required")
+            .WithMessage($"{nameof(ConsumeStockCommand.ProductName)} is required")
             .MaximumLength(200)
-            .WithMessage("Product name cannot exceed 200 characters");
+            .WithMessage($"{nameof(ConsumeStockCommand.ProductName)} cannot exceed 200 characters");
 
         RuleFor(x => x.ProductBrand)
             .NotEmpty()
-            .WithMessage("Product brand is required")
+            .WithMessage($"{nameof(ConsumeStockCommand.ProductBrand)} is required")
             .MaximumLength(200)
-            .WithMessage("Product brand cannot exceed 200 characters");
+            .WithMessage($"{nameof(ConsumeStockCommand.ProductBrand)} cannot exceed 200 characters");
 
         RuleFor(x => x.ProductType)
-            .NotEmpty().WithMessage("Product type is required")
+            .NotEmpty().WithMessage($"{nameof(ConsumeStockCommand.ProductType)} is required")
             .Must(pt => Enum.TryParse<CoffeeType>(pt, true, out _))
-            .WithMessage("Product type must be one of: Espresso, Filter, Instant, Decaf, Specialty");
+            .WithMessage($"{nameof(ConsumeStockCommand.ProductType)} must be one of: Espresso, Filter, Instant, Decaf, Specialty");
 
         RuleFor(x => x.QuantityGrams)
             .GreaterThan(0)
-            .WithMessage("Quantity must be positive");
+            .WithMessage($"{nameof(ConsumeStockCommand.QuantityGrams)} must be positive");
     }
 }

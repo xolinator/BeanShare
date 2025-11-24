@@ -21,7 +21,7 @@ public sealed class ConsumptionEntry : AggregateRoot
         SpaceId = default;
         UserId = default;
         Product = CoffeeProduct.Create("Unknown", "Unknown", CoffeeType.Espresso);
-        Quantity = default;
+        Quantity = default!;
     }
 
     private ConsumptionEntry(

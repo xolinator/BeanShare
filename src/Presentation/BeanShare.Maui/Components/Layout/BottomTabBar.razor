@@ -2,7 +2,7 @@
 
 <div class="bottom-tab-bar">
     <button class="@GetTabClass("dashboard")" @onclick='() => NavigateToTab("/dashboard")'>
-        <span class="material-symbols-outlined">insights</span>
+        <span class="material-symbols-outlined">dashboard</span>
         <span class="tab-label">Dashboard</span>
     </button>
 
@@ -329,7 +329,14 @@
         }
         else
         {
-            Navigation.NavigateTo($"/spaces/{CurrentSpaceId}/consumption");
+            if (!string.IsNullOrEmpty(CurrentSpaceId))
+            {
+                Navigation.NavigateTo($"/spaces/{CurrentSpaceId}/consumption");
+            }
+            else
+            {
+                Navigation.NavigateTo("/spaces");
+            }
         }
     }
 
@@ -342,7 +349,14 @@
         }
         else
         {
-            Navigation.NavigateTo($"/spaces/{CurrentSpaceId}/stock");
+            if (!string.IsNullOrEmpty(CurrentSpaceId))
+            {
+                Navigation.NavigateTo($"/spaces/{CurrentSpaceId}/stock");
+            }
+            else
+            {
+                Navigation.NavigateTo("/spaces");
+            }
         }
     }
 

@@ -202,6 +202,11 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<string>("InviteCode")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -255,6 +260,72 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.ToTable("Consumptions", (string)null);
                 });
 
+            modelBuilder.Entity("BeanShare.Domain.Entities.PresetRecipe", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Brand")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CoffeeType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<decimal>("DefaultGrams")
+                        .HasColumnType("numeric(10,3)")
+                        .HasColumnName("DefaultGrams");
+
+                    b.Property<bool>("IsShared")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Preparation")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpaceId")
+                        .HasDatabaseName("IX_PresetRecipes_SpaceId");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_PresetRecipes_UserId");
+
+                    b.HasIndex("SpaceId", "UsageCount")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_PresetRecipes_SpaceId_UsageCount");
+
+                    b.ToTable("PresetRecipes", (string)null);
+                });
+
             modelBuilder.Entity("BeanShare.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -285,10 +356,8 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<int>("Provider")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ProviderUserId")
                         .HasMaxLength(256)

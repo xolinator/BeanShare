@@ -28,6 +28,12 @@ public sealed class MockSpaceRepository : ISpaceRepository
         _spaces.Add(space);
     }
 
+    public Task<Space?> GetByIdAsync(SpaceId id, CancellationToken ct = default)
+    {
+        var space = _spaces.FirstOrDefault(s => s.Id == id);
+        return Task.FromResult(space);
+    }
+
     public Task<Space?> GetSingleBySpecAsync(ISpec<Space> specification, CancellationToken ct = default)
     {
         var predicate = specification.Criteria.Compile();

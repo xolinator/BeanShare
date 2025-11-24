@@ -20,20 +20,3 @@ public sealed record BillingPeriodDto(
     decimal? EstimatedCost,
     string? Currency
 );
-
-public sealed record CreateBillingPeriodDto(
-    string Name,
-    DateTime StartDate,
-    DateTime EndDate
-);
-
-public sealed record BillingPeriodSummaryDto(
-    Guid Id,
-    string Name,
-    DateTime StartDate,
-    DateTime EndDate,
-    string State,
-    int DaysRemaining,
-    int ConsumptionCount,
-    decimal TotalCoffeeGrams
-);

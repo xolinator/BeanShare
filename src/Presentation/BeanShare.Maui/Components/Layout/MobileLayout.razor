@@ -1,8 +1,13 @@
 @inherits LayoutComponentBase
 @using BeanShare.Maui.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
+@using BeanShare.Maui.Services
+@using Microsoft.Extensions.Logging
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ISpacesService SpacesService
+@inject ILogger<MobileLayout> Logger
+@implements IDisposable
 
 <div class="mobile-app-container">
     <AuthorizeView>
@@ -18,7 +23,7 @@
 
             <main class="mobile-content">
                 <CascadingValue Value="RefreshCallback">
-                    @Body
+                    @ChildContent
                 </CascadingValue>
             </main>
 
@@ -30,7 +35,7 @@
         </Authorized>
         <NotAuthorized>
             <div class="mobile-auth-container">
-                @Body
+                @ChildContent
             </div>
         </NotAuthorized>
     </AuthorizeView>
@@ -38,22 +43,12 @@
 
 @if (showCreateSpaceModal)
 {
-    <BeanShare.SharedUi.Components.Spaces.CreateSpaceModal OnClose="CloseCreateSpace" OnSpaceCreated="OnSpaceCreated" />
+    <BeanShare.SharedUi.Components.Spaces.CreateSpaceModal IsVisible="true" OnSubmit="HandleCreateSpaceSubmit" OnCancel="CloseCreateSpace" />
 }
 
 @if (showJoinSpaceModal)
 {
-    <BeanShare.SharedUi.Components.Spaces.JoinSpaceModal OnClose="CloseJoinSpace" OnSpaceJoined="OnSpaceJoined" />
-}
-
-@if (showConsumptionModal)
-{
-    <BeanShare.SharedUi.Components.Consumption.ConsumptionForm SpaceId="@Guid.Parse(currentSpaceId)" OnClose="CloseConsumptionModal" OnConsumptionLogged="OnConsumptionLogged" />
-}
-
-@if (showAddStockModal)
-{
-    <BeanShare.SharedUi.Components.Stock.AddPurchaseModal SpaceId="@Guid.Parse(currentSpaceId)" OnClose="CloseAddStockModal" OnPurchaseAdded="OnPurchaseAdded" />
+    <BeanShare.SharedUi.Components.Spaces.JoinSpaceModal IsVisible="true" OnSubmit="HandleJoinSpaceSubmit" OnCancel="CloseJoinSpace" />
 }
 
 <style>
@@ -162,11 +157,19 @@
 </style>
 
 @code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string CurrentRoute { get; set; } = "/";
+
     private string currentSpaceId = "";
     private bool showCreateSpaceModal = false;
     private bool showJoinSpaceModal = false;
+#pragma warning disable CS0414 // Field is assigned but its value is never used
     private bool showConsumptionModal = false;
     private bool showAddStockModal = false;
+#pragma warning restore CS0414
     private bool isRefreshing = false;
     private EventCallback<bool> RefreshCallback;
 
@@ -276,7 +279,6 @@
         }
     }
 
-    // Modal handlers
     private void ShowCreateSpace()
     {
         showCreateSpaceModal = true;
@@ -287,10 +289,23 @@
         showCreateSpaceModal = false;
     }
 
-    private void OnSpaceCreated(Guid spaceId)
+    private async Task HandleCreateSpaceSubmit((string Name, string CurrencyCode) spaceData)
     {
-        showCreateSpaceModal = false;
-        Navigation.NavigateTo($"/spaces/{spaceId}");
+        try
+        {
+            var spaceId = await SpacesService.CreateSpaceAsync(spaceData.Name, spaceData.CurrencyCode);
+            showCreateSpaceModal = false;
+            if (spaceId.HasValue)
+            {
+                Navigation.NavigateTo($"/spaces/{spaceId.Value}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating space");
+            await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("Error", "Failed to create space. Please try again.", "OK");
+            showCreateSpaceModal = false;
+        }
     }
 
     private void ShowJoinSpace()
@@ -303,48 +318,33 @@
         showJoinSpaceModal = false;
     }
 
-    private void OnSpaceJoined(Guid spaceId)
+    private async Task HandleJoinSpaceSubmit(string inviteCode)
     {
-        showJoinSpaceModal = false;
-        Navigation.NavigateTo($"/spaces/{spaceId}");
+        try
+        {
+            var success = await SpacesService.JoinSpaceAsync(inviteCode);
+            showJoinSpaceModal = false;
+            if (success)
+            {
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error joining space");
+            await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("Error", "Failed to join space. Please check the invite code and try again.", "OK");
+            showJoinSpaceModal = false;
+        }
     }
 
     private void ShowLogConsumption()
     {
-        if (!string.IsNullOrEmpty(currentSpaceId))
-        {
-            showConsumptionModal = true;
-        }
-    }
-
-    private void CloseConsumptionModal()
-    {
-        showConsumptionModal = false;
-    }
-
-    private void OnConsumptionLogged()
-    {
-        showConsumptionModal = false;
-        StateHasChanged();
+        // Not implemented yet - would need Consumption modal from SharedUI
     }
 
     private void ShowAddStock()
     {
-        if (!string.IsNullOrEmpty(currentSpaceId))
-        {
-            showAddStockModal = true;
-        }
-    }
-
-    private void CloseAddStockModal()
-    {
-        showAddStockModal = false;
-    }
-
-    private void OnPurchaseAdded()
-    {
-        showAddStockModal = false;
-        StateHasChanged();
+        // Not implemented yet - would need Stock modal from SharedUI
     }
 
     public void Dispose()

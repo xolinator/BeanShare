@@ -25,7 +25,6 @@ public sealed class CreateBillingPeriodEndpoint : Endpoint<CreateBillingPeriodRe
     public override void Configure()
     {
         Post("/api/spaces/{SpaceId}/billing-periods");
-        AllowAnonymous(); // TODO: Require authentication
     }
 
     public override async Task HandleAsync(CreateBillingPeriodRequest req, CancellationToken ct)

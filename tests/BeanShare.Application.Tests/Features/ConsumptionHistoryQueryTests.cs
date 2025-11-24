@@ -181,12 +181,21 @@ public sealed class ConsumptionHistoryQueryTests
     [Fact]
     public async Task GetUserConsumptionHistory_WhenRequestingNonMemberSpace_ShouldReturnError()
     {
-        var query = new GetUserConsumptionHistoryQuery(Guid.NewGuid(), null, null, null, 1, 20);
+        var requestedSpaceId = Guid.NewGuid();
+        var query = new GetUserConsumptionHistoryQuery(requestedSpaceId, null, null, null, 1, 20);
 
-        _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space>());
+        var userSpace = Space.Create(
+            _spaceId,
+            "My Space",
+            Currency.USD,
+            _currentUserId,
+            new InviteCode("BBBBBB"),
+            _clock);
+
+        _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { userSpace });
 
         var nonMemberSpace = Space.Create(
-            SpaceId.New(),
+            new SpaceId(requestedSpaceId),
             "Other Space",
             Currency.USD,
             new UserId(Guid.NewGuid()),
@@ -198,7 +207,7 @@ public sealed class ConsumptionHistoryQueryTests
         var result = await _handler.Handle(query, default);
 
         result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("INSUFFICIENT_SPACE_PRIVILEGES");
+        result.Errors[0].Code.Should().Be("INSUFFICIENT_PRIVILEGES");
     }
 
     [Fact]

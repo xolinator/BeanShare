@@ -191,7 +191,15 @@
         isLoading = true;
         try
         {
-            Guid? spaceId = string.IsNullOrEmpty(selectedSpaceId) ? null : Guid.Parse(selectedSpaceId);
+            Guid? spaceId = null;
+            if (!string.IsNullOrEmpty(selectedSpaceId))
+            {
+                if (Guid.TryParse(selectedSpaceId, out var parsedSpaceId))
+                {
+                    spaceId = parsedSpaceId;
+                }
+            }
+
             history = await ConsumptionService.GetUserHistoryAsync(
                 spaceId: spaceId,
                 startDate: startDate,

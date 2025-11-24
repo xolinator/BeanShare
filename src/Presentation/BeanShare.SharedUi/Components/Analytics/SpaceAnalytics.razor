@@ -1,0 +1,206 @@
+@using BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics
+
+<div class="bs-analytics">
+    @if (IsLoading)
+    {
+        <div class="bs-flex bs-flex-col bs-gap-4">
+            @for (int i = 0; i < 3; i++)
+            {
+                <div class="bs-card">
+                    <div class="bs-skeleton" style="height: 8rem; width: 100%;"></div>
+                </div>
+            }
+        </div>
+    }
+    else if (Analytics != null)
+    {
+        <!-- Key Metrics Cards -->
+        <div class="bs-grid bs-grid-cols-1 md:bs-grid-cols-3 bs-gap-4 bs-mb-6">
+            <div class="bs-card">
+                <div class="bs-flex bs-items-center bs-justify-between">
+                    <div>
+                        <p class="bs-text-subtle bs-mb-1" style="font-size: 0.75rem;">Total Members</p>
+                        <p class="bs-font-bold" style="font-size: 2rem;">@Analytics.TotalMembers</p>
+                    </div>
+                    <span class="material-symbols-outlined" style="color: var(--bs-primary); font-size: 2.5rem;">group</span>
+                </div>
+            </div>
+
+            <div class="bs-card">
+                <div class="bs-flex bs-items-center bs-justify-between">
+                    <div>
+                        <p class="bs-text-subtle bs-mb-1" style="font-size: 0.75rem;">Cups This Month</p>
+                        <p class="bs-font-bold" style="font-size: 2rem;">@Analytics.TotalConsumptionsThisMonth</p>
+                    </div>
+                    <span class="material-symbols-outlined" style="color: var(--bs-primary); font-size: 2.5rem;">coffee</span>
+                </div>
+            </div>
+
+            <div class="bs-card">
+                <div class="bs-flex bs-items-center bs-justify-between">
+                    <div>
+                        <p class="bs-text-subtle bs-mb-1" style="font-size: 0.75rem;">Stock Value</p>
+                        <p class="bs-font-bold" style="font-size: 2rem;">
+                            @if (Analytics.CurrentStockValue != null)
+                            {
+                                <span>@Analytics.CurrentStockValue.Currency @Analytics.CurrentStockValue.Amount.ToString("F2")</span>
+                            }
+                            else
+                            {
+                                <span>N/A</span>
+                            }
+                        </p>
+                    </div>
+                    <span class="material-symbols-outlined" style="color: var(--bs-primary); font-size: 2.5rem;">inventory_2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Consumers -->
+        <div class="bs-card bs-mb-6">
+            <h3 class="bs-font-bold bs-mb-4">Top Coffee Consumers</h3>
+            @if (Analytics.TopConsumers.Any())
+            {
+                <div class="bs-flex bs-flex-col bs-gap-3">
+                    @foreach (var consumer in Analytics.TopConsumers.Take(5))
+                    {
+                        <div class="bs-flex bs-items-center bs-justify-between">
+                            <div class="bs-flex bs-items-center bs-gap-3">
+                                <div class="bs-avatar">
+                                    <span>@GetInitials(consumer.UserName)</span>
+                                </div>
+                                <div>
+                                    <p class="bs-font-medium">@consumer.UserName</p>
+                                    <p class="bs-text-subtle" style="font-size: 0.875rem;">@consumer.CupCount cups</p>
+                                </div>
+                            </div>
+                            @if (consumer.TotalCost != null)
+                            {
+                                <span class="bs-font-medium">@consumer.TotalCost.Currency @consumer.TotalCost.Amount.ToString("F2")</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="bs-text-subtle">No consumption data yet</p>
+            }
+        </div>
+
+        <!-- Popular Coffee Types -->
+        <div class="bs-card bs-mb-6">
+            <h3 class="bs-font-bold bs-mb-4">Popular Coffee Types</h3>
+            @if (Analytics.PopularCoffeeTypes.Any())
+            {
+                <div class="bs-flex bs-flex-col bs-gap-3">
+                    @foreach (var coffee in Analytics.PopularCoffeeTypes.Take(5))
+                    {
+                        <div>
+                            <div class="bs-flex bs-items-center bs-justify-between bs-mb-1">
+                                <span class="bs-font-medium">@coffee.CoffeeName</span>
+                                <span class="bs-text-subtle">@coffee.Percentage.ToString("F0")%</span>
+                            </div>
+                            <div style="background: var(--bs-gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="background: var(--bs-primary); height: 100%; width: @coffee.Percentage%; transition: width 0.3s;"></div>
+                            </div>
+                            <p class="bs-text-subtle bs-mt-1" style="font-size: 0.75rem;">@coffee.ConsumptionCount servings (@coffee.TotalGrams.ToString("F0")g)</p>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="bs-text-subtle">No coffee type data available</p>
+            }
+        </div>
+
+        <!-- Daily Consumption Trend -->
+        @if (Analytics.DailyConsumptionTrend.Any())
+        {
+            <div class="bs-card bs-mb-6">
+                <h3 class="bs-font-bold bs-mb-4">Daily Consumption Trend</h3>
+                <div style="height: 200px; position: relative;">
+                    @{
+                        var maxConsumption = Analytics.DailyConsumptionTrend.Values.DefaultIfEmpty(0).Max();
+                        var chartHeight = 180;
+                    }
+                    <div class="bs-flex bs-items-end bs-justify-around" style="height: @(chartHeight)px;">
+                        @foreach (var day in Analytics.DailyConsumptionTrend.OrderBy(d => d.Key).TakeLast(7))
+                        {
+                            var barHeight = maxConsumption > 0 ? (day.Value / (double)maxConsumption) * chartHeight : 0;
+                            <div class="bs-flex bs-flex-col bs-items-center" style="flex: 1;">
+                                <div style="background: var(--bs-primary); width: 80%; height: @(barHeight)px; border-radius: 4px 4px 0 0; transition: height 0.3s;"></div>
+                                <span class="bs-text-subtle" style="font-size: 0.75rem; margin-top: 0.5rem;">@day.Key.ToString("MM/dd")</span>
+                                <span class="bs-text-subtle" style="font-size: 0.75rem;">@day.Value</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Summary Stats -->
+        <div class="bs-grid bs-grid-cols-1 md:bs-grid-cols-2 bs-gap-4">
+            <div class="bs-card">
+                <h3 class="bs-font-bold bs-mb-3">Stock Information</h3>
+                <div class="bs-flex bs-flex-col bs-gap-2">
+                    <div class="bs-flex bs-justify-between">
+                        <span class="bs-text-subtle">Current Stock</span>
+                        <span class="bs-font-medium">@Analytics.CurrentStockGrams.ToString("F0")g</span>
+                    </div>
+                    @if (Analytics.CurrentStockValue != null)
+                    {
+                        <div class="bs-flex bs-justify-between">
+                            <span class="bs-text-subtle">Stock Value</span>
+                            <span class="bs-font-medium">@Analytics.CurrentStockValue.Currency @Analytics.CurrentStockValue.Amount.ToString("F2")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="bs-card">
+                <h3 class="bs-font-bold bs-mb-3">Monthly Summary</h3>
+                <div class="bs-flex bs-flex-col bs-gap-2">
+                    <div class="bs-flex bs-justify-between">
+                        <span class="bs-text-subtle">Total Cups</span>
+                        <span class="bs-font-medium">@Analytics.TotalConsumptionsThisMonth</span>
+                    </div>
+                    @if (Analytics.TotalCostThisMonth != null)
+                    {
+                        <div class="bs-flex bs-justify-between">
+                            <span class="bs-text-subtle">Total Cost</span>
+                            <span class="bs-font-medium">@Analytics.TotalCostThisMonth.Currency @Analytics.TotalCostThisMonth.Amount.ToString("F2")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="bs-card">
+            <p class="bs-text-subtle">No analytics data available</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public SpaceAnalyticsDto? Analytics { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+
+        return name[0].ToString().ToUpper();
+    }
+}

@@ -7,6 +7,7 @@ namespace BeanShare.Application.Abstractions;
 
 public interface ISpaceRepository
 {
+    Task<Space?> GetByIdAsync(SpaceId id, CancellationToken cancellationToken = default);
     Task<Space?> GetSingleBySpecAsync(ISpec<Space> specification, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Space>> GetBySpecAsync(ISpec<Space> specification, CancellationToken cancellationToken = default);
     Task AddAsync(Space space, CancellationToken cancellationToken = default);

@@ -1,4 +1,5 @@
 @using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.Application.Features.Presets.Queries
 @using BeanShare.SharedUi.Components.Consumption.Models
 
 <div class="bs-card">
@@ -110,6 +111,9 @@
     [Parameter]
     public List<StockLevelDto> StockProducts { get; set; } = new();
 
+    [Parameter]
+    public PresetDto? PresetData { get; set; }
+
     private ConsumptionFormModel model = new() { ConsumedAt = DateTime.Now };
     private bool isSubmitting;
     private bool isCustomMode = false;
@@ -126,7 +130,18 @@
 
     protected override void OnParametersSet()
     {
-        if (model.Grams == 0 && !isCustomMode)
+        if (PresetData != null)
+        {
+            model.ProductName = PresetData.Name;
+            model.ProductBrand = PresetData.Brand;
+            model.ProductType = PresetData.CoffeeType;
+            model.Grams = (int)PresetData.DefaultGrams;
+            model.PresetId = PresetData.Id;
+
+            isCustomMode = true;
+            selectedPreset = null;
+        }
+        else if (model.Grams == 0 && !isCustomMode)
         {
             model.Grams = 8;
         }

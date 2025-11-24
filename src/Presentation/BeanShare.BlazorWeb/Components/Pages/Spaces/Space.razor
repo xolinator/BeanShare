@@ -6,11 +6,15 @@
 @using BeanShare.Application.Features.CoffeeStock.Commands
 @using BeanShare.Application.Features.Consumption.Queries
 @using BeanShare.Application.Features.Consumption.Commands
+@using BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics
 @using BeanShare.SharedUi.Components.Consumption.Models
+@using BeanShare.SharedUi.Components.Analytics
 @using Microsoft.AspNetCore.Authorization
+@using BeanShare.Application.Abstractions
 @attribute [Authorize]
 @inject IMediator Mediator
 @inject NavigationManager Navigation
+@inject IUserContext UserContext
 
 <PageTitle>@spaceName - BeanShare</PageTitle>
 
@@ -92,6 +96,28 @@ else
                                       IsLoading="@isLoadingConsumption" />
             </div>
         }
+        else if (activeTab == "presets")
+        {
+            <div class="bs-card">
+                <h2 class="bs-font-bold" style="font-size: 1.5rem; margin-bottom: 1rem;">Preset Recipes</h2>
+                <p style="color: var(--bs-text-subtle);">
+                    Preset recipes feature allows you to save your favorite coffee configurations for quick logging.
+                    This feature is currently in development.
+                </p>
+                <div style="margin-top: 2rem; padding: 2rem; background: var(--bs-gray-50); border-radius: 0.5rem; text-align: center;">
+                    <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--bs-text-subtle); margin-bottom: 1rem;">coffee</span>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Coming Soon!</h3>
+                    <p style="color: var(--bs-text-subtle); margin-bottom: 0;">
+                        Save your favorite coffee recipes and log consumption faster.
+                    </p>
+                </div>
+            </div>
+        }
+        else if (activeTab == "analytics")
+        {
+            <SpaceAnalytics Analytics="@spaceAnalytics"
+                           IsLoading="@isLoadingAnalytics" />
+        }
     </div>
 }
 
@@ -118,12 +144,14 @@ else
     private bool isLoadingMembers = false;
     private bool isLoadingStock;
     private bool isLoadingConsumption;
+    private bool isLoadingAnalytics;
 
     private List<StockPurchaseDto> purchases = new();
     private List<ConsumptionEntryDto> recentConsumptions = new();
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
     private int remainingStock = 0;
+    private SpaceAnalyticsDto? spaceAnalytics;
 
     private bool showAddPurchaseModal;
     private bool showToast;
@@ -148,8 +176,8 @@ else
             if (result.IsSuccess)
             {
                 space = result.Value;
-                // TODO: Get current user ID from IUserContext
-                isAdmin = space.Members.Any(m => m.Role == "Admin");
+                var currentUserId = UserContext.CurrentUserId.Value;
+                isAdmin = space.Members.Any(m => m.UserId == currentUserId && m.Role == "Admin");
             }
         }
         catch (Exception ex)
@@ -164,6 +192,8 @@ else
             await LoadStock();
         else if (activeTab == "consumption")
             await LoadConsumption();
+        else if (activeTab == "analytics")
+            await LoadAnalytics();
     }
 
     private async Task LoadStock()
@@ -208,6 +238,28 @@ else
         finally
         {
             isLoadingConsumption = false;
+        }
+    }
+
+    private async Task LoadAnalytics()
+    {
+        isLoadingAnalytics = true;
+        try
+        {
+            var result = await Mediator.Send(new GetSpaceAnalyticsQuery(
+                new BeanShare.Domain.ValueObjects.SpaceId(Guid.Parse(SpaceId)),
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow
+            ));
+            spaceAnalytics = result;
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load analytics: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingAnalytics = false;
         }
     }
 
@@ -276,11 +328,12 @@ else
         {
             var result = await Mediator.Send(new RecordConsumptionCommand(
                 Guid.Parse(SpaceId),
-                "Coffee",
-                "Generic",
-                "Ground",
+                model.ProductName ?? "Coffee",
+                model.ProductBrand ?? "Generic",
+                model.ProductType ?? "Ground",
                 model.Grams,
-                model.ConsumedAt
+                model.ConsumedAt,
+                model.PresetName
             ));
 
             if (result.IsSuccess)

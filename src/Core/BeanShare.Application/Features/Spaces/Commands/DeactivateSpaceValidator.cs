@@ -8,6 +8,6 @@ public sealed class DeactivateSpaceValidator : AbstractValidator<DeactivateSpace
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("Space ID is required");
+            .WithMessage($"{nameof(DeactivateSpaceCommand.SpaceId)} is required");
     }
 }

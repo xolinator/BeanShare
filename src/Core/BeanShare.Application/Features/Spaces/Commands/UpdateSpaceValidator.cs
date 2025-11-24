@@ -8,14 +8,14 @@ public sealed class UpdateSpaceValidator : AbstractValidator<UpdateSpaceCommand>
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("Space ID is required");
+            .WithMessage($"{nameof(UpdateSpaceCommand.SpaceId)} is required");
 
         RuleFor(x => x.Name)
             .NotEmpty()
-            .WithMessage("Space name is required")
+            .WithMessage($"{nameof(UpdateSpaceCommand.Name)} is required")
             .MaximumLength(100)
-            .WithMessage("Space name cannot exceed 100 characters")
+            .WithMessage($"{nameof(UpdateSpaceCommand.Name)} cannot exceed 100 characters")
             .MinimumLength(1)
-            .WithMessage("Space name cannot be empty");
+            .WithMessage($"{nameof(UpdateSpaceCommand.Name)} cannot be empty");
     }
 }

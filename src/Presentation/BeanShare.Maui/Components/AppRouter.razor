@@ -1,0 +1,52 @@
+@using Microsoft.AspNetCore.Components.Routing
+@using BeanShare.Maui.Components.Pages
+@using BeanShare.Maui.Components.Pages.Account
+@using BeanShare.Maui.Components.Pages.Spaces
+@using BeanShare.Maui.Components.Layout
+
+<Router AppAssembly="@typeof(AppRouter).Assembly">
+    <Found Context="routeData">
+        @if (IsAuthenticated)
+        {
+            <MainLayout>
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(MobileLayout)" />
+            </MainLayout>
+        }
+        else
+        {
+            <AuthLayout>
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(AuthLayout)" />
+            </AuthLayout>
+        }
+    </Found>
+    <NotFound>
+        <MainLayout>
+            <div style="padding: 2rem; text-align: center;">
+                <h2>Page Not Found</h2>
+                <p>Sorry, the page you're looking for doesn't exist.</p>
+                <button class="bs-btn bs-btn-primary" @onclick="NavigateHome">
+                    Go Home
+                </button>
+            </div>
+        </MainLayout>
+    </NotFound>
+</Router>
+
+@code {
+    private bool IsAuthenticated { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userId = await MainThread.InvokeOnMainThreadAsync(async () =>
+            await SecureStorage.Default.GetAsync("user_id"));
+        IsAuthenticated = !string.IsNullOrEmpty(userId);
+    }
+
+    private void NavigateHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+}

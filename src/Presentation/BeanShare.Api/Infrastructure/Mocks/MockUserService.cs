@@ -23,7 +23,8 @@ public sealed class MockUserService : IUserService
         var user = User.CreateWithPassword(
             "test@example.com",
             "Test User",
-            "hashed_password");
+            "hashed_password",
+            DateTime.UtcNow);
 
         // Use reflection to set the ID since it's private
         var idProperty = typeof(User).GetProperty(nameof(User.Id));
@@ -36,7 +37,8 @@ public sealed class MockUserService : IUserService
         var user2 = User.CreateWithPassword(
             "user2@example.com",
             "Second User",
-            "hashed_password");
+            "hashed_password",
+            DateTime.UtcNow);
 
         idProperty?.SetValue(user2, userId2);
         _users.Add(user2);

@@ -218,7 +218,7 @@ public sealed class CoffeeStockDomainTests
         var averageCost = coffeeStock.CalculateAverageCostPerGram(product);
 
         averageCost.Amount.Should().Be(0.02m);
-        averageCost.Currency.Should().Be("USD");
+        averageCost.Currency.Code.Should().Be("USD");
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public sealed class CoffeeStockDomainTests
         var averageCost = coffeeStock.CalculateAverageCostPerGram(product);
 
         averageCost.Amount.Should().Be(0.03m);
-        averageCost.Currency.Should().Be("USD");
+        averageCost.Currency.Code.Should().Be("USD");
     }
 
     [Fact]

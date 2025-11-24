@@ -76,32 +76,9 @@
                                 </div>
                             }
 
-                            <div class="btn-group w-100" role="group">
-                                @if (period.State == "Draft")
-                                {
-                                    <button class="btn btn-sm btn-success" @onclick="() => OpenPeriod(period.Id)">
-                                        <i class="bi bi-unlock me-1"></i> Open Period
-                                    </button>
-                                }
-                                else if (period.State == "Open")
-                                {
-                                    <button class="btn btn-sm btn-warning" @onclick="() => ClosePeriod(period.Id)">
-                                        <i class="bi bi-lock me-1"></i> Close Period
-                                    </button>
-                                }
-                                else if (period.State == "Closed")
-                                {
-                                    <button class="btn btn-sm btn-primary" @onclick="() => GenerateSettlement(period.Id)">
-                                        <i class="bi bi-calculator me-1"></i> Generate Settlement
-                                    </button>
-                                }
-                                else if (period.State == "Settled")
-                                {
-                                    <button class="btn btn-sm btn-info" @onclick="() => ViewSettlement(period.Id)">
-                                        <i class="bi bi-file-text me-1"></i> View Settlement
-                                    </button>
-                                }
-                            </div>
+                            <button class="btn btn-sm btn-primary w-100" @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}/billing/{period.Id}"))'>
+                                <i class="bi bi-eye me-1"></i> View Details
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -218,15 +195,15 @@
                 Navigation.NavigateTo($"/spaces/{SpaceId}/settlements");
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // TODO: Show error toast
+            await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("Error", $"Failed to generate settlement: {ex.Message}", "OK");
         }
     }
 
     private void ViewSettlement(Guid periodId)
     {
-        Navigation.NavigateTo($"/spaces/{SpaceId}/settlements");
+        Navigation.NavigateTo($"/spaces/{SpaceId}/billing/{periodId}");
     }
 
     private string GetStateBadgeColor(string state) => state switch

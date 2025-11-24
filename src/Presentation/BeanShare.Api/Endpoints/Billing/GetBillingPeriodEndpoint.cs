@@ -23,7 +23,6 @@ public sealed class GetBillingPeriodEndpoint : Endpoint<GetBillingPeriodRequest,
     public override void Configure()
     {
         Get("/api/billing-periods/{BillingPeriodId}");
-        AllowAnonymous(); // TODO: Require authentication
         Summary(s =>
         {
             s.Summary = "Get billing period details";

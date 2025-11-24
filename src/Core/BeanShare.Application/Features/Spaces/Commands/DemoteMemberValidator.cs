@@ -8,10 +8,10 @@ public sealed class DemoteMemberValidator : AbstractValidator<DemoteMemberComman
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("Space ID is required");
+            .WithMessage($"{nameof(DemoteMemberCommand.SpaceId)} is required");
 
         RuleFor(x => x.UserId)
             .NotEmpty()
-            .WithMessage("User ID is required");
+            .WithMessage($"{nameof(DemoteMemberCommand.UserId)} is required");
     }
 }

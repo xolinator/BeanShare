@@ -52,14 +52,14 @@ public sealed class GetSpaceEndpoint : EndpointWithoutRequest<GetSpaceByIdRespon
 
         var response = new GetSpaceByIdResponse
         {
-            Id = result.Value.Id.Value,
+            Id = result.Value.Id,
             Name = result.Value.Name,
             InviteCode = result.Value.InviteCode,
             CreatedAt = result.Value.CreatedAt,
             MemberCount = result.Value.MemberCount,
             Members = result.Value.Members.Select(m => new SpaceMember
             {
-                UserId = m.UserId.Value,
+                UserId = m.UserId,
                 Email = m.Email,
                 Role = m.Role,
                 JoinedAt = m.JoinedAt

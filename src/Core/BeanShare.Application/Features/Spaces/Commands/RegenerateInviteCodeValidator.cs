@@ -8,6 +8,6 @@ public sealed class RegenerateInviteCodeValidator : AbstractValidator<Regenerate
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("Space ID is required");
+            .WithMessage($"{nameof(RegenerateInviteCodeCommand.SpaceId)} is required");
     }
 }

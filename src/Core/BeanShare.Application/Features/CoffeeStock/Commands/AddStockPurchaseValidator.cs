@@ -8,55 +8,55 @@ public sealed class AddStockPurchaseValidator : AbstractValidator<AddStockPurcha
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("Space ID is required");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.SpaceId)} is required");
 
         RuleFor(x => x.ProductName)
             .NotEmpty()
-            .WithMessage("Product name is required")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.ProductName)} is required")
             .MaximumLength(100)
-            .WithMessage("Product name cannot exceed 100 characters");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.ProductName)} cannot exceed 100 characters");
 
         RuleFor(x => x.ProductBrand)
             .NotEmpty()
-            .WithMessage("Product brand is required")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.ProductBrand)} is required")
             .MaximumLength(50)
-            .WithMessage("Product brand cannot exceed 50 characters");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.ProductBrand)} cannot exceed 50 characters");
 
         RuleFor(x => x.ProductType)
             .NotEmpty()
-            .WithMessage("Product type is required")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.ProductType)} is required")
             .Must(BeValidCoffeeType)
-            .WithMessage("Product type must be one of: Espresso, Filter, Instant, Decaf, Specialty");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.ProductType)} must be one of: Espresso, Filter, Instant, Decaf, Specialty");
 
         RuleFor(x => x.QuantityGrams)
             .GreaterThan(0)
-            .WithMessage("Quantity must be positive")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.QuantityGrams)} must be positive")
             .LessThanOrEqualTo(50000)
-            .WithMessage("Quantity cannot exceed 50kg");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.QuantityGrams)} cannot exceed 50kg");
 
         RuleFor(x => x.CostAmount)
             .GreaterThan(0)
-            .WithMessage("Cost must be positive")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.CostAmount)} must be positive")
             .LessThanOrEqualTo(10000)
-            .WithMessage("Cost cannot exceed 10,000");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.CostAmount)} cannot exceed 10,000");
 
         RuleFor(x => x.CostCurrency)
             .NotEmpty()
-            .WithMessage("Currency is required")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.CostCurrency)} is required")
             .Length(3)
-            .WithMessage("Currency must be 3 characters");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.CostCurrency)} must be 3 characters");
 
         RuleFor(x => x.Vendor)
             .NotEmpty()
-            .WithMessage("Vendor is required")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.Vendor)} is required")
             .MaximumLength(100)
-            .WithMessage("Vendor cannot exceed 100 characters");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.Vendor)} cannot exceed 100 characters");
 
         RuleFor(x => x.PurchasedAt)
             .NotEmpty()
-            .WithMessage("Purchase date is required")
+            .WithMessage($"{nameof(AddStockPurchaseCommand.PurchasedAt)} is required")
             .LessThanOrEqualTo(DateTime.UtcNow.AddDays(1))
-            .WithMessage("Purchase date cannot be in the future");
+            .WithMessage($"{nameof(AddStockPurchaseCommand.PurchasedAt)} cannot be in the future");
     }
 
     private static bool BeValidCoffeeType(string coffeeType)

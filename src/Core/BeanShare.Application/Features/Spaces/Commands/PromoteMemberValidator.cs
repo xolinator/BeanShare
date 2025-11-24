@@ -8,10 +8,10 @@ public sealed class PromoteMemberValidator : AbstractValidator<PromoteMemberComm
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("Space ID is required");
+            .WithMessage($"{nameof(PromoteMemberCommand.SpaceId)} is required");
 
         RuleFor(x => x.UserId)
             .NotEmpty()
-            .WithMessage("User ID is required");
+            .WithMessage($"{nameof(PromoteMemberCommand.UserId)} is required");
     }
 }

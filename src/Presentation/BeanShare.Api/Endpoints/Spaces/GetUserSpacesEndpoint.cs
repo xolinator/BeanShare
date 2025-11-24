@@ -43,7 +43,7 @@ public sealed class GetUserSpacesEndpoint : EndpointWithoutRequest<GetUserSpaces
         {
             Spaces = result.Value.Spaces.Select(s => new SpaceListItem
             {
-                Id = s.Id.Value,
+                Id = s.Id,
                 Name = s.Name,
                 InviteCode = s.InviteCode,
                 MemberCount = s.MemberCount,

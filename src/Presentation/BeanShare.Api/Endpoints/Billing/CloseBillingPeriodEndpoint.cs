@@ -21,7 +21,6 @@ public sealed class CloseBillingPeriodEndpoint : Endpoint<CloseBillingPeriodRequ
     public override void Configure()
     {
         Put("/api/billing-periods/{BillingPeriodId}/close");
-        AllowAnonymous(); // TODO: Require authentication
     }
 
     public override async Task HandleAsync(CloseBillingPeriodRequest req, CancellationToken ct)

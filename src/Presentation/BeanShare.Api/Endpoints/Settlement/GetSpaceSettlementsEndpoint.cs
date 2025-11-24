@@ -23,7 +23,6 @@ public sealed class GetSpaceSettlementsEndpoint : Endpoint<GetSpaceSettlementsRe
     public override void Configure()
     {
         Get("/api/spaces/{SpaceId}/settlements");
-        AllowAnonymous(); // TODO: Replace with proper OIDC authentication
         Summary(s =>
         {
             s.Summary = "Get all settlements for a space";

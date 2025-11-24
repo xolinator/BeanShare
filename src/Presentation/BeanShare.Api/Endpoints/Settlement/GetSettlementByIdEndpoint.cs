@@ -23,7 +23,6 @@ public sealed class GetSettlementByIdEndpoint : Endpoint<GetSettlementByIdReques
     public override void Configure()
     {
         Get("/api/settlements/{Id}");
-        AllowAnonymous(); // TODO: Replace with proper OIDC authentication
         Summary(s =>
         {
             s.Summary = "Get settlement by ID";

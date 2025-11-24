@@ -1,5 +1,6 @@
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
+using BeanShare.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,7 +34,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired(false);
 
         builder.Property(u => u.Provider)
-            .HasMaxLength(50)
+            .HasConversion<int>()
             .IsRequired();
 
         builder.Property(u => u.ProviderUserId)

@@ -1,0 +1,387 @@
+@page "/spaces/{SpaceId}/presets"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using BeanShare.Contracts.Presets
+@using System.Net.Http.Headers
+@using System.ComponentModel.DataAnnotations
+@attribute [Authorize]
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ILogger<Presets> Logger
+
+<PageTitle>Presets - BeanShare</PageTitle>
+
+<div style="position: sticky; top: 0; z-index: 10; background: var(--bs-background-light); border-bottom: 1px solid var(--bs-border); padding: 1rem 0;">
+    <div class="bs-container">
+        <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
+            <button class="bs-btn-sm" style="background: transparent; border: none; cursor: pointer;" @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}"))'>
+                <span class="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">Preset Recipes</h1>
+            <button class="bs-btn-sm bs-btn-primary" @onclick="ShowCreateModal">
+                <span class="material-symbols-outlined">add</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="bs-container" style="padding: 2rem 0;">
+    @if (isLoading)
+    {
+        <div class="bs-card" style="text-align: center; padding: 3rem;">
+            <div class="bs-spinner"></div>
+            <p style="margin-top: 1rem;">Loading presets...</p>
+        </div>
+    }
+    else if (presets == null || !presets.Any())
+    {
+        <div class="bs-card" style="text-align: center; padding: 3rem;">
+            <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--bs-text-subtle); margin-bottom: 1rem;">coffee</span>
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">No Preset Recipes Yet</h3>
+            <p style="color: var(--bs-text-subtle); margin-bottom: 1.5rem;">
+                Create preset recipes for your favorite coffee configurations to log consumption faster.
+            </p>
+            <button class="bs-btn bs-btn-primary" @onclick="ShowCreateModal">
+                <span class="material-symbols-outlined">add</span>
+                Create Your First Preset
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="bs-grid bs-gap-4" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+            @foreach (var preset in presets)
+            {
+                <div class="bs-card">
+                    <div class="bs-flex bs-justify-between bs-items-start" style="margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">@preset.Name</h3>
+                            <p style="color: var(--bs-text-subtle); font-size: 0.875rem; margin: 0;">
+                                @preset.CoffeeType - @preset.Brand
+                            </p>
+                        </div>
+                        @if (preset.IsShared)
+                        {
+                            <span class="material-symbols-outlined" style="color: var(--bs-primary);" title="Shared with space">
+                                group
+                            </span>
+                        }
+                    </div>
+
+                    <div style="border-left: 3px solid var(--bs-primary); padding-left: 1rem; margin-bottom: 1rem;">
+                        <div class="bs-flex bs-gap-4" style="margin-bottom: 0.5rem;">
+                            <div>
+                                <span style="color: var(--bs-text-subtle); font-size: 0.75rem;">Preparation</span>
+                                <p style="margin: 0; font-weight: 500;">@preset.Preparation</p>
+                            </div>
+                            <div>
+                                <span style="color: var(--bs-text-subtle); font-size: 0.75rem;">Default Amount</span>
+                                <p style="margin: 0; font-weight: 500;">@preset.DefaultGrams g</p>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(preset.Notes))
+                        {
+                            <p style="color: var(--bs-text-subtle); font-size: 0.875rem; margin-top: 0.5rem; margin-bottom: 0;">
+                                @preset.Notes
+                            </p>
+                        }
+                    </div>
+
+                    <div style="border-top: 1px solid var(--bs-border); padding-top: 1rem; margin-top: 1rem;">
+                        <div class="bs-flex bs-justify-between bs-items-center">
+                            <div style="font-size: 0.75rem; color: var(--bs-text-subtle);">
+                                @if (preset.LastUsedAt.HasValue)
+                                {
+                                    <span>Used @preset.UsageCount times · Last: @preset.LastUsedAt.Value.ToString("MMM d")</span>
+                                }
+                                else
+                                {
+                                    <span>Never used</span>
+                                }
+                            </div>
+                            <div class="bs-flex bs-gap-2">
+                                <button class="bs-btn bs-btn-sm bs-btn-primary" @onclick="() => UsePreset(preset)">
+                                    Use
+                                </button>
+                                @if (preset.IsOwner)
+                                {
+                                    <button class="bs-btn bs-btn-sm bs-btn-secondary" @onclick="() => ShowEditModal(preset)">
+                                        Edit
+                                    </button>
+                                    <button class="bs-btn bs-btn-sm bs-btn-danger" @onclick="() => DeletePreset(preset)">
+                                        Delete
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (showCreateModal || showEditModal)
+{
+    <div class="bs-modal-overlay" @onclick="CloseModal">
+        <div class="bs-modal" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h2 class="bs-modal-title">@(showEditModal ? "Edit" : "Create") Preset Recipe</h2>
+                <button class="bs-modal-close" @onclick="CloseModal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <EditForm Model="@presetForm" OnValidSubmit="SavePreset">
+                <DataAnnotationsValidator />
+                <div class="bs-modal-body">
+                    <div class="bs-form-group">
+                        <label class="bs-label">Name</label>
+                        <InputText class="bs-input" @bind-Value="presetForm.Name" placeholder="Morning Espresso" />
+                        <ValidationMessage For="@(() => presetForm.Name)" class="bs-validation-message" />
+                    </div>
+
+                    <div class="bs-form-group">
+                        <label class="bs-label">Coffee Type</label>
+                        <InputText class="bs-input" @bind-Value="presetForm.CoffeeType" placeholder="Arabica" />
+                        <ValidationMessage For="@(() => presetForm.CoffeeType)" class="bs-validation-message" />
+                    </div>
+
+                    <div class="bs-form-group">
+                        <label class="bs-label">Brand</label>
+                        <InputText class="bs-input" @bind-Value="presetForm.Brand" placeholder="Ethiopia Yirgacheffe" />
+                        <ValidationMessage For="@(() => presetForm.Brand)" class="bs-validation-message" />
+                    </div>
+
+                    <div class="bs-form-group">
+                        <label class="bs-label">Preparation Method</label>
+                        <InputSelect class="bs-input" @bind-Value="presetForm.Preparation">
+                            <option value="">-- Select --</option>
+                            <option value="Espresso">Espresso</option>
+                            <option value="Filter">Filter</option>
+                            <option value="French Press">French Press</option>
+                            <option value="Aeropress">Aeropress</option>
+                            <option value="V60">V60</option>
+                            <option value="Chemex">Chemex</option>
+                            <option value="Moka Pot">Moka Pot</option>
+                            <option value="Cold Brew">Cold Brew</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => presetForm.Preparation)" class="bs-validation-message" />
+                    </div>
+
+                    <div class="bs-form-group">
+                        <label class="bs-label">Default Amount (grams)</label>
+                        <InputNumber class="bs-input" @bind-Value="presetForm.DefaultGrams" placeholder="18" />
+                        <ValidationMessage For="@(() => presetForm.DefaultGrams)" class="bs-validation-message" />
+                    </div>
+
+                    <div class="bs-form-group">
+                        <label class="bs-label">Notes (optional)</label>
+                        <InputTextArea class="bs-input" @bind-Value="presetForm.Notes" rows="3"
+                                       placeholder="Double shot, 1:2 ratio, 25 seconds extraction" />
+                    </div>
+
+                    <div class="bs-form-group">
+                        <label class="bs-checkbox">
+                            <InputCheckbox @bind-Value="presetForm.IsShared" />
+                            <span>Share with space members</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button type="submit" class="bs-btn bs-btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string SpaceId { get; set; } = "";
+
+    private List<PresetDto>? presets;
+    private bool isLoading = true;
+    private bool showCreateModal = false;
+    private bool showEditModal = false;
+    private bool isSaving = false;
+    private PresetFormModel presetForm = new();
+    private PresetDto? editingPreset;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPresets();
+    }
+
+    private async Task LoadPresets()
+    {
+        try
+        {
+            isLoading = true;
+
+            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.GetFromJsonAsync<GetSpacePresetsResponse>($"/api/spaces/{SpaceId}/presets");
+            presets = response?.Presets?.ToList() ?? new List<PresetDto>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading presets");
+            presets = new List<PresetDto>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ShowCreateModal()
+    {
+        presetForm = new PresetFormModel { SpaceId = Guid.Parse(SpaceId) };
+        showCreateModal = true;
+        showEditModal = false;
+    }
+
+    private void ShowEditModal(PresetDto preset)
+    {
+        editingPreset = preset;
+        presetForm = new PresetFormModel
+        {
+            SpaceId = Guid.Parse(SpaceId),
+            Name = preset.Name,
+            CoffeeType = preset.CoffeeType,
+            Brand = preset.Brand,
+            Preparation = preset.Preparation,
+            DefaultGrams = preset.DefaultGrams,
+            Notes = preset.Notes,
+            IsShared = preset.IsShared
+        };
+        showEditModal = true;
+        showCreateModal = false;
+    }
+
+    private void CloseModal()
+    {
+        showCreateModal = false;
+        showEditModal = false;
+        presetForm = new();
+        editingPreset = null;
+    }
+
+    private async Task SavePreset()
+    {
+        try
+        {
+            isSaving = true;
+
+            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            if (showEditModal && editingPreset != null)
+            {
+                var updateRequest = new UpdatePresetRequest
+                {
+                    Name = presetForm.Name,
+                    CoffeeType = presetForm.CoffeeType,
+                    Brand = presetForm.Brand,
+                    Preparation = presetForm.Preparation,
+                    DefaultGrams = presetForm.DefaultGrams,
+                    Notes = presetForm.Notes,
+                    IsShared = presetForm.IsShared
+                };
+
+                var response = await Http.PutAsJsonAsync($"/api/presets/{editingPreset.Id}", updateRequest);
+                response.EnsureSuccessStatusCode();
+            }
+            else
+            {
+                var createRequest = new CreatePresetRequest
+                {
+                    SpaceId = presetForm.SpaceId,
+                    Name = presetForm.Name,
+                    CoffeeType = presetForm.CoffeeType,
+                    Brand = presetForm.Brand,
+                    Preparation = presetForm.Preparation,
+                    DefaultGrams = presetForm.DefaultGrams,
+                    Notes = presetForm.Notes,
+                    IsShared = presetForm.IsShared
+                };
+
+                var response = await Http.PostAsJsonAsync("/api/presets", createRequest);
+                response.EnsureSuccessStatusCode();
+            }
+
+            CloseModal();
+            await LoadPresets();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving preset");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeletePreset(PresetDto preset)
+    {
+        if (!preset.IsOwner)
+            return;
+
+        try
+        {
+            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.DeleteAsync($"/api/presets/{preset.Id}");
+            response.EnsureSuccessStatusCode();
+
+            await LoadPresets();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting preset");
+        }
+    }
+
+    private async Task UsePreset(PresetDto preset)
+    {
+        Navigation.NavigateTo($"/spaces/{SpaceId}/consume?presetId={preset.Id}");
+    }
+
+    private class PresetFormModel
+    {
+        public Guid SpaceId { get; set; }
+
+        [Required(ErrorMessage = "Name is required")]
+        [MaxLength(100, ErrorMessage = "Name cannot exceed 100 characters")]
+        public string Name { get; set; } = "";
+
+        [Required(ErrorMessage = "Coffee type is required")]
+        public string CoffeeType { get; set; } = "";
+
+        [Required(ErrorMessage = "Brand is required")]
+        public string Brand { get; set; } = "";
+
+        [Required(ErrorMessage = "Preparation method is required")]
+        public string Preparation { get; set; } = "";
+
+        [Required(ErrorMessage = "Default amount is required")]
+        [Range(1, 1000, ErrorMessage = "Amount must be between 1 and 1000 grams")]
+        public decimal DefaultGrams { get; set; } = 18;
+
+        public string? Notes { get; set; }
+        public bool IsShared { get; set; }
+    }
+}

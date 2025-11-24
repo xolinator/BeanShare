@@ -16,6 +16,7 @@ public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> opti
     public DbSet<ConsumptionEntry> Consumptions => Set<ConsumptionEntry>();
     public DbSet<BillingPeriod> BillingPeriods => Set<BillingPeriod>();
     public DbSet<Settlement> Settlements => Set<Settlement>();
+    public DbSet<PresetRecipe> PresetRecipes => Set<PresetRecipe>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,5 +30,6 @@ public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> opti
         modelBuilder.ApplyConfiguration(new ConsumptionEntryConfiguration());
         modelBuilder.ApplyConfiguration(new BillingPeriodConfiguration());
         modelBuilder.ApplyConfiguration(new SettlementConfiguration());
+        modelBuilder.ApplyConfiguration(new PresetRecipeConfiguration());
     }
 }

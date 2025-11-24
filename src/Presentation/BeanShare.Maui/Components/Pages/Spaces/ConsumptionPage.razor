@@ -1,10 +1,12 @@
 @page "/spaces/{SpaceId}/consumption"
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.Application.Features.Presets.Queries
 @inject ISpacesService SpacesService
 @inject IConsumptionService ConsumptionService
 @inject IStockService StockService
 @inject NavigationManager Navigation
+@inject HttpClient Http
 
 <PageTitle>Consumption - @spaceName - BeanShare</PageTitle>
 
@@ -52,7 +54,9 @@ else
                             MyTotalCost="@myTotalCost"
                             RemainingStockGrams="@remainingStock" />
 
-            <ConsumptionForm OnSubmit="HandleLogConsumption" StockProducts="@stockProducts" />
+            <ConsumptionForm OnSubmit="HandleLogConsumption"
+                           StockProducts="@stockProducts"
+                           PresetData="@presetData" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -80,6 +84,7 @@ else
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
     private int remainingStock = 0;
+    private PresetDto? presetData;
 
     private bool showToast;
     private bool isToastError;
@@ -90,17 +95,56 @@ else
     {
         if (!string.IsNullOrEmpty(SpaceId))
         {
+            if (!Guid.TryParse(SpaceId, out var spaceGuid))
+            {
+                Navigation.NavigateTo("/spaces");
+                return;
+            }
             await LoadSpace();
             await LoadStock();
             await LoadConsumption();
+            await LoadPresetIfProvided();
+        }
+    }
+
+    private async Task LoadPresetIfProvided()
+    {
+        var uri = Navigation.Uri;
+        if (uri.Contains("presetId="))
+        {
+            var index = uri.IndexOf("presetId=") + 9;
+            var endIndex = uri.IndexOf('&', index);
+            var presetIdString = endIndex == -1 ? uri.Substring(index) : uri.Substring(index, endIndex - index);
+
+            if (Guid.TryParse(presetIdString, out var presetGuid))
+            {
+                try
+                {
+                    var response = await Http.GetAsync($"/api/presets/{presetGuid}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        presetData = await response.Content.ReadFromJsonAsync<PresetDto>();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowToast(true, "Error", $"Failed to load preset: {ex.Message}");
+                }
+            }
         }
     }
 
     private async Task LoadSpace()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         try
         {
-            space = await SpacesService.GetSpaceByIdAsync(Guid.Parse(SpaceId));
+            space = await SpacesService.GetSpaceByIdAsync(spaceGuid);
         }
         catch (Exception ex)
         {
@@ -110,12 +154,18 @@ else
 
     private async Task LoadConsumption()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         isLoadingConsumption = true;
         StateHasChanged();
 
         try
         {
-            var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(Guid.Parse(SpaceId));
+            var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(spaceGuid);
             if (consumptionData != null)
             {
                 recentConsumptions = consumptionData.Entries.ToList();
@@ -137,9 +187,15 @@ else
 
     private async Task LoadStock()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         try
         {
-            var stockData = await StockService.GetSpaceStockAsync(Guid.Parse(SpaceId));
+            var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
             if (stockData != null && stockData.StockLevels != null)
             {
                 stockProducts = stockData.StockLevels.ToList();
@@ -165,12 +221,18 @@ else
 
     private async Task HandleLogConsumption(ConsumptionFormModel model)
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid space ID");
+            return;
+        }
+
         try
         {
             var consumedAtUtc = model.ConsumedAt.ToUniversalTime();
 
             var success = await ConsumptionService.RecordConsumptionAsync(
-                Guid.Parse(SpaceId),
+                spaceGuid,
                 model.Grams,
                 consumedAtUtc
             );

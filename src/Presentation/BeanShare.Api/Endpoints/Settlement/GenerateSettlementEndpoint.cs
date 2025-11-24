@@ -22,7 +22,6 @@ public sealed class GenerateSettlementEndpoint : Endpoint<GenerateSettlementRequ
     public override void Configure()
     {
         Post("/api/billing-periods/{BillingPeriodId}/settlement");
-        AllowAnonymous(); // TODO: Require authentication
     }
 
     public override async Task HandleAsync(GenerateSettlementRequest req, CancellationToken ct)

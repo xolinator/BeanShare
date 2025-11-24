@@ -8,10 +8,10 @@ public sealed class RemoveMemberValidator : AbstractValidator<RemoveMemberComman
     {
         RuleFor(x => x.SpaceId)
             .NotEmpty()
-            .WithMessage("Space ID is required");
+            .WithMessage($"{nameof(RemoveMemberCommand.SpaceId)} is required");
 
         RuleFor(x => x.UserId)
             .NotEmpty()
-            .WithMessage("User ID is required");
+            .WithMessage($"{nameof(RemoveMemberCommand.UserId)} is required");
     }
 }

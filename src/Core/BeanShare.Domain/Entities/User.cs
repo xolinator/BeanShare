@@ -1,4 +1,5 @@
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Enums;
 
 namespace BeanShare.Domain.Entities;
 
@@ -11,9 +12,9 @@ public sealed class User
     public string Email { get; private set; }
     public string Name { get; private set; }
     public string? PictureUrl { get; private set; }
-    public string Provider { get; private set; } // "Email", "Google" or "Facebook"
-    public string? ProviderUserId { get; private set; } // External provider's user ID (null for email/password)
-    public string? PasswordHash { get; private set; } // For email/password authentication
+    public AuthenticationProvider Provider { get; private set; }
+    public string? ProviderUserId { get; private set; }
+    public string? PasswordHash { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime LastLoginAt { get; private set; }
 
@@ -22,10 +23,9 @@ public sealed class User
     {
         Email = string.Empty;
         Name = string.Empty;
-        Provider = string.Empty;
     }
 
-    private User(UserId id, string email, string name, string provider, string? providerUserId = null, string? passwordHash = null, string? pictureUrl = null)
+    private User(UserId id, string email, string name, AuthenticationProvider provider, DateTime createdAt, string? providerUserId = null, string? passwordHash = null, string? pictureUrl = null)
     {
         Id = id;
         Email = email;
@@ -34,41 +34,40 @@ public sealed class User
         ProviderUserId = providerUserId;
         PasswordHash = passwordHash;
         PictureUrl = pictureUrl;
-        CreatedAt = DateTime.UtcNow;
-        LastLoginAt = DateTime.UtcNow;
+        CreatedAt = createdAt;
+        LastLoginAt = createdAt;
     }
 
-    public static User CreateWithPassword(string email, string name, string passwordHash)
+    public static User CreateWithPassword(string email, string name, string passwordHash, DateTime createdAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
 
-        return new User(new UserId(Guid.NewGuid()), email, name, "Email", null, passwordHash, null);
+        return new User(new UserId(Guid.NewGuid()), email, name, AuthenticationProvider.Email, createdAt, null, passwordHash, null);
     }
 
-    public static User CreateWithIdAndPassword(Guid id, string email, string name, string passwordHash)
+    public static User CreateWithIdAndPassword(Guid id, string email, string name, string passwordHash, DateTime createdAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
 
-        return new User(new UserId(id), email, name, "Email", null, passwordHash, null);
+        return new User(new UserId(id), email, name, AuthenticationProvider.Email, createdAt, null, passwordHash, null);
     }
 
-    public static User CreateWithProvider(string email, string name, string provider, string providerUserId, string? pictureUrl = null)
+    public static User CreateWithProvider(string email, string name, AuthenticationProvider provider, string providerUserId, DateTime createdAt, string? pictureUrl = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(providerUserId);
 
-        return new User(new UserId(Guid.NewGuid()), email, name, provider, providerUserId, null, pictureUrl);
+        return new User(new UserId(Guid.NewGuid()), email, name, provider, createdAt, providerUserId, null, pictureUrl);
     }
 
-    public void UpdateLastLogin()
+    public void UpdateLastLogin(DateTime lastLoginAt)
     {
-        LastLoginAt = DateTime.UtcNow;
+        LastLoginAt = lastLoginAt;
     }
 
     public void UpdateProfile(string name, string? pictureUrl)

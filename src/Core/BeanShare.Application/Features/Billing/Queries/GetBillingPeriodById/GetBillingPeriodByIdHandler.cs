@@ -3,6 +3,7 @@ using BeanShare.Application.Common;
 using BeanShare.Application.Features.Billing.Dtos;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Enums;
+using BeanShare.Domain.Services;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
 
@@ -13,15 +14,21 @@ public sealed class GetBillingPeriodByIdHandler : IRequestHandler<GetBillingPeri
     private readonly IBillingPeriodRepository _billingPeriodRepository;
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ICoffeeStockRepository _coffeeStockRepository;
+    private readonly ISpaceRepository _spaceRepository;
+    private readonly ICostingPolicy _costingPolicy;
 
     public GetBillingPeriodByIdHandler(
         IBillingPeriodRepository billingPeriodRepository,
         IConsumptionRepository consumptionRepository,
-        ICoffeeStockRepository coffeeStockRepository)
+        ICoffeeStockRepository coffeeStockRepository,
+        ISpaceRepository spaceRepository,
+        ICostingPolicy costingPolicy)
     {
         _billingPeriodRepository = billingPeriodRepository;
         _consumptionRepository = consumptionRepository;
         _coffeeStockRepository = coffeeStockRepository;
+        _spaceRepository = spaceRepository;
+        _costingPolicy = costingPolicy;
     }
 
     public async Task<Result<BillingPeriodDto>> Handle(GetBillingPeriodByIdQuery request, CancellationToken cancellationToken)
@@ -42,13 +49,22 @@ public sealed class GetBillingPeriodByIdHandler : IRequestHandler<GetBillingPeri
         var consumptionCount = periodConsumptions.Count;
         var totalGrams = periodConsumptions.Sum(c => c.Quantity.Grams);
 
-        decimal? estimatedCost = null;
-        string currency = "USD";
-
-        // TODO: Implement proper cost calculation using ICostingPolicy
-        if (totalGrams > 0)
+        var space = await _spaceRepository.GetByIdAsync(billingPeriod.SpaceId, cancellationToken);
+        if (space is null)
         {
-            estimatedCost = totalGrams * 0.05m;
+            return Result<BillingPeriodDto>.Failure(Error.SpaceNotFound(billingPeriod.SpaceId.Value));
+        }
+
+        var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(billingPeriod.SpaceId, cancellationToken);
+
+        decimal? estimatedCost = null;
+        string currency = space.Currency.Code;
+
+        if (totalGrams > 0 && coffeeStock is not null)
+        {
+            var totalConsumed = Weight.FromGrams(totalGrams);
+            var cost = _costingPolicy.CalculateCost(coffeeStock.Purchases, totalConsumed, currency);
+            estimatedCost = cost.Amount;
         }
 
         var dto = new BillingPeriodDto(

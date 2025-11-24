@@ -24,6 +24,8 @@ public readonly record struct Error(string Code, string Message)
         public const string InvalidBillingPeriodState = "INVALID_BILLING_PERIOD_STATE";
         public const string SettlementAlreadyExists = "SETTLEMENT_ALREADY_EXISTS";
         public const string NoConsumptionsInPeriod = "NO_CONSUMPTIONS_IN_PERIOD";
+        public const string NotFound = "NOT_FOUND";
+        public const string Forbidden = "FORBIDDEN";
     }
 
     public static Error SpaceNotFound(Guid spaceId) =>
@@ -79,4 +81,10 @@ public readonly record struct Error(string Code, string Message)
 
     public static Error NoConsumptionsInPeriod() =>
         new(Codes.NoConsumptionsInPeriod, "No consumptions found in the billing period to generate settlement");
+
+    public static Error NotFound(string entity, string message) =>
+        new(Codes.NotFound, $"{entity}: {message}");
+
+    public static Error Forbidden(string entity, string message) =>
+        new(Codes.Forbidden, $"{entity}: {message}");
 }

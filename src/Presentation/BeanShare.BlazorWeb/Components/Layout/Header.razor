@@ -42,7 +42,7 @@
     <div class="header-right">
         <AuthorizeView>
             <Authorized>
-                <button class="header-icon-btn" title="Notifications">
+                <button class="header-icon-btn" title="Notifications" @onclick="ShowNotifications">
                     <span class="material-symbols-outlined">notifications</span>
                     @if (unreadNotifications > 0)
                     {
@@ -481,6 +481,11 @@
         isUserDropdownOpen = false;
         StateHasChanged();
         Navigation.NavigateTo(url);
+    }
+
+    private void ShowNotifications()
+    {
+        Navigation.NavigateTo("/notifications");
     }
 
     private void ShowHelp()
