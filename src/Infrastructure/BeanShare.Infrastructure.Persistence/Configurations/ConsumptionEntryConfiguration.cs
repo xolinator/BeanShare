@@ -73,6 +73,16 @@ internal sealed class ConsumptionEntryConfiguration : IEntityTypeConfiguration<C
         // Configure nullable BillingPeriodId - Ignore it for now since it's causing issues
         builder.Ignore(x => x.BillingPeriodId);
 
+        builder.Property(x => x.PresetId)
+            .HasConversion(
+                id => id == null ? (Guid?)null : id.Value,
+                value => value == null ? null : new PresetRecipeId(value.Value))
+            .IsRequired(false);
+
+        builder.Property(x => x.PresetName)
+            .HasMaxLength(200)
+            .IsRequired(false);
+
         builder.HasIndex(x => x.SpaceId)
             .HasDatabaseName("IX_Consumptions_SpaceId");
 

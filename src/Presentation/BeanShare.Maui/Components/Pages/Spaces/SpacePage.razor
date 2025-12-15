@@ -284,22 +284,91 @@ else
         StateHasChanged();
     }
 
-    private Task HandlePromoteMember(string userId)
+    private async Task HandlePromoteMember(string userId)
     {
-        ShowToast(false, "Coming Soon", "Member promotion will be available soon.");
-        return Task.CompletedTask;
+        if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid user or space ID");
+            return;
+        }
+
+        try
+        {
+            var success = await SpacesService.PromoteMemberAsync(spaceGuid, userGuid);
+            if (success)
+            {
+                ShowToast(false, "Success", "Member promoted to Admin");
+                await LoadSpace();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to promote member. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to promote member: {ex.Message}");
+        }
     }
 
-    private Task HandleDemoteMember(string userId)
+    private async Task HandleDemoteMember(string userId)
     {
-        ShowToast(false, "Coming Soon", "Member demotion will be available soon.");
-        return Task.CompletedTask;
+        if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid user or space ID");
+            return;
+        }
+
+        try
+        {
+            var success = await SpacesService.DemoteMemberAsync(spaceGuid, userGuid);
+            if (success)
+            {
+                ShowToast(false, "Success", "Member demoted to regular member");
+                await LoadSpace();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to demote member. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to demote member: {ex.Message}");
+        }
     }
 
-    private Task HandleRemoveMember(string userId)
+    private async Task HandleRemoveMember(string userId)
     {
-        ShowToast(false, "Coming Soon", "Member removal will be available soon.");
-        return Task.CompletedTask;
+        if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid user or space ID");
+            return;
+        }
+
+        try
+        {
+            var success = await SpacesService.RemoveMemberAsync(spaceGuid, userGuid);
+            if (success)
+            {
+                var currentUserId = UserContext.CurrentUserId.Value;
+                if (userGuid == currentUserId)
+                {
+                    Navigation.NavigateTo("/spaces");
+                    return;
+                }
+                ShowToast(false, "Success", "Member removed from space");
+                await LoadSpace();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to remove member. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to remove member: {ex.Message}");
+        }
     }
 
     private async Task HandleAddPurchase(AddPurchaseModal.AddPurchaseModel model)

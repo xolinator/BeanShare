@@ -17,6 +17,9 @@ public sealed class SettlementLine : Entity
     public decimal? TotalMilkMl { get; private set; }
     public Money AmountDue { get; private set; }
     public DateTime CreatedAt { get; private set; }
+    public PaymentConfirmation? Confirmation { get; private set; }
+
+    public bool IsConfirmed => Confirmation is not null;
 
     public static SettlementLine Create(
         UserId userId,
@@ -46,6 +49,19 @@ public sealed class SettlementLine : Entity
             return 0;
 
         return (TotalCoffeeGrams / totalSpaceConsumption) * 100;
+    }
+
+    internal void ConfirmPayment(UserId confirmedBy, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(confirmedBy);
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (IsConfirmed)
+        {
+            throw new InvalidOperationException("Payment has already been confirmed");
+        }
+
+        Confirmation = PaymentConfirmation.Create(confirmedBy, clock.UtcNow);
     }
 
     protected override object GetId() => Id;

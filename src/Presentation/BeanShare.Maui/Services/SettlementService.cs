@@ -52,4 +52,62 @@ public class SettlementService : ISettlementService
             return null!;
         }
     }
+
+    public async Task<bool> ConfirmPaymentAsync(Guid settlementId, Guid memberUserId)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsync($"/api/settlements/{settlementId}/confirm-payment/{memberUserId}", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<byte[]?> ExportPdfAsync(Guid settlementId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/api/settlements/{settlementId}/export/pdf");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<byte[]?> ExportExcelAsync(Guid settlementId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/api/settlements/{settlementId}/export/excel");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<int> SendEmailsAsync(Guid settlementId, bool attachPdf = true)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"/api/settlements/{settlementId}/send-emails", new { AttachPdf = attachPdf });
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<SendEmailsResponse>();
+            return result?.EmailsSent ?? 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private record SendEmailsResponse(int EmailsSent, string Message);
 }

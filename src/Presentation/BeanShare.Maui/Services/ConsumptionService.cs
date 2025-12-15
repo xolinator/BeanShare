@@ -28,15 +28,21 @@ public class ConsumptionService : IConsumptionService
 
     public async Task<bool> RecordConsumptionAsync(Guid spaceId, int grams, DateTime consumedAt)
     {
+        return await RecordConsumptionAsync(spaceId, "Coffee", "Generic", "Ground", grams, consumedAt);
+    }
+
+    public async Task<bool> RecordConsumptionAsync(Guid spaceId, string productName, string productBrand, string productType, int grams, DateTime consumedAt, string? presetName = null)
+    {
         try
         {
             var request = new
             {
-                ProductName = "Coffee",
-                ProductBrand = "Generic",
-                ProductType = "Ground",
+                ProductName = productName,
+                ProductBrand = productBrand,
+                ProductType = productType,
                 QuantityGrams = grams,
-                ConsumedAt = consumedAt
+                ConsumedAt = consumedAt,
+                PresetName = presetName
             };
 
             var response = await _httpClient.PostAsJsonAsync($"/api/spaces/{spaceId}/consumption", request);

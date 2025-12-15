@@ -7,6 +7,7 @@
 @using BeanShare.Application.Features.Consumption.Queries
 @using BeanShare.Application.Features.Consumption.Commands
 @using BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics
+@using BeanShare.Application.Features.Spaces.Commands
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using BeanShare.SharedUi.Components.Analytics
 @using Microsoft.AspNetCore.Authorization
@@ -163,6 +164,11 @@ else
     {
         if (!string.IsNullOrEmpty(SpaceId))
         {
+            if (!Guid.TryParse(SpaceId, out _))
+            {
+                Navigation.NavigateTo("/spaces");
+                return;
+            }
             await LoadSpace();
             await LoadTabData();
         }
@@ -170,9 +176,15 @@ else
 
     private async Task LoadSpace()
     {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            Navigation.NavigateTo("/spaces");
+            return;
+        }
+
         try
         {
-            var result = await Mediator.Send(new GetSpaceByIdQuery(Guid.Parse(SpaceId)));
+            var result = await Mediator.Send(new GetSpaceByIdQuery(spaceGuid));
             if (result.IsSuccess)
             {
                 space = result.Value;
@@ -271,22 +283,91 @@ else
         StateHasChanged();
     }
 
-    private Task HandlePromoteMember(string userId)
+    private async Task HandlePromoteMember(string userId)
     {
-        ShowToast(false, "Coming Soon", "Member promotion will be available soon.");
-        return Task.CompletedTask;
+        if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid user or space ID");
+            return;
+        }
+
+        try
+        {
+            var result = await Mediator.Send(new PromoteMemberCommand(spaceGuid, userGuid));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Member promoted to Admin");
+                await LoadSpace();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to promote member: {ex.Message}");
+        }
     }
 
-    private Task HandleDemoteMember(string userId)
+    private async Task HandleDemoteMember(string userId)
     {
-        ShowToast(false, "Coming Soon", "Member demotion will be available soon.");
-        return Task.CompletedTask;
+        if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid user or space ID");
+            return;
+        }
+
+        try
+        {
+            var result = await Mediator.Send(new DemoteMemberCommand(spaceGuid, userGuid));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Member demoted to regular member");
+                await LoadSpace();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to demote member: {ex.Message}");
+        }
     }
 
-    private Task HandleRemoveMember(string userId)
+    private async Task HandleRemoveMember(string userId)
     {
-        ShowToast(false, "Coming Soon", "Member removal will be available soon.");
-        return Task.CompletedTask;
+        if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid user or space ID");
+            return;
+        }
+
+        try
+        {
+            var result = await Mediator.Send(new RemoveMemberCommand(spaceGuid, userGuid));
+            if (result.IsSuccess)
+            {
+                var currentUserId = UserContext.CurrentUserId.Value;
+                if (userGuid == currentUserId)
+                {
+                    Navigation.NavigateTo("/spaces");
+                    return;
+                }
+                ShowToast(false, "Success", "Member removed from space");
+                await LoadSpace();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to remove member: {ex.Message}");
+        }
     }
 
     private async Task HandleAddPurchase(AddPurchaseModal.AddPurchaseModel model)

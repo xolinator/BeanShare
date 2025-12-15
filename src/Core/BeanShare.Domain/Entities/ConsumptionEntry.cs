@@ -14,6 +14,8 @@ public sealed class ConsumptionEntry : AggregateRoot
     public DateTime ConsumedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public BillingPeriodId? BillingPeriodId { get; private set; }
+    public PresetRecipeId? PresetId { get; private set; }
+    public string? PresetName { get; private set; }
 
     private ConsumptionEntry()
     {
@@ -31,7 +33,9 @@ public sealed class ConsumptionEntry : AggregateRoot
         CoffeeProduct product,
         Weight quantity,
         DateTime consumedAt,
-        DateTime createdAt)
+        DateTime createdAt,
+        PresetRecipeId? presetId = null,
+        string? presetName = null)
     {
         Id = id;
         SpaceId = spaceId;
@@ -40,6 +44,8 @@ public sealed class ConsumptionEntry : AggregateRoot
         Quantity = quantity;
         ConsumedAt = consumedAt;
         CreatedAt = createdAt;
+        PresetId = presetId;
+        PresetName = presetName;
     }
 
     public static ConsumptionEntry Create(
@@ -48,7 +54,9 @@ public sealed class ConsumptionEntry : AggregateRoot
         CoffeeProduct product,
         Weight quantity,
         DateTime consumedAt,
-        IClock clock)
+        IClock clock,
+        PresetRecipeId? presetId = null,
+        string? presetName = null)
     {
         ArgumentNullException.ThrowIfNull(product);
         ArgumentNullException.ThrowIfNull(clock);
@@ -67,7 +75,7 @@ public sealed class ConsumptionEntry : AggregateRoot
         var id = ConsumptionEntryId.New();
         var createdAt = clock.UtcNow;
 
-        var entry = new ConsumptionEntry(id, spaceId, userId, product, quantity, consumedAt, createdAt);
+        var entry = new ConsumptionEntry(id, spaceId, userId, product, quantity, consumedAt, createdAt, presetId, presetName);
 
         entry.RaiseDomainEvent(new ConsumptionRecorded(
             entry.Id.Value,

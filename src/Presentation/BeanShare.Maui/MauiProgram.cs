@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using BeanShare.Maui.Services;
+using BeanShare.SharedUi.Services;
 using MediatR;
 
 namespace BeanShare.Maui;
@@ -69,9 +70,23 @@ public static class MauiProgram
 			client.DefaultRequestHeaders.Add("Accept", "application/json");
 		}).AddHttpMessageHandler<AuthenticationHandler>();
 
+		builder.Services.AddHttpClient<IPresetService, PresetService>(client =>
+		{
+			client.BaseAddress = new Uri("http://localhost:5247");
+			client.DefaultRequestHeaders.Add("Accept", "application/json");
+		}).AddHttpMessageHandler<AuthenticationHandler>();
+
+		builder.Services.AddHttpClient<INotificationService, NotificationService>(client =>
+		{
+			client.BaseAddress = new Uri("http://localhost:5247");
+			client.DefaultRequestHeaders.Add("Accept", "application/json");
+		}).AddHttpMessageHandler<AuthenticationHandler>();
+
 		builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, UserContextStub>();
 		builder.Services.AddScoped<IMauiUserContext, MauiUserContext>();
 		builder.Services.AddScoped<IMediator, MediatorStub>();
+		builder.Services.AddSingleton<IAlertService, AlertService>();
+		builder.Services.AddScoped<IThemeService, ThemeService>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

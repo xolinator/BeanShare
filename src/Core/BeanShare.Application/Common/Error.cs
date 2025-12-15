@@ -26,6 +26,13 @@ public readonly record struct Error(string Code, string Message)
         public const string NoConsumptionsInPeriod = "NO_CONSUMPTIONS_IN_PERIOD";
         public const string NotFound = "NOT_FOUND";
         public const string Forbidden = "FORBIDDEN";
+        public const string SettlementNotFound = "SETTLEMENT_NOT_FOUND";
+        public const string SettlementLineNotFound = "SETTLEMENT_LINE_NOT_FOUND";
+        public const string PaymentAlreadyConfirmed = "PAYMENT_ALREADY_CONFIRMED";
+        public const string InvalidSettlementState = "INVALID_SETTLEMENT_STATE";
+        public const string UserNotFound = "USER_NOT_FOUND";
+        public const string NotificationNotFound = "NOTIFICATION_NOT_FOUND";
+        public const string UnpaidSettlements = "UNPAID_SETTLEMENTS";
     }
 
     public static Error SpaceNotFound(Guid spaceId) =>
@@ -87,4 +94,25 @@ public readonly record struct Error(string Code, string Message)
 
     public static Error Forbidden(string entity, string message) =>
         new(Codes.Forbidden, $"{entity}: {message}");
+
+    public static Error SettlementNotFound(Guid settlementId) =>
+        new(Codes.SettlementNotFound, $"Settlement with ID {settlementId} was not found");
+
+    public static Error SettlementLineNotFound(Guid userId) =>
+        new(Codes.SettlementLineNotFound, $"Settlement line for user {userId} was not found");
+
+    public static Error PaymentAlreadyConfirmed(Guid userId) =>
+        new(Codes.PaymentAlreadyConfirmed, $"Payment for user {userId} has already been confirmed");
+
+    public static Error InvalidSettlementState(string action, string currentState) =>
+        new(Codes.InvalidSettlementState, $"Cannot {action} settlement in {currentState} state");
+
+    public static Error UserNotFound(Guid userId) =>
+        new(Codes.UserNotFound, $"User with ID {userId} was not found");
+
+    public static Error NotificationNotFound(Guid notificationId) =>
+        new(Codes.NotificationNotFound, $"Notification with ID {notificationId} was not found");
+
+    public static Error UnpaidSettlements(Guid userId) =>
+        new(Codes.UnpaidSettlements, $"Cannot remove member with unpaid settlements. Please ensure all settlements are paid before removal.");
 }

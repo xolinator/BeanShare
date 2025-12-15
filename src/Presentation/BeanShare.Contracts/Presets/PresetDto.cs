@@ -17,18 +17,3 @@ public sealed record PresetDto
     public DateTime? LastUsedAt { get; init; }
     public required int UsageCount { get; init; }
 }
-
-public sealed record GetSpacePresetsResponse
-{
-    public required IReadOnlyCollection<PresetDto> Presets { get; init; }
-}
-
-public sealed record DeletePresetResponse
-{
-    public required string Message { get; init; }
-}
-
-public sealed record RecordPresetUsageResponse
-{
-    public required string Message { get; init; }
-}

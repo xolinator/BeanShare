@@ -39,22 +39,72 @@
             </div>
 
             <div class="bs-form-group">
-                <label class="bs-label">Amount</label>
-                <div class="bs-flex bs-gap-2" style="flex-wrap: wrap;">
-                    @foreach (var preset in presets)
+                <label class="bs-label">Quick Presets</label>
+                @if (QuickPresets == null || !QuickPresets.Any())
+                {
+                    <div style="padding: 0.5rem; background: var(--bs-gray-100); border-radius: 0.5rem; font-size: 0.875rem; color: var(--bs-text-subtle);">
+                        Loading presets...
+                    </div>
+                }
+                else
+                {
+                    var favorites = QuickPresets.Where(p => p.IsFavorite).ToList();
+                    var nonFavorites = QuickPresets.Where(p => !p.IsFavorite).ToList();
+
+                    @if (favorites.Any())
                     {
-                        <button type="button"
-                                class="bs-btn bs-btn-sm @(selectedPreset == preset.Name ? "bs-btn-primary" : "bs-btn-secondary")"
-                                @onclick="() => SelectPreset(preset)">
-                            @preset.Name · @preset.Grams g
-                        </button>
+                        <div style="margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.75rem; color: var(--bs-text-subtle); font-weight: 600;">FAVORITES</span>
+                        </div>
+                        <div class="bs-flex bs-gap-2" style="flex-wrap: wrap; margin-bottom: 1rem;">
+                            @foreach (var preset in favorites)
+                            {
+                                <button type="button"
+                                        class="bs-btn bs-btn-sm @(IsPresetSelected(preset) ? "bs-btn-primary" : "bs-btn-secondary")"
+                                        style="position: relative;"
+                                        @onclick="() => SelectPreset(preset)">
+                                    <span class="material-symbols-outlined" style="font-size: 0.875rem; margin-right: 0.25rem; vertical-align: middle;">star</span>
+                                    @preset.Name · @preset.Grams g
+                                </button>
+                            }
+                        </div>
                     }
-                    <button type="button"
-                            class="bs-btn bs-btn-sm @(isCustomMode ? "bs-btn-primary" : "bs-btn-secondary")"
-                            @onclick="SelectCustom">
-                        Custom
-                    </button>
-                </div>
+
+                    @if (nonFavorites.Any())
+                    {
+                        @if (favorites.Any())
+                        {
+                            <div style="margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.75rem; color: var(--bs-text-subtle); font-weight: 600;">ALL PRESETS</span>
+                            </div>
+                        }
+                        <div class="bs-flex bs-gap-2" style="flex-wrap: wrap;">
+                            @foreach (var preset in nonFavorites)
+                            {
+                                <button type="button"
+                                        class="bs-btn bs-btn-sm @(IsPresetSelected(preset) ? "bs-btn-primary" : "bs-btn-secondary")"
+                                        @onclick="() => SelectPreset(preset)">
+                                    @preset.Name · @preset.Grams g
+                                </button>
+                            }
+                            <button type="button"
+                                    class="bs-btn bs-btn-sm @(isCustomMode ? "bs-btn-primary" : "bs-btn-secondary")"
+                                    @onclick="SelectCustom">
+                                Custom
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="bs-flex bs-gap-2" style="flex-wrap: wrap;">
+                            <button type="button"
+                                    class="bs-btn bs-btn-sm @(isCustomMode ? "bs-btn-primary" : "bs-btn-secondary")"
+                                    @onclick="SelectCustom">
+                                Custom
+                            </button>
+                        </div>
+                    }
+                }
             </div>
 
             @if (isCustomMode)
@@ -114,19 +164,19 @@
     [Parameter]
     public PresetDto? PresetData { get; set; }
 
+    [Parameter]
+    public List<PresetOption>? QuickPresets { get; set; }
+
+    [Parameter]
+    public EventCallback<(PresetOption Preset, bool IsFavorite)> OnToggleFavorite { get; set; }
+
     private ConsumptionFormModel model = new() { ConsumedAt = DateTime.Now };
     private bool isSubmitting;
     private bool isCustomMode = false;
-    private string? selectedPreset = "Espresso";
+    private PresetOption? selectedPresetOption;
     private StockLevelDto? selectedProduct;
     private string selectedProductId = "";
     private string productSelectionError = "";
-
-    private List<PresetOption> presets = new()
-    {
-        new PresetOption { Name = "Espresso", Grams = 8 },
-        new PresetOption { Name = "Large Brew", Grams = 15 }
-    };
 
     protected override void OnParametersSet()
     {
@@ -139,12 +189,34 @@
             model.PresetId = PresetData.Id;
 
             isCustomMode = true;
-            selectedPreset = null;
+            selectedPresetOption = null;
         }
-        else if (model.Grams == 0 && !isCustomMode)
+        else if (model.Grams == 0 && !isCustomMode && selectedPresetOption == null)
         {
-            model.Grams = 8;
+            // Select first favorite or first preset by default
+            var defaultPreset = QuickPresets?.FirstOrDefault(p => p.IsFavorite) ?? QuickPresets?.FirstOrDefault();
+            if (defaultPreset != null)
+            {
+                SelectPreset(defaultPreset);
+            }
+            else
+            {
+                model.Grams = 8; // Fallback default
+            }
         }
+    }
+
+    private bool IsPresetSelected(PresetOption preset)
+    {
+        if (selectedPresetOption == null) return false;
+
+        if (preset.GlobalPresetId.HasValue && selectedPresetOption.GlobalPresetId.HasValue)
+            return preset.GlobalPresetId == selectedPresetOption.GlobalPresetId;
+
+        if (preset.SpacePresetId.HasValue && selectedPresetOption.SpacePresetId.HasValue)
+            return preset.SpacePresetId == selectedPresetOption.SpacePresetId;
+
+        return preset.Name == selectedPresetOption.Name && preset.Grams == selectedPresetOption.Grams;
     }
 
     private void OnProductSelected(ChangeEventArgs e)
@@ -174,16 +246,21 @@
     private void SelectPreset(PresetOption preset)
     {
         isCustomMode = false;
-        selectedPreset = preset.Name;
+        selectedPresetOption = preset;
         model.Grams = preset.Grams;
         model.PresetName = preset.Name;
+
+        model.GlobalPresetId = preset.GlobalPresetId;
+        model.SpacePresetId = preset.SpacePresetId;
     }
 
     private void SelectCustom()
     {
         isCustomMode = true;
-        selectedPreset = null;
+        selectedPresetOption = null;
         model.PresetName = null;
+        model.GlobalPresetId = null;
+        model.SpacePresetId = null;
         model.Grams = 0;
     }
 
@@ -208,9 +285,24 @@
 
     private void Reset()
     {
-        model = new ConsumptionFormModel { ConsumedAt = DateTime.Now, Grams = 8 };
+        var defaultPreset = QuickPresets?.FirstOrDefault(p => p.IsFavorite) ?? QuickPresets?.FirstOrDefault();
+
+        model = new ConsumptionFormModel
+        {
+            ConsumedAt = DateTime.Now,
+            Grams = defaultPreset?.Grams ?? 8
+        };
+
         isCustomMode = false;
-        selectedPreset = "Espresso";
+        selectedPresetOption = defaultPreset;
+
+        if (defaultPreset != null)
+        {
+            model.PresetName = defaultPreset.Name;
+            model.GlobalPresetId = defaultPreset.GlobalPresetId;
+            model.SpacePresetId = defaultPreset.SpacePresetId;
+        }
+
         selectedProduct = null;
         selectedProductId = "";
         productSelectionError = "";

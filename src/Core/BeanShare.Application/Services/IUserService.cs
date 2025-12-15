@@ -14,6 +14,11 @@ public interface IUserService
     Task<User?> GetByIdAsync(UserId userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Get a user by their ID for updating (tracked entity)
+    /// </summary>
+    Task<User?> GetByIdForUpdateAsync(UserId userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Get multiple users by their IDs
     /// </summary>
     Task<IReadOnlyList<User>> GetByIdsAsync(IEnumerable<UserId> userIds, CancellationToken cancellationToken = default);
@@ -27,4 +32,9 @@ public interface IUserService
     /// Get all users (for admin purposes)
     /// </summary>
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update user preferences
+    /// </summary>
+    Task UpdateAsync(User user, CancellationToken cancellationToken = default);
 }

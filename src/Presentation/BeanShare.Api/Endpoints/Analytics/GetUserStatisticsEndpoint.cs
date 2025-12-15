@@ -1,5 +1,5 @@
 using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics;
-using BeanShare.Contracts.Analytics;
+using BeanShare.Contracts.Analytics.UserStatistics;
 using BeanShare.Domain.Common;
 using FastEndpoints;
 using MediatR;
@@ -48,6 +48,17 @@ public sealed class GetUserStatisticsEndpoint : Endpoint<GetUserStatisticsReques
             CupsToday = result.CupsToday,
             AverageCupsPerDay = result.AverageCupsPerDay,
             TotalCost = result.TotalCost?.Amount,
+            TotalCostCurrency = result.TotalCost?.Currency.Code,
+            IsCostFullyConverted = result.IsCostFullyConverted,
+            CostBreakdown = result.CostBreakdown.Select(b => new CurrencyBreakdownResponse
+            {
+                CurrencyCode = b.CurrencyCode,
+                OriginalAmount = b.OriginalAmount,
+                ConvertedAmount = b.ConvertedAmount?.Amount,
+                ConvertedCurrency = b.ConvertedAmount?.Currency.Code,
+                WasConverted = b.WasConverted
+            }).ToList(),
+            PreferredCurrencyCode = result.PreferredCurrencyCode,
             MostConsumedCoffeeType = result.MostConsumedCoffeeType,
             FirstConsumptionDate = result.FirstConsumptionDate,
             LastConsumptionDate = result.LastConsumptionDate,

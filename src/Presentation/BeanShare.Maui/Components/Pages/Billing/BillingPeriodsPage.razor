@@ -1,8 +1,10 @@
 @page "/spaces/{SpaceId:guid}/billing"
 @using BeanShare.Contracts.Billing
+@using BeanShare.Maui.Services
 @inject IBillingService BillingService
 @inject ISettlementService SettlementService
 @inject NavigationManager Navigation
+@inject IAlertService AlertService
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -197,7 +199,7 @@
         }
         catch (Exception ex)
         {
-            await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("Error", $"Failed to generate settlement: {ex.Message}", "OK");
+            await AlertService.ShowAlertAsync("Error", $"Failed to generate settlement: {ex.Message}");
         }
     }
 

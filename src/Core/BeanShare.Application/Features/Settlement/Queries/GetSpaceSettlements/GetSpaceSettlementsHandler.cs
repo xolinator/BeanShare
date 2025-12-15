@@ -43,6 +43,9 @@ public sealed class GetSpaceSettlementsHandler : IRequestHandler<GetSpaceSettlem
                 settlement.GeneratedAt,
                 settlement.TotalAmount,
                 settlement.Currency,
+                settlement.Status.ToString(),
+                settlement.ConfirmedLinesCount,
+                settlement.TotalLinesCount,
                 settlement.Lines.Count,
                 yourShare
             );

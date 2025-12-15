@@ -44,6 +44,12 @@ public sealed class UserService : IUserService
         return user;
     }
 
+    public async Task<User?> GetByIdForUpdateAsync(UserId userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<User>> GetByIdsAsync(IEnumerable<UserId> userIds, CancellationToken cancellationToken = default)
     {
         var idList = userIds.ToList();
@@ -124,5 +130,17 @@ public sealed class UserService : IUserService
         }
 
         return users;
+    }
+
+    public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
+    {
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var cacheKey = $"{UserCacheKeyPrefix}{user.Id.Value}";
+        _cache.Remove(cacheKey);
+
+        var emailCacheKey = $"{UserCacheKeyPrefix}email_{user.Email.ToLowerInvariant()}";
+        _cache.Remove(emailCacheKey);
     }
 }

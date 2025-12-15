@@ -1,19 +1,27 @@
 @page "/logout"
+@attribute [StreamRendering(false)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
-@inject HttpClient HttpClient
 @inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthStateProvider
+@inject BeanShare.Infrastructure.Identity.IAuthenticationService AuthService
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Logging out - BeanShare</PageTitle>
 
-<div class="logout-container">
-    <div class="logout-card">
-        <div class="logout-spinner">
-            <span class="material-symbols-outlined spinning">progress_activity</span>
+@if (!_redirecting)
+{
+    <div class="logout-container">
+        <div class="logout-card">
+            <div class="logout-spinner">
+                <span class="material-symbols-outlined spinning">progress_activity</span>
+            </div>
+            <h2>Logging out...</h2>
+            <p>You are being securely logged out of BeanShare</p>
         </div>
-        <h2>Logging out...</h2>
-        <p>You are being securely logged out of BeanShare</p>
     </div>
-</div>
+}
 
 <style>
     .logout-container {
@@ -65,20 +73,35 @@
 </style>
 
 @code {
+    private bool _redirecting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext != null)
+                await AuthService.SignOutAsync(httpContext);
+        }
+        catch { }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !_redirecting)
         {
+            _redirecting = true;
+
             try
             {
-                var response = await HttpClient.PostAsync("/api/auth/logout", null);
-
                 await JSRuntime.InvokeVoidAsync("localStorage.clear");
                 await JSRuntime.InvokeVoidAsync("sessionStorage.clear");
+            }
+            catch { }
 
-                await Task.Delay(1000);
-
-                Navigation.NavigateTo("/login", forceLoad: true);
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eval", "setTimeout(function() { window.location.href = '/login'; }, 100);");
             }
             catch
             {

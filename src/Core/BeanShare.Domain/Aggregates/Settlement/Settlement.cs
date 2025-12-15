@@ -1,4 +1,5 @@
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Enums;
 using BeanShare.Domain.Events;
 using BeanShare.Domain.ValueObjects;
 
@@ -17,7 +18,13 @@ public sealed class Settlement : AggregateRoot
     public UserId GeneratedBy { get; private set; }
     public string Currency { get; private set; } = string.Empty;
     public decimal TotalAmount { get; private set; }
+    public SettlementStatus Status { get; private set; }
+    public DateTime? CompletedAt { get; private set; }
     public IReadOnlyCollection<SettlementLine> Lines => _lines.AsReadOnly();
+
+    public bool AreAllLinesConfirmed => _lines.Count > 0 && _lines.All(l => l.IsConfirmed);
+    public int ConfirmedLinesCount => _lines.Count(l => l.IsConfirmed);
+    public int TotalLinesCount => _lines.Count;
 
     public static Settlement Create(
         SpaceId spaceId,
@@ -40,7 +47,8 @@ public sealed class Settlement : AggregateRoot
             Currency = currency,
             GeneratedBy = generatedBy,
             GeneratedAt = clock.UtcNow,
-            TotalAmount = 0
+            TotalAmount = 0,
+            Status = SettlementStatus.Generated
         };
 
         settlement.RaiseDomainEvent(new SettlementGenerated(
@@ -110,5 +118,90 @@ public sealed class Settlement : AggregateRoot
     public bool HasLineForUser(UserId userId)
     {
         return _lines.Any(l => l.UserId == userId);
+    }
+
+    /// <summary>
+    /// Called after all lines are added to transition to AwaitingConfirmation state
+    /// and auto-confirm any zero-amount lines.
+    /// </summary>
+    public void FinalizeGeneration(IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (Status != SettlementStatus.Generated)
+        {
+            throw new InvalidOperationException("Settlement must be in Generated status to finalize");
+        }
+
+        // Auto-confirm zero-amount lines (members who owe nothing)
+        foreach (var line in _lines.Where(l => l.AmountDue.Amount == 0 && !l.IsConfirmed))
+        {
+            line.ConfirmPayment(line.UserId, clock);
+        }
+
+        Status = SettlementStatus.AwaitingConfirmation;
+
+        // Check if all lines are already confirmed (e.g., all zero-amount)
+        UpdateStatusIfAllConfirmed(clock);
+    }
+
+    /// <summary>
+    /// Confirms payment for a specific user's settlement line.
+    /// Can be called by the member themselves or by an administrator.
+    /// </summary>
+    public void ConfirmPayment(UserId memberUserId, UserId confirmedBy, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(memberUserId);
+        ArgumentNullException.ThrowIfNull(confirmedBy);
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (Status == SettlementStatus.Completed)
+        {
+            throw new InvalidOperationException("Cannot confirm payment on a completed settlement");
+        }
+
+        if (Status == SettlementStatus.Generated)
+        {
+            throw new InvalidOperationException("Settlement must be finalized before confirming payments");
+        }
+
+        var line = GetLineForUser(memberUserId);
+        if (line is null)
+        {
+            throw new InvalidOperationException($"No settlement line found for user {memberUserId}");
+        }
+
+        if (line.IsConfirmed)
+        {
+            throw new InvalidOperationException("Payment has already been confirmed");
+        }
+
+        line.ConfirmPayment(confirmedBy, clock);
+
+        RaiseDomainEvent(new PaymentConfirmed(
+            Id,
+            SpaceId,
+            memberUserId,
+            confirmedBy,
+            clock.UtcNow
+        ));
+
+        UpdateStatusIfAllConfirmed(clock);
+    }
+
+    private void UpdateStatusIfAllConfirmed(IClock clock)
+    {
+        if (AreAllLinesConfirmed && Status != SettlementStatus.Completed)
+        {
+            Status = SettlementStatus.Completed;
+            CompletedAt = clock.UtcNow;
+
+            RaiseDomainEvent(new SettlementCompleted(
+                Id,
+                SpaceId,
+                BillingPeriodId,
+                clock.UtcNow
+            ));
+        }
     }
 }

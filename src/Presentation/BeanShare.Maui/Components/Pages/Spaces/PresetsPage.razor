@@ -1,13 +1,63 @@
 @page "/spaces/{SpaceId}/presets"
 @using BeanShare.Contracts.Presets
 @using BeanShare.Maui.Components.Layout
+@using BeanShare.Maui.Services
 @using System.Net.Http.Headers
 @using Microsoft.Extensions.Logging
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject IPresetService PresetService
 
 <div class="mobile-page">
     <MobileHeader Title="Coffee Presets" />
+
+    <!-- Global Presets Section -->
+    <div class="global-presets-section">
+        <div class="global-presets-header" @onclick="ToggleGlobalPresetsSection">
+            <div class="global-presets-title">
+                <span class="material-symbols-outlined">language</span>
+                <span>Built-in Quick Presets</span>
+                <span class="badge-count">@(globalPresets?.Count(p => p.IsEnabled) ?? 0) on</span>
+            </div>
+            <span class="material-symbols-outlined">@(isGlobalPresetsSectionOpen ? "expand_less" : "expand_more")</span>
+        </div>
+
+        @if (isGlobalPresetsSectionOpen)
+        {
+            <div class="global-presets-content">
+                <p class="global-presets-desc">Enable or disable built-in quick presets for this space.</p>
+
+                @if (isLoadingGlobalPresets)
+                {
+                    <div class="loading-container" style="padding: 1rem;">
+                        <div class="spinner"></div>
+                    </div>
+                }
+                else if (globalPresets == null || !globalPresets.Any())
+                {
+                    <p style="text-align: center; color: var(--bs-text-subtle); padding: 1rem;">No built-in presets available.</p>
+                }
+                else
+                {
+                    <div class="global-presets-list">
+                        @foreach (var preset in globalPresets)
+                        {
+                            <div class="global-preset-item @(preset.IsEnabled ? "" : "disabled")">
+                                <div class="global-preset-info">
+                                    <span class="global-preset-name">@preset.Name (@preset.DefaultGrams g)</span>
+                                    <span class="global-preset-detail">@preset.CoffeeType · @preset.Preparation</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" checked="@preset.IsEnabled" @onchange="() => ToggleGlobalPreset(preset)" disabled="@isTogglingPreset" />
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
 
     <div class="content">
         @if (isLoading)
@@ -137,7 +187,11 @@
     public string SpaceId { get; set; } = "";
 
     private List<PresetDto>? presets;
+    private List<SpaceGlobalPresetDto>? globalPresets;
     private bool isLoading = true;
+    private bool isLoadingGlobalPresets = false;
+    private bool isGlobalPresetsSectionOpen = false;
+    private bool isTogglingPreset = false;
     private bool showCreateModal = false;
     private bool isCreating = false;
 
@@ -152,6 +206,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadPresets();
+        await LoadGlobalPresets();
     }
 
     private async Task LoadPresets()
@@ -260,6 +315,73 @@
     private void UsePreset(PresetDto preset)
     {
         Navigation.NavigateTo($"/spaces/{SpaceId}/consumption?presetId={preset.Id}");
+    }
+
+    private void ToggleGlobalPresetsSection()
+    {
+        isGlobalPresetsSectionOpen = !isGlobalPresetsSectionOpen;
+    }
+
+    private async Task LoadGlobalPresets()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+            return;
+
+        try
+        {
+            isLoadingGlobalPresets = true;
+            globalPresets = await PresetService.GetSpaceGlobalPresetsAsync(spaceGuid);
+        }
+        catch
+        {
+            globalPresets = new List<SpaceGlobalPresetDto>();
+        }
+        finally
+        {
+            isLoadingGlobalPresets = false;
+        }
+    }
+
+    private async Task ToggleGlobalPreset(SpaceGlobalPresetDto preset)
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+            return;
+
+        try
+        {
+            isTogglingPreset = true;
+            StateHasChanged();
+
+            var success = await PresetService.ToggleGlobalPresetAsync(spaceGuid, preset.GlobalPresetId, !preset.IsEnabled);
+
+            if (success)
+            {
+                var index = globalPresets?.FindIndex(p => p.GlobalPresetId == preset.GlobalPresetId) ?? -1;
+                if (index >= 0 && globalPresets != null)
+                {
+                    globalPresets[index] = new SpaceGlobalPresetDto
+                    {
+                        GlobalPresetId = preset.GlobalPresetId,
+                        Name = preset.Name,
+                        CoffeeType = preset.CoffeeType,
+                        Brand = preset.Brand,
+                        Preparation = preset.Preparation,
+                        DefaultGrams = preset.DefaultGrams,
+                        Description = preset.Description,
+                        IsEnabled = !preset.IsEnabled,
+                        DisplayOrder = preset.DisplayOrder
+                    };
+                }
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            isTogglingPreset = false;
+            StateHasChanged();
+        }
     }
 }
 
@@ -442,12 +564,14 @@
     }
 
     .form-group input,
-    .form-group textarea {
+    .form-group textarea,
+    .form-group select {
         width: 100%;
         padding: 0.5rem;
         border: 1px solid var(--bs-border);
         border-radius: 6px;
         font-size: 1rem;
+        background: white;
     }
 
     .modal-actions {
@@ -455,6 +579,143 @@
         gap: 0.5rem;
         justify-content: flex-end;
         margin-top: 1.5rem;
+    }
+
+    /* Global Presets Section */
+    .global-presets-section {
+        background: white;
+        margin: 1rem;
+        margin-bottom: 0;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .global-presets-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        cursor: pointer;
+        background: var(--bs-gray-50, #f9fafb);
+    }
+
+    .global-presets-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+
+    .global-presets-title .material-symbols-outlined {
+        font-size: 1.25rem;
+        color: var(--bs-primary);
+    }
+
+    .badge-count {
+        background: var(--bs-primary-light, #e0f2fe);
+        color: var(--bs-primary);
+        padding: 0.125rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .global-presets-content {
+        padding: 0 1rem 1rem;
+    }
+
+    .global-presets-desc {
+        color: var(--bs-text-subtle);
+        font-size: 0.875rem;
+        margin: 0 0 1rem;
+    }
+
+    .global-presets-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .global-preset-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--bs-gray-50, #f9fafb);
+        border-radius: 6px;
+    }
+
+    .global-preset-item.disabled {
+        opacity: 0.6;
+    }
+
+    .global-preset-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    .global-preset-name {
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .global-preset-detail {
+        font-size: 0.75rem;
+        color: var(--bs-text-subtle);
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--bs-gray-300, #d1d5db);
+        transition: 0.3s;
+        border-radius: 26px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: var(--bs-primary);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(22px);
+    }
+
+    .toggle-switch input:disabled + .toggle-slider {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     @@keyframes spin {

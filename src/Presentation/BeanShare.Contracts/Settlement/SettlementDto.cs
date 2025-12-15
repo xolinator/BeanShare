@@ -11,26 +11,9 @@ public record SettlementDto(
     DateTime GeneratedAt,
     decimal TotalAmount,
     string Currency,
+    string Status,
+    DateTime? CompletedAt,
+    int ConfirmedLinesCount,
+    int TotalLinesCount,
     List<SettlementLineDto> Lines
-);
-
-public record SettlementLineDto(
-    Guid UserId,
-    string UserName,
-    string UserEmail,
-    decimal TotalCoffeeGrams,
-    decimal? TotalMilkMl,
-    decimal AmountDue,
-    decimal ConsumptionPercentage
-);
-
-public record SettlementSummaryDto(
-    Guid Id,
-    Guid BillingPeriodId,
-    string BillingPeriodName,
-    DateTime GeneratedAt,
-    decimal TotalAmount,
-    string Currency,
-    int ParticipantCount,
-    decimal? UserShare
 );

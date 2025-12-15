@@ -3,16 +3,17 @@
 @using MediatR
 @using BeanShare.Application.Features.Spaces.Commands
 @using BeanShare.Application.Features.Spaces.Queries
+@using BeanShare.Application.Features.CoffeeStock.Queries
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.Application.Features.Presets.Queries
+@using BeanShare.Application.Features.Consumption.Commands
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IMediator Mediator
 @inject NavigationManager Navigation
 
 <PageTitle>My Spaces - BeanShare</PageTitle>
-
-<div style="position: fixed; top: 1rem; right: 1rem; z-index: 100;">
-    <UserProfile />
-</div>
 
 <div class="bs-container" style="padding-top: 2rem; padding-bottom: 2rem;">
     <div style="max-width: 48rem; margin: 0 auto;">
@@ -43,6 +44,13 @@
     </div>
 </div>
 
+@if (spaces.Any())
+{
+    <button class="quick-consumption-fab" @onclick="OpenQuickConsumption" title="Log Coffee">
+        <span class="material-symbols-outlined">coffee</span>
+    </button>
+}
+
 <CreateSpaceModal IsVisible="@showCreateModal"
                  OnSubmit="HandleCreateSpace"
                  OnCancel="() => showCreateModal = false" />
@@ -51,21 +59,77 @@
                OnSubmit="HandleJoinSpace"
                OnCancel="() => showJoinModal = false" />
 
+<BeanShare.SharedUi.Components.Consumption.QuickConsumptionModal
+    IsVisible="@showQuickConsumptionModal"
+    Spaces="@spaces"
+    StockProducts="@quickConsumptionStock"
+    Presets="@quickConsumptionPresets"
+    IsLoadingStock="@isLoadingQuickConsumptionData"
+    OnSpaceSelected="HandleQuickConsumptionSpaceSelected"
+    OnSubmit="HandleQuickConsumptionSubmit"
+    OnCancel="CloseQuickConsumption" />
+
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
        Title="@toastTitle"
        Message="@toastMessage"
        OnClose="() => showToast = false" />
 
+<style>
+    .quick-consumption-fab {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background-color: var(--bs-primary);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(65, 105, 225, 0.4);
+        transition: all 0.2s;
+        z-index: 50;
+    }
+
+    .quick-consumption-fab:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(65, 105, 225, 0.5);
+    }
+
+    .quick-consumption-fab:active {
+        transform: scale(0.95);
+    }
+
+    .quick-consumption-fab .material-symbols-outlined {
+        font-size: 1.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .quick-consumption-fab {
+            bottom: 1.5rem;
+            right: 1.5rem;
+        }
+    }
+</style>
+
 @code {
     private List<SpaceSummaryDto> spaces = new();
     private bool isLoading = true;
     private bool showCreateModal;
     private bool showJoinModal;
+    private bool showQuickConsumptionModal;
     private bool showToast;
     private bool isToastError;
     private string toastTitle = "";
     private string toastMessage = "";
+
+    private List<StockLevelDto>? quickConsumptionStock;
+    private List<PresetOption>? quickConsumptionPresets;
+    private bool isLoadingQuickConsumptionData;
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,6 +204,97 @@
     private void HandleSpaceSelected(string spaceId)
     {
         Navigation.NavigateTo($"/spaces/{spaceId}");
+    }
+
+    private void OpenQuickConsumption()
+    {
+        quickConsumptionStock = null;
+        quickConsumptionPresets = null;
+        showQuickConsumptionModal = true;
+    }
+
+    private void CloseQuickConsumption()
+    {
+        showQuickConsumptionModal = false;
+        quickConsumptionStock = null;
+        quickConsumptionPresets = null;
+    }
+
+    private async Task HandleQuickConsumptionSpaceSelected(Guid spaceId)
+    {
+        isLoadingQuickConsumptionData = true;
+        quickConsumptionStock = null;
+        quickConsumptionPresets = null;
+        StateHasChanged();
+
+        try
+        {
+            var stockResult = await Mediator.Send(new GetSpaceStockQuery(spaceId));
+            var presetsResult = await Mediator.Send(new GetQuickPresetsQuery(spaceId));
+
+            if (stockResult.IsSuccess)
+            {
+                quickConsumptionStock = stockResult.Value.StockLevels.ToList();
+            }
+
+            if (presetsResult.IsSuccess)
+            {
+                quickConsumptionPresets = presetsResult.Value.Presets.Select(p => new PresetOption
+                {
+                    GlobalPresetId = p.GlobalPresetId,
+                    SpacePresetId = p.SpacePresetId,
+                    Name = p.Name,
+                    CoffeeType = p.CoffeeType,
+                    Brand = p.Brand,
+                    Preparation = p.Preparation,
+                    Grams = (int)p.DefaultGrams,
+                    Description = p.Description,
+                    IsFavorite = p.IsFavorite,
+                    IsGlobal = p.IsGlobal,
+                    DisplayOrder = p.DisplayOrder
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load space data: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingQuickConsumptionData = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleQuickConsumptionSubmit(QuickConsumptionRequest request)
+    {
+        try
+        {
+            var command = new RecordConsumptionCommand(
+                request.SpaceId,
+                request.ProductName,
+                request.ProductBrand,
+                request.ProductType,
+                request.Grams,
+                request.ConsumedAt,
+                request.PresetName
+            );
+
+            var result = await Mediator.Send(command);
+            if (result.IsSuccess)
+            {
+                showQuickConsumptionModal = false;
+                ShowToast(false, "Success", $"Logged {request.Grams}g of coffee!");
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to log consumption: {ex.Message}");
+        }
     }
 
     private void ShowToast(bool isError, string title, string message)

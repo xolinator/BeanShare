@@ -57,7 +57,7 @@ public sealed class GetSpaceBillingPeriodsHandler : IRequestHandler<GetSpaceBill
         foreach (var period in billingPeriods.OrderByDescending(p => p.StartDate))
         {
             var periodConsumptions = consumptions
-                .Where(c => c.BillingPeriodId == period.Id)
+                .Where(c => c.ConsumedAt >= period.StartDate && c.ConsumedAt <= period.EndDate)
                 .ToList();
 
             var daysRemaining = period.State == BillingState.Open

@@ -1,0 +1,124 @@
+using BeanShare.Application.Abstractions;
+using BeanShare.Application.Common;
+using BeanShare.Application.Features.Settlement.Dtos;
+using BeanShare.Application.Services;
+using BeanShare.Domain.Common;
+using BeanShare.Domain.Specifications;
+using BeanShare.Domain.ValueObjects;
+using MediatR;
+
+namespace BeanShare.Application.Features.Settlement.Queries.GetSettlementReportData;
+
+/// <summary>
+/// Handler for GetSettlementReportDataQuery.
+/// </summary>
+public sealed class GetSettlementReportDataHandler : IRequestHandler<GetSettlementReportDataQuery, Result<SettlementReportData>>
+{
+    private readonly ISettlementRepository _settlementRepository;
+    private readonly IBillingPeriodRepository _billingPeriodRepository;
+    private readonly ISpaceRepository _spaceRepository;
+    private readonly IUserService _userService;
+
+    public GetSettlementReportDataHandler(
+        ISettlementRepository settlementRepository,
+        IBillingPeriodRepository billingPeriodRepository,
+        ISpaceRepository spaceRepository,
+        IUserService userService)
+    {
+        _settlementRepository = settlementRepository;
+        _billingPeriodRepository = billingPeriodRepository;
+        _spaceRepository = spaceRepository;
+        _userService = userService;
+    }
+
+    public async Task<Result<SettlementReportData>> Handle(GetSettlementReportDataQuery request, CancellationToken cancellationToken)
+    {
+        var settlement = await _settlementRepository.GetByIdAsync(request.SettlementId, cancellationToken);
+
+        if (settlement is null)
+        {
+            return Result<SettlementReportData>.Failure(Error.SettlementNotFound(request.SettlementId.Value));
+        }
+
+        var billingPeriod = await _billingPeriodRepository.GetByIdAsync(settlement.BillingPeriodId, cancellationToken);
+        if (billingPeriod is null)
+        {
+            return Result<SettlementReportData>.Failure(Error.BillingPeriodNotFound(settlement.BillingPeriodId.Value));
+        }
+
+        var space = await _spaceRepository.GetSingleBySpecAsync(
+            new SpaceByIdSpecification(settlement.SpaceId),
+            cancellationToken);
+
+        if (space is null)
+        {
+            return Result<SettlementReportData>.Failure(Error.SpaceNotFound(settlement.SpaceId.Value));
+        }
+
+        var allUserIds = settlement.Lines.Select(l => l.UserId).ToList();
+        allUserIds.Add(settlement.GeneratedBy);
+
+        var confirmedByIds = settlement.Lines
+            .Where(l => l.Confirmation != null)
+            .Select(l => l.Confirmation!.ConfirmedBy)
+            .ToList();
+        allUserIds.AddRange(confirmedByIds);
+
+        var users = await _userService.GetByIdsAsync(allUserIds.Distinct(), cancellationToken);
+        var userLookup = users.ToDictionary(u => u.Id);
+
+        var generatedByName = userLookup.TryGetValue(settlement.GeneratedBy, out var generatedByUser)
+            ? generatedByUser.Name
+            : "Unknown";
+
+        var totalCoffeeGrams = settlement.Lines.Sum(l => l.TotalCoffeeGrams);
+        var totalMilkMl = settlement.Lines.Sum(l => l.TotalMilkMl ?? 0);
+
+        var lines = new List<SettlementLineReportData>();
+        foreach (var line in settlement.Lines)
+        {
+            userLookup.TryGetValue(line.UserId, out var user);
+            var userName = user?.Name ?? $"User {line.UserId.Value}";
+            var userEmail = user?.Email ?? "";
+
+            var consumptionPercentage = totalCoffeeGrams > 0
+                ? (line.TotalCoffeeGrams / totalCoffeeGrams) * 100
+                : 0;
+
+            string? confirmedByName = null;
+            if (line.Confirmation != null && userLookup.TryGetValue(line.Confirmation.ConfirmedBy, out var confirmer))
+            {
+                confirmedByName = confirmer.Name;
+            }
+
+            lines.Add(new SettlementLineReportData(
+                userName,
+                userEmail,
+                line.TotalCoffeeGrams,
+                line.TotalMilkMl,
+                consumptionPercentage,
+                line.AmountDue.Amount,
+                line.IsConfirmed,
+                confirmedByName,
+                line.Confirmation?.ConfirmedAt
+            ));
+        }
+
+        var reportData = new SettlementReportData(
+            space.Name,
+            billingPeriod.Name,
+            billingPeriod.StartDate,
+            billingPeriod.EndDate,
+            settlement.GeneratedAt,
+            generatedByName,
+            settlement.TotalAmount,
+            settlement.Currency,
+            settlement.Lines.Count,
+            totalCoffeeGrams,
+            totalMilkMl,
+            lines
+        );
+
+        return Result<SettlementReportData>.Success(reportData);
+    }
+}

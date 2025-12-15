@@ -9,6 +9,7 @@
 @using BeanShare.Application.Features.CoffeeStock.Queries
 @using BeanShare.Application.Features.CoffeeStock.Dtos
 @using BeanShare.Application.Features.Presets.Queries
+@using BeanShare.Application.Features.Presets.Commands
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.WebUtilities
@@ -64,7 +65,8 @@ else
 
             <ConsumptionForm OnSubmit="HandleLogConsumption"
                            StockProducts="@stockProducts"
-                           PresetData="@presetData" />
+                           PresetData="@presetData"
+                           QuickPresets="@quickPresets" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -89,6 +91,7 @@ else
 
     private List<ConsumptionEntryDto> recentConsumptions = new();
     private List<StockLevelDto> stockProducts = new();
+    private List<PresetOption> quickPresets = new();
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
     private int remainingStock = 0;
@@ -106,6 +109,7 @@ else
             await LoadSpace();
             await LoadStock();
             await LoadConsumption();
+            await LoadQuickPresets();
             await LoadPresetIfProvided();
         }
     }
@@ -189,6 +193,35 @@ else
         {
             isLoadingConsumption = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task LoadQuickPresets()
+    {
+        try
+        {
+            var result = await Mediator.Send(new GetQuickPresetsQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                quickPresets = result.Value.Presets.Select(p => new PresetOption
+                {
+                    GlobalPresetId = p.GlobalPresetId,
+                    SpacePresetId = p.SpacePresetId,
+                    Name = p.Name,
+                    CoffeeType = p.CoffeeType,
+                    Brand = p.Brand,
+                    Preparation = p.Preparation,
+                    Grams = (int)p.DefaultGrams,
+                    Description = p.Description,
+                    IsFavorite = p.IsFavorite,
+                    IsGlobal = p.IsGlobal,
+                    DisplayOrder = p.DisplayOrder
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load presets: {ex.Message}");
         }
     }
 

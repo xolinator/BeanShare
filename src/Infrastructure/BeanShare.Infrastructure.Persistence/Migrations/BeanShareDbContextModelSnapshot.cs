@@ -163,6 +163,9 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("BillingPeriodId");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasMaxLength(3)
@@ -178,6 +181,11 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SpaceId")
                         .HasColumnType("uuid")
                         .HasColumnName("SpaceId");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 4)
@@ -236,6 +244,13 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamptz");
 
+                    b.Property<Guid?>("PresetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PresetName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<decimal>("Quantity")
                         .HasColumnType("numeric(10,3)")
                         .HasColumnName("QuantityGrams");
@@ -258,6 +273,145 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_Consumptions_SpaceId_ConsumedAt");
 
                     b.ToTable("Consumptions", (string)null);
+                });
+
+            modelBuilder.Entity("BeanShare.Domain.Entities.ExchangeRate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BaseCurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("decimal(18,10)");
+
+                    b.Property<string>("TargetCurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaseCurrencyCode", "TargetCurrencyCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ExchangeRates_Base_Target");
+
+                    b.ToTable("ExchangeRates", (string)null);
+                });
+
+            modelBuilder.Entity("BeanShare.Domain.Entities.GlobalPreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<string>("DefaultBrand")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DefaultCoffeeType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("DefaultGrams")
+                        .HasColumnType("numeric(10,3)")
+                        .HasColumnName("DefaultGrams");
+
+                    b.Property<string>("DefaultPreparation")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisplayOrder")
+                        .HasDatabaseName("IX_GlobalPresets_DisplayOrder");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_GlobalPresets_IsActive");
+
+                    b.ToTable("GlobalPresets", (string)null);
+                });
+
+            modelBuilder.Entity("BeanShare.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<Guid?>("SpaceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_Notifications_CreatedAt");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_Notifications_UserId");
+
+                    b.HasIndex("UserId", "IsRead")
+                        .HasDatabaseName("IX_Notifications_UserId_IsRead");
+
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("BeanShare.Domain.Entities.PresetRecipe", b =>
@@ -326,6 +480,38 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.ToTable("PresetRecipes", (string)null);
                 });
 
+            modelBuilder.Entity("BeanShare.Domain.Entities.SpaceGlobalPresetConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<Guid>("GlobalPresetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpaceId")
+                        .HasDatabaseName("IX_SpaceGlobalPresetConfigs_SpaceId");
+
+                    b.HasIndex("SpaceId", "GlobalPresetId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SpaceGlobalPresetConfigs_SpaceId_GlobalPresetId");
+
+                    b.ToTable("SpaceGlobalPresetConfigs", (string)null);
+                });
+
             modelBuilder.Entity("BeanShare.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -356,6 +542,10 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
+                    b.Property<string>("PreferredCurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<int>("Provider")
                         .HasColumnType("integer");
 
@@ -374,6 +564,47 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_Users_Provider_ProviderUserId");
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("BeanShare.Domain.Entities.UserPresetFavorite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("GlobalPresetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PresetRecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "SpaceId")
+                        .HasDatabaseName("IX_UserPresetFavorites_UserId_SpaceId");
+
+                    b.HasIndex("UserId", "SpaceId", "GlobalPresetId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserPresetFavorites_UserId_SpaceId_GlobalPresetId")
+                        .HasFilter("\"GlobalPresetId\" IS NOT NULL");
+
+                    b.HasIndex("UserId", "SpaceId", "PresetRecipeId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserPresetFavorites_UserId_SpaceId_PresetRecipeId")
+                        .HasFilter("\"PresetRecipeId\" IS NOT NULL");
+
+                    b.ToTable("UserPresetFavorites", (string)null);
                 });
 
             modelBuilder.Entity("BeanShare.Domain.Aggregates.CoffeeStock.Purchase", b =>
@@ -605,8 +836,34 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                                         .HasForeignKey("SettlementLineSettlementId", "SettlementLineUserId");
                                 });
 
+                            b1.OwnsOne("BeanShare.Domain.ValueObjects.PaymentConfirmation", "Confirmation", b2 =>
+                                {
+                                    b2.Property<Guid>("SettlementLineSettlementId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<Guid>("SettlementLineUserId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<DateTime>("ConfirmedAt")
+                                        .HasColumnType("timestamp with time zone")
+                                        .HasColumnName("ConfirmedAt");
+
+                                    b2.Property<Guid>("ConfirmedBy")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("ConfirmedBy");
+
+                                    b2.HasKey("SettlementLineSettlementId", "SettlementLineUserId");
+
+                                    b2.ToTable("SettlementLines");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("SettlementLineSettlementId", "SettlementLineUserId");
+                                });
+
                             b1.Navigation("AmountDue")
                                 .IsRequired();
+
+                            b1.Navigation("Confirmation");
                         });
 
                     b.Navigation("Lines");

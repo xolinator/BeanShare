@@ -47,7 +47,9 @@ public sealed class GetRecentConsumptionsQueryHandler
                 QuantityGrams = e.Quantity.Grams,
                 RemainingGrams = 0,
                 ConsumedAt = e.ConsumedAt,
-                CreatedAt = e.CreatedAt
+                CreatedAt = e.CreatedAt,
+                PresetId = e.PresetId?.Value,
+                PresetName = e.PresetName
             })
             .ToList();
 
@@ -57,10 +59,8 @@ public sealed class GetRecentConsumptionsQueryHandler
             .ToList();
 
         var myCupsToday = myEntriesToday.Count;
-        // Cost calculation deferred to future sprint when pricing is implemented
         var myTotalCost = 0m;
 
-        // Default stock value for MVP, will integrate with CoffeeStock aggregate later
         var remainingStock = 500;
 
         var result = new GetRecentConsumptionsResult(

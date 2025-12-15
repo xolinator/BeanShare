@@ -72,7 +72,10 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
                 line.TotalMilkMl ?? 0,
                 line.AmountDue.Amount,
                 line.AmountDue.Currency,
-                consumptionPercentage
+                consumptionPercentage,
+                line.IsConfirmed,
+                line.Confirmation?.ConfirmedBy.Value,
+                line.Confirmation?.ConfirmedAt
             );
 
             lines.Add(lineDto);
@@ -89,6 +92,10 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
             settlement.GeneratedBy.Value,
             settlement.TotalAmount,
             settlement.Currency,
+            settlement.Status.ToString(),
+            settlement.CompletedAt,
+            settlement.ConfirmedLinesCount,
+            settlement.TotalLinesCount,
             lines
         );
 

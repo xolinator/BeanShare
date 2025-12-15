@@ -11,6 +11,10 @@ public sealed class ConsumptionFormModel
 
     public Guid? PresetId { get; set; }
 
+    public Guid? GlobalPresetId { get; set; }
+
+    public Guid? SpacePresetId { get; set; }
+
     [Required]
     public DateTime ConsumedAt { get; set; } = DateTime.Now;
 

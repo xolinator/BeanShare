@@ -1,5 +1,6 @@
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Enums;
+using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Domain.Entities;
 
@@ -17,8 +18,8 @@ public sealed class User
     public string? PasswordHash { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime LastLoginAt { get; private set; }
+    public string? PreferredCurrencyCode { get; private set; }
 
-    // EF Core constructor
     private User()
     {
         Email = string.Empty;
@@ -83,8 +84,12 @@ public sealed class User
         PasswordHash = passwordHash;
     }
 
-    public bool VerifyPassword(string passwordHash)
+    public void SetPreferredCurrency(string? currencyCode)
     {
-        return PasswordHash == passwordHash;
+        if (currencyCode is not null)
+        {
+            _ = Currency.Create(currencyCode);
+        }
+        PreferredCurrencyCode = currencyCode?.ToUpperInvariant();
     }
 }

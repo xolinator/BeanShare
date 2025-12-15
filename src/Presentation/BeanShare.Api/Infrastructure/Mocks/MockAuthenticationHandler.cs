@@ -17,8 +17,8 @@ public sealed class MockAuthenticationHandler : AuthenticationHandler<Authentica
     {
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, "11111111-1111-1111-1111-111111111111"),
-            new Claim(ClaimTypes.Email, "test@coffeespace.local"),
+            new Claim(ClaimTypes.NameIdentifier, "22222222-2222-2222-2222-222222222222"),
+            new Claim(ClaimTypes.Email, "sarah.johnson@beanshare.com"),
             new Claim(ClaimTypes.Role, "User")
         };
 

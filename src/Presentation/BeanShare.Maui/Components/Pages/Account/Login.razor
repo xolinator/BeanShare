@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IAuthenticationService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 
 <PageTitle>Sign In - BeanShare</PageTitle>
 
@@ -48,6 +49,40 @@
             </button>
         </EditForm>
 
+        <div class="bs-divider">
+            <span>OR</span>
+        </div>
+
+        <div class="bs-login-providers">
+            <button type="button" class="bs-login-button bs-login-google" @onclick="HandleGoogleLogin" disabled="@_isLoading">
+                <svg class="bs-login-icon" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                </svg>
+                @if (_isGoogleLoading)
+                {
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Continue with Google</span>
+                }
+            </button>
+
+            <button type="button" class="bs-login-button bs-login-facebook" @onclick="HandleFacebookLogin" disabled="@_isLoading">
+                <svg class="bs-login-icon" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z"/>
+                </svg>
+                @if (_isFacebookLoading)
+                {
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Continue with Facebook</span>
+                }
+            </button>
+        </div>
+
         <div class="bs-login-footer">
             <p class="bs-login-register">
                 Don't have an account? <a href="/register" class="bs-link">Create one</a>
@@ -64,6 +99,8 @@
 
     private LoginModel _model = new();
     private bool _isLoading;
+    private bool _isGoogleLoading;
+    private bool _isFacebookLoading;
     private string? _errorMessage;
 
     private async Task HandleLogin()
@@ -77,6 +114,8 @@
 
             if (result.Success && result.User != null)
             {
+                System.Diagnostics.Debug.WriteLine($"[Login] Login successful for {result.User.Email}");
+
                 if (AuthStateProvider is MauiAuthenticationStateProvider mauiAuthStateProvider)
                 {
                     mauiAuthStateProvider.NotifyAuthenticationStateChanged();
@@ -86,18 +125,113 @@
                 {
                     await OnLoginSuccess.InvokeAsync();
                 }
+                else
+                {
+                    Navigation.NavigateTo("/spaces", forceLoad: true);
+                }
             }
             else
             {
                 _errorMessage = result.ErrorMessage ?? "Login failed";
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[Login] Error: {ex.Message}");
             _errorMessage = "An error occurred during login. Please try again.";
         }
         finally
         {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleGoogleLogin()
+    {
+        _isGoogleLoading = true;
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginWithGoogleAsync();
+
+            if (result.Success && result.User != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Login] Google login successful for {result.User.Email}");
+
+                if (AuthStateProvider is MauiAuthenticationStateProvider mauiAuthStateProvider)
+                {
+                    mauiAuthStateProvider.NotifyAuthenticationStateChanged();
+                }
+
+                if (OnLoginSuccess.HasDelegate)
+                {
+                    await OnLoginSuccess.InvokeAsync();
+                }
+                else
+                {
+                    Navigation.NavigateTo("/spaces", forceLoad: true);
+                }
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Google login failed";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Login] Google error: {ex.Message}");
+            _errorMessage = "An error occurred during Google login. Please try again.";
+        }
+        finally
+        {
+            _isGoogleLoading = false;
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleFacebookLogin()
+    {
+        _isFacebookLoading = true;
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginWithFacebookAsync();
+
+            if (result.Success && result.User != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Login] Facebook login successful for {result.User.Email}");
+
+                if (AuthStateProvider is MauiAuthenticationStateProvider mauiAuthStateProvider)
+                {
+                    mauiAuthStateProvider.NotifyAuthenticationStateChanged();
+                }
+
+                if (OnLoginSuccess.HasDelegate)
+                {
+                    await OnLoginSuccess.InvokeAsync();
+                }
+                else
+                {
+                    Navigation.NavigateTo("/spaces", forceLoad: true);
+                }
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Facebook login failed";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Login] Facebook error: {ex.Message}");
+            _errorMessage = "An error occurred during Facebook login. Please try again.";
+        }
+        finally
+        {
+            _isFacebookLoading = false;
             _isLoading = false;
         }
     }

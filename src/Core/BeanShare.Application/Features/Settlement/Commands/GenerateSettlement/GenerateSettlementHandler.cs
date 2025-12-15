@@ -130,6 +130,8 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
             );
         }
 
+        settlement.FinalizeGeneration(_clock);
+
         await _settlementRepository.AddAsync(settlement, cancellationToken);
 
         billingPeriod.MarkAsSettled(currentUserId, _clock);
@@ -154,7 +156,10 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
                 line.TotalMilkMl,
                 line.AmountDue.Amount,
                 line.AmountDue.Currency,
-                line.GetConsumptionPercentage(totalConsumedWeight.Grams)
+                line.GetConsumptionPercentage(totalConsumedWeight.Grams),
+                line.IsConfirmed,
+                line.Confirmation?.ConfirmedBy.Value,
+                line.Confirmation?.ConfirmedAt
             ));
         }
 
@@ -169,6 +174,10 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
             settlement.GeneratedBy.Value,
             settlement.TotalAmount,
             settlement.Currency,
+            settlement.Status.ToString(),
+            settlement.CompletedAt,
+            settlement.ConfirmedLinesCount,
+            settlement.TotalLinesCount,
             lines
         );
 

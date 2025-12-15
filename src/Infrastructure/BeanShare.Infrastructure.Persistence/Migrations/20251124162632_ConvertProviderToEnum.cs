@@ -10,44 +10,32 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // PostgreSQL requires explicit USING clause for type conversion
+            // Handle both string values and the case where it might already be numeric
             migrationBuilder.Sql(@"
-                UPDATE ""Users""
-                SET ""Provider"" = CASE ""Provider""
-                    WHEN 'Email' THEN '0'
-                    WHEN 'Google' THEN '1'
-                    WHEN 'Facebook' THEN '2'
-                    ELSE '0'
+                ALTER TABLE ""Users""
+                ALTER COLUMN ""Provider"" TYPE integer
+                USING CASE
+                    WHEN ""Provider"" = 'Email' THEN 0
+                    WHEN ""Provider"" = 'Google' THEN 1
+                    WHEN ""Provider"" = 'Facebook' THEN 2
+                    WHEN ""Provider"" ~ '^\d+$' THEN ""Provider""::integer
+                    ELSE 0
                 END;
             ");
-
-            migrationBuilder.AlterColumn<int>(
-                name: "Provider",
-                table: "Users",
-                type: "integer",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character varying(50)",
-                oldMaxLength: 50);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "Provider",
-                table: "Users",
-                type: "character varying(50)",
-                maxLength: 50,
-                nullable: false,
-                oldClrType: typeof(int),
-                oldType: "integer");
-
+            // PostgreSQL requires explicit USING clause for type conversion
             migrationBuilder.Sql(@"
-                UPDATE ""Users""
-                SET ""Provider"" = CASE ""Provider""
-                    WHEN '0' THEN 'Email'
-                    WHEN '1' THEN 'Google'
-                    WHEN '2' THEN 'Facebook'
+                ALTER TABLE ""Users""
+                ALTER COLUMN ""Provider"" TYPE character varying(50)
+                USING CASE ""Provider""
+                    WHEN 0 THEN 'Email'
+                    WHEN 1 THEN 'Google'
+                    WHEN 2 THEN 'Facebook'
                     ELSE 'Email'
                 END;
             ");

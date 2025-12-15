@@ -11,5 +11,9 @@ public sealed record SettlementDto(
     Guid GeneratedBy,
     decimal TotalAmount,
     string Currency,
+    string Status,
+    DateTime? CompletedAt,
+    int ConfirmedLinesCount,
+    int TotalLinesCount,
     List<SettlementLineDto> Lines
 );

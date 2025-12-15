@@ -16,18 +16,3 @@ public sealed record SpaceAnalyticsDto
     public Money? TotalCostThisMonth { get; init; }
 }
 
-public sealed record TopConsumerDto
-{
-    public Guid UserId { get; init; }
-    public string UserName { get; init; } = string.Empty;
-    public int CupCount { get; init; }
-    public Money? TotalCost { get; init; }
-}
-
-public sealed record PopularCoffeeDto
-{
-    public string CoffeeName { get; init; } = string.Empty;
-    public int ConsumptionCount { get; init; }
-    public decimal TotalGrams { get; init; }
-    public double Percentage { get; init; }
-}

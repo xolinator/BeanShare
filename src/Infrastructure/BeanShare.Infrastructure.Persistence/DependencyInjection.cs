@@ -35,6 +35,11 @@ public static class DependencyInjection
         services.AddScoped<IBillingPeriodRepository, BillingPeriodRepository>();
         services.AddScoped<ISettlementRepository, SettlementRepository>();
         services.AddScoped<IPresetRecipeRepository, PresetRecipeRepository>();
+        services.AddScoped<IGlobalPresetRepository, GlobalPresetRepository>();
+        services.AddScoped<ISpaceGlobalPresetConfigRepository, SpaceGlobalPresetConfigRepository>();
+        services.AddScoped<IUserPresetFavoriteRepository, UserPresetFavoriteRepository>();
+        services.AddScoped<IExchangeRateRepository, ExchangeRateRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
         services.AddScoped<ICostCalculationService, CostCalculationService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

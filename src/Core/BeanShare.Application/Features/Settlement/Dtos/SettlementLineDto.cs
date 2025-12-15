@@ -8,5 +8,8 @@ public sealed record SettlementLineDto(
     decimal? TotalMilkMl,
     decimal AmountDue,
     string Currency,
-    decimal ConsumptionPercentage
+    decimal ConsumptionPercentage,
+    bool IsConfirmed,
+    Guid? ConfirmedBy,
+    DateTime? ConfirmedAt
 );

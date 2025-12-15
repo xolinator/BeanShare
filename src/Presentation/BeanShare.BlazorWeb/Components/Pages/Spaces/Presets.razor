@@ -12,6 +12,66 @@
 
 <PageTitle>Presets - BeanShare</PageTitle>
 
+<div style="background: var(--bs-background); border-bottom: 1px solid var(--bs-border); padding: 1rem 0;">
+    <div class="bs-container">
+        <div class="bs-flex bs-items-center bs-justify-between" style="cursor: pointer;" @onclick="ToggleGlobalPresetsSection">
+            <div class="bs-flex bs-items-center bs-gap-2">
+                <span class="material-symbols-outlined" style="color: var(--bs-primary);">language</span>
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Built-in Quick Presets</h3>
+                <span class="bs-badge" style="background: var(--bs-gray-100); color: var(--bs-text-subtle); font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px;">
+                    @(globalPresets?.Count(p => p.IsEnabled) ?? 0) enabled
+                </span>
+            </div>
+            <span class="material-symbols-outlined">@(isGlobalPresetsSectionOpen ? "expand_less" : "expand_more")</span>
+        </div>
+
+        @if (isGlobalPresetsSectionOpen)
+        {
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--bs-border);">
+                <p style="color: var(--bs-text-subtle); font-size: 0.875rem; margin-bottom: 1rem;">
+                    Enable or disable built-in quick presets for this space. Disabled presets won't appear in the consumption form.
+                </p>
+
+                @if (isLoadingGlobalPresets)
+                {
+                    <div class="bs-flex bs-items-center bs-justify-center" style="padding: 1rem;">
+                        <div class="bs-spinner"></div>
+                    </div>
+                }
+                else if (globalPresets == null || !globalPresets.Any())
+                {
+                    <p style="color: var(--bs-text-subtle); text-align: center; padding: 1rem;">No built-in presets available.</p>
+                }
+                else
+                {
+                    <div class="bs-grid bs-gap-2" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                        @foreach (var preset in globalPresets)
+                        {
+                            <div class="bs-card" style="padding: 1rem; opacity: @(preset.IsEnabled ? "1" : "0.6"); transition: opacity 0.2s;">
+                                <div class="bs-flex bs-justify-between bs-items-start">
+                                    <div style="flex: 1;">
+                                        <div class="bs-flex bs-items-center bs-gap-2" style="margin-bottom: 0.25rem;">
+                                            <span style="font-weight: 600;">@preset.Name</span>
+                                            <span style="color: var(--bs-text-subtle); font-size: 0.875rem;">@preset.DefaultGrams g</span>
+                                        </div>
+                                        <p style="color: var(--bs-text-subtle); font-size: 0.75rem; margin: 0;">
+                                            @preset.CoffeeType · @preset.Preparation
+                                        </p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" checked="@preset.IsEnabled" @onchange="() => ToggleGlobalPreset(preset)" disabled="@isTogglingPreset" />
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
 <div style="position: sticky; top: 0; z-index: 10; background: var(--bs-background-light); border-bottom: 1px solid var(--bs-border); padding: 1rem 0;">
     <div class="bs-container">
         <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
@@ -206,11 +266,69 @@
     </div>
 }
 
+<style>
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--bs-gray-300);
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+
+    .toggle-slider::before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: var(--bs-primary);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(20px);
+    }
+
+    .toggle-switch input:disabled + .toggle-slider {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+
 @code {
     [Parameter] public string SpaceId { get; set; } = "";
 
     private List<PresetDto>? presets;
+    private List<SpaceGlobalPresetDto>? globalPresets;
     private bool isLoading = true;
+    private bool isLoadingGlobalPresets = false;
+    private bool isGlobalPresetsSectionOpen = false;
+    private bool isTogglingPreset = false;
     private bool showCreateModal = false;
     private bool showEditModal = false;
     private bool isSaving = false;
@@ -220,6 +338,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadPresets();
+        await LoadGlobalPresets();
     }
 
     private async Task LoadPresets()
@@ -357,7 +476,77 @@
 
     private async Task UsePreset(PresetDto preset)
     {
-        Navigation.NavigateTo($"/spaces/{SpaceId}/consume?presetId={preset.Id}");
+        Navigation.NavigateTo($"/spaces/{SpaceId}/consumption?presetId={preset.Id}");
+    }
+
+    private void ToggleGlobalPresetsSection()
+    {
+        isGlobalPresetsSectionOpen = !isGlobalPresetsSectionOpen;
+    }
+
+    private async Task LoadGlobalPresets()
+    {
+        try
+        {
+            isLoadingGlobalPresets = true;
+
+            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.GetFromJsonAsync<GetSpaceGlobalPresetsResponse>($"/api/spaces/{SpaceId}/global-presets");
+            globalPresets = response?.Presets?.ToList() ?? new List<SpaceGlobalPresetDto>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading global presets");
+            globalPresets = new List<SpaceGlobalPresetDto>();
+        }
+        finally
+        {
+            isLoadingGlobalPresets = false;
+        }
+    }
+
+    private async Task ToggleGlobalPreset(SpaceGlobalPresetDto preset)
+    {
+        try
+        {
+            isTogglingPreset = true;
+            StateHasChanged();
+
+            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var request = new ToggleGlobalPresetRequest { IsEnabled = !preset.IsEnabled };
+            var response = await Http.PutAsJsonAsync($"/api/spaces/{SpaceId}/global-presets/{preset.GlobalPresetId}/toggle", request);
+            response.EnsureSuccessStatusCode();
+
+            var index = globalPresets?.FindIndex(p => p.GlobalPresetId == preset.GlobalPresetId) ?? -1;
+            if (index >= 0 && globalPresets != null)
+            {
+                globalPresets[index] = new SpaceGlobalPresetDto
+                {
+                    GlobalPresetId = preset.GlobalPresetId,
+                    Name = preset.Name,
+                    CoffeeType = preset.CoffeeType,
+                    Brand = preset.Brand,
+                    Preparation = preset.Preparation,
+                    DefaultGrams = preset.DefaultGrams,
+                    Description = preset.Description,
+                    IsEnabled = !preset.IsEnabled,
+                    DisplayOrder = preset.DisplayOrder
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling global preset");
+        }
+        finally
+        {
+            isTogglingPreset = false;
+            StateHasChanged();
+        }
     }
 
     private class PresetFormModel

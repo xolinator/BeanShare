@@ -1,12 +1,14 @@
 /* BeanShare - Shared Styles (Mission Colors) */
-/* Royal Blue Theme: #4169E1 */
+/* RGB Blue Theme: #0000FF */
 
 :root {
-    --bs-primary: #4169E1;
-    --bs-primary-light: rgba(65, 105, 225, 0.1);
-    --bs-primary-dark: #2c4fb8;
+    --bs-primary: #0000FF;
+    --bs-primary-light: rgba(0, 0, 255, 0.1);
+    --bs-primary-dark: #0000CC;
+    --bs-primary-subtle: rgba(0, 0, 255, 0.08);
     --bs-background: #FFFFFF;
     --bs-background-light: #f6f6f8;
+    --bs-surface: #FFFFFF;
     --bs-text: #111317;
     --bs-text-subtle: #646d87;
     --bs-border: #e2e8f0;
@@ -19,6 +21,54 @@
     --bs-gray-500: #6b7280;
     --bs-gray-700: #374151;
     --bs-gray-900: #111827;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    --bs-primary: #4169E1;
+    --bs-primary-light: rgba(65, 105, 225, 0.15);
+    --bs-primary-dark: #3058c7;
+    --bs-primary-subtle: rgba(65, 105, 225, 0.1);
+    --bs-background: #0f172a;
+    --bs-background-light: #1e293b;
+    --bs-surface: #1e293b;
+    --bs-text: #f1f5f9;
+    --bs-text-subtle: #94a3b8;
+    --bs-border: #334155;
+    --bs-error: #f87171;
+    --bs-success: #4ade80;
+    --bs-warning: #fbbf24;
+    --bs-gray-100: #1e293b;
+    --bs-gray-200: #334155;
+    --bs-gray-300: #475569;
+    --bs-gray-500: #64748b;
+    --bs-gray-700: #cbd5e1;
+    --bs-gray-900: #f8fafc;
+}
+
+/* Auto theme based on system preference */
+@media (prefers-color-scheme: dark) {
+    [data-theme="auto"] {
+        --bs-primary: #4169E1;
+        --bs-primary-light: rgba(65, 105, 225, 0.15);
+        --bs-primary-dark: #3058c7;
+        --bs-primary-subtle: rgba(65, 105, 225, 0.1);
+        --bs-background: #0f172a;
+        --bs-background-light: #1e293b;
+        --bs-surface: #1e293b;
+        --bs-text: #f1f5f9;
+        --bs-text-subtle: #94a3b8;
+        --bs-border: #334155;
+        --bs-error: #f87171;
+        --bs-success: #4ade80;
+        --bs-warning: #fbbf24;
+        --bs-gray-100: #1e293b;
+        --bs-gray-200: #334155;
+        --bs-gray-300: #475569;
+        --bs-gray-500: #64748b;
+        --bs-gray-700: #cbd5e1;
+        --bs-gray-900: #f8fafc;
+    }
 }
 
 /* Reset & Base */
@@ -107,7 +157,7 @@ body {
 }
 
 .bs-btn-secondary:hover {
-    background-color: rgba(65, 105, 225, 0.2);
+    background-color: rgba(0, 0, 255, 0.2);
 }
 
 .bs-btn:disabled {

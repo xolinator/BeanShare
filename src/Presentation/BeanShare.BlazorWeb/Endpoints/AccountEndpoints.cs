@@ -12,14 +12,14 @@ public static class AccountEndpoints
     {
         var group = endpoints.MapGroup("/account");
 
-        group.MapPost("/external-login", ExternalLogin);
+        group.MapPost("/external-login", ExternalLogin).DisableAntiforgery();
         group.MapGet("/external-callback", ExternalCallback);
-        group.MapPost("/logout", Logout);
+        group.MapPost("/logout", Logout).DisableAntiforgery();
 
         return endpoints;
     }
 
-    private static IResult ExternalLogin(
+    private static Task<IResult> ExternalLogin(
         [FromForm] string provider,
         [FromForm] string? returnUrl,
         HttpContext httpContext)
@@ -27,9 +27,10 @@ public static class AccountEndpoints
         if (string.IsNullOrEmpty(provider) ||
             (provider != "Google" && provider != "Facebook"))
         {
-            return Results.BadRequest("Invalid provider");
+            return Task.FromResult(Results.BadRequest("Invalid provider"));
         }
 
+        // Use real OAuth flow - redirect to the OAuth provider
         var redirectUrl = $"/account/external-callback?returnUrl={Uri.EscapeDataString(returnUrl ?? "/spaces")}";
 
         var properties = new AuthenticationProperties
@@ -37,7 +38,7 @@ public static class AccountEndpoints
             RedirectUri = redirectUrl
         };
 
-        return Results.Challenge(properties, new[] { provider });
+        return Task.FromResult(Results.Challenge(properties, new[] { provider }));
     }
 
     private static async Task<IResult> ExternalCallback(
@@ -85,6 +86,6 @@ public static class AccountEndpoints
         [FromServices] Infrastructure.Identity.IAuthenticationService authService)
     {
         await authService.SignOutAsync(httpContext);
-        return Results.Redirect("/");
+        return Results.Redirect("/login");
     }
 }

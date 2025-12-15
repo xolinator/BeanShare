@@ -3,6 +3,7 @@ using BeanShare.Application.Common;
 using BeanShare.Application.Features.Spaces.Commands;
 using BeanShare.Application.Features.Spaces.Dtos;
 using BeanShare.Application.Tests.TestHelpers;
+using BeanShare.Domain.Aggregates.Settlement;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Specifications;
@@ -285,6 +286,7 @@ public class SpaceCommandTests
     public async Task RemoveMember_WithSelfRemoval_ShouldSucceed()
     {
         var spaceRepository = Substitute.For<ISpaceRepository>();
+        var settlementRepository = Substitute.For<ISettlementRepository>();
         var userContext = Substitute.For<IUserContext>();
         var mapper = Substitute.For<IMapper>();
         var clock = Substitute.For<IClock>();
@@ -301,8 +303,9 @@ public class SpaceCommandTests
         space.Join(memberId, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+        settlementRepository.GetBySpaceIdAsync(spaceId, default).Returns(new List<Settlement>());
 
-        var handler = new RemoveMemberCommandHandler(spaceRepository, userContext, mapper, clock);
+        var handler = new RemoveMemberCommandHandler(spaceRepository, settlementRepository, userContext, mapper, clock);
         var command = new RemoveMemberCommand(spaceId.Value, memberId.Value);
 
         var result = await handler.Handle(command, default);
@@ -317,6 +320,7 @@ public class SpaceCommandTests
     public async Task RemoveMember_WithSelfRemovalAsLastAdmin_ShouldReturnError()
     {
         var spaceRepository = Substitute.For<ISpaceRepository>();
+        var settlementRepository = Substitute.For<ISettlementRepository>();
         var userContext = Substitute.For<IUserContext>();
         var mapper = Substitute.For<IMapper>();
         var clock = Substitute.For<IClock>();
@@ -331,8 +335,9 @@ public class SpaceCommandTests
         var space = Space.Create(spaceId, "Test Space", Currency.USD, adminId, inviteCode, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+        settlementRepository.GetBySpaceIdAsync(spaceId, default).Returns(new List<Settlement>());
 
-        var handler = new RemoveMemberCommandHandler(spaceRepository, userContext, mapper, clock);
+        var handler = new RemoveMemberCommandHandler(spaceRepository, settlementRepository, userContext, mapper, clock);
         var command = new RemoveMemberCommand(spaceId.Value, adminId.Value);
 
         var result = await handler.Handle(command, default);
@@ -346,6 +351,7 @@ public class SpaceCommandTests
     public async Task RemoveMember_WithNonAdminRemovingOther_ShouldReturnError()
     {
         var spaceRepository = Substitute.For<ISpaceRepository>();
+        var settlementRepository = Substitute.For<ISettlementRepository>();
         var userContext = Substitute.For<IUserContext>();
         var mapper = Substitute.For<IMapper>();
         var clock = Substitute.For<IClock>();
@@ -364,8 +370,9 @@ public class SpaceCommandTests
         space.Join(otherMemberId, clock);
 
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
+        settlementRepository.GetBySpaceIdAsync(spaceId, default).Returns(new List<Settlement>());
 
-        var handler = new RemoveMemberCommandHandler(spaceRepository, userContext, mapper, clock);
+        var handler = new RemoveMemberCommandHandler(spaceRepository, settlementRepository, userContext, mapper, clock);
         var command = new RemoveMemberCommand(spaceId.Value, otherMemberId.Value);
 
         var result = await handler.Handle(command, default);

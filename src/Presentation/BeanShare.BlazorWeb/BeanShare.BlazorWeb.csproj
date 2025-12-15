@@ -5,6 +5,7 @@
     <ProjectReference Include="..\BeanShare.Contracts\BeanShare.Contracts.csproj" />
     <ProjectReference Include="..\BeanShare.SharedUi\BeanShare.SharedUi.csproj" />
     <ProjectReference Include="..\..\Infrastructure\BeanShare.Infrastructure\BeanShare.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\BeanShare.Infrastructure.Communication\BeanShare.Infrastructure.Communication.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,6 @@
 using BeanShare.Domain.Aggregates.Settlement;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Enums;
 using BeanShare.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -52,6 +53,19 @@ public sealed class SettlementConfiguration : IEntityTypeConfiguration<Settlemen
             .HasColumnName("GeneratedBy")
             .IsRequired();
 
+        builder.Property(s => s.Status)
+            .HasConversion(
+                status => status.ToString(),
+                value => Enum.Parse<SettlementStatus>(value))
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder.Property(s => s.CompletedAt);
+
+        builder.Ignore(s => s.AreAllLinesConfirmed);
+        builder.Ignore(s => s.ConfirmedLinesCount);
+        builder.Ignore(s => s.TotalLinesCount);
+
         builder.OwnsMany(s => s.Lines, linesConfig =>
         {
             linesConfig.ToTable("SettlementLines");
@@ -97,6 +111,20 @@ public sealed class SettlementConfiguration : IEntityTypeConfiguration<Settlemen
 
             linesConfig.Property(l => l.CreatedAt)
                 .IsRequired();
+
+            linesConfig.OwnsOne(l => l.Confirmation, confirmationBuilder =>
+            {
+                confirmationBuilder.Property(c => c.ConfirmedBy)
+                    .HasConversion(
+                        userId => userId.Value,
+                        value => new UserId(value))
+                    .HasColumnName("ConfirmedBy");
+
+                confirmationBuilder.Property(c => c.ConfirmedAt)
+                    .HasColumnName("ConfirmedAt");
+            });
+
+            linesConfig.Ignore(l => l.IsConfirmed);
         });
 
         builder.Navigation(s => s.Lines)

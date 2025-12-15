@@ -6,6 +6,9 @@ public sealed record SettlementSummaryDto(
     DateTime GeneratedAt,
     decimal TotalAmount,
     string Currency,
+    string Status,
+    int ConfirmedLinesCount,
+    int TotalLinesCount,
     int UserCount,
     decimal YourShare
 );

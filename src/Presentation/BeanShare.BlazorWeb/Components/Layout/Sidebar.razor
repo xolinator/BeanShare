@@ -6,7 +6,7 @@
 <aside class="@GetSidebarClasses()">
     <div class="sidebar-header">
         <div class="sidebar-logo" @onclick="NavigateHome">
-            <span class="material-symbols-outlined">local_cafe</span>
+            <img src="_content/BeanShare.SharedUi/images/logo.svg" alt="BeanShare" class="sidebar-logo-img" />
             <span class="sidebar-brand">BeanShare</span>
         </div>
         <button class="sidebar-toggle" @onclick="ToggleSidebar">
@@ -44,6 +44,7 @@
                 </div>
 
                 <div class="sidebar-section sidebar-section-bottom">
+                    <div class="sidebar-subtitle">Account</div>
                     <NavLink class="sidebar-link" href="/profile">
                         <span class="material-symbols-outlined">person</span>
                         <span class="sidebar-link-text">Profile</span>
@@ -150,6 +151,12 @@
         font-size: 1.25rem;
     }
 
+    .sidebar-logo-img {
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+    }
+
     .sidebar-brand {
         transition: opacity 0.3s ease;
     }
@@ -179,6 +186,8 @@
         flex: 1;
         overflow-y: auto;
         padding: 1rem 0;
+        display: flex;
+        flex-direction: column;
     }
 
     .sidebar-section {

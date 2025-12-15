@@ -18,6 +18,7 @@ public class DatabaseSeeder
 
         _seeders = new List<IDataSeeder>
         {
+            new GlobalPresetSeeder(),
             new UserSeeder(),
             new SpaceSeeder(),
             new CoffeeStockSeeder(),

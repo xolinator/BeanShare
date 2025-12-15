@@ -28,6 +28,14 @@ public partial class MainPage : ContentPage
 	private void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
 	{
 		System.Diagnostics.Debug.WriteLine("[BeanShare] BlazorWebView Initializing...");
+#if DEBUG && WINDOWS
+		// Enable remote debugging for WebView2 on port 9222
+		e.EnvironmentOptions = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions
+		{
+			AdditionalBrowserArguments = "--remote-debugging-port=9222"
+		};
+		System.Diagnostics.Debug.WriteLine("[BeanShare] Remote debugging enabled on port 9222");
+#endif
 	}
 
 	private void OnUrlLoading(object? sender, UrlLoadingEventArgs e)

@@ -1,9 +1,9 @@
 @page "/spaces/{SpaceId}/settlements/{SettlementId}"
-@using MediatR
-@using BeanShare.Application.Features.Settlement.Queries.GetSettlementById
-@using BeanShare.Application.Features.Settlement.Dtos
-@using BeanShare.Domain.ValueObjects
-@inject IMediator Mediator
+@using BeanShare.Contracts.Settlement
+@using BeanShare.Application.Abstractions
+@inject ISettlementService SettlementService
+@inject ISpacesService SpacesService
+@inject IUserContext UserContext
 @inject NavigationManager Navigation
 
 <PageTitle>Settlement Details - BeanShare</PageTitle>
@@ -40,10 +40,32 @@
     {
         <!-- Settlement Header -->
         <div class="bs-card" style="padding: 2rem; margin-bottom: 1.5rem;">
-            <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 700;">@settlement.BillingPeriodName</h2>
+            <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 0.5rem;">
+                <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700;">@settlement.BillingPeriodName</h2>
+                <span style="padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: @(settlement.Status == "Completed" ? "var(--bs-success-light, rgba(34, 197, 94, 0.1))" : "var(--bs-warning-light, rgba(245, 158, 11, 0.1))"); color: @(settlement.Status == "Completed" ? "var(--bs-success)" : "var(--bs-warning)");">
+                    @GetStatusDisplayText(settlement.Status)
+                </span>
+            </div>
             <p class="bs-text-subtle" style="margin: 0 0 1.5rem 0;">
-                Period: @settlement.PeriodStart.ToString("MMM dd") - @settlement.PeriodEnd.ToString("MMM dd, yyyy")
+                Period: @settlement.BillingPeriodStartDate.ToString("MMM dd") - @settlement.BillingPeriodEndDate.ToString("MMM dd, yyyy")
             </p>
+
+            <!-- Payment Confirmation Progress -->
+            <div style="background: var(--bs-gray-100); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem;">
+                <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 0.5rem;">
+                    <span class="bs-text-subtle" style="font-size: 0.875rem;">Payment Confirmations</span>
+                    <span style="font-weight: 600;">@settlement.ConfirmedLinesCount / @settlement.TotalLinesCount</span>
+                </div>
+                <div style="background: var(--bs-gray-200); border-radius: 9999px; height: 0.5rem; overflow: hidden;">
+                    <div style="background: @(settlement.Status == "Completed" ? "var(--bs-success)" : "var(--bs-primary)"); height: 100%; width: @(settlement.TotalLinesCount > 0 ? (int)((double)settlement.ConfirmedLinesCount / settlement.TotalLinesCount * 100) : 0)%; transition: width 0.3s;"></div>
+                </div>
+                @if (settlement.CompletedAt.HasValue)
+                {
+                    <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0.5rem 0 0 0;">
+                        Completed: @settlement.CompletedAt.Value.ToString("MMM dd, yyyy 'at' h:mm tt")
+                    </p>
+                }
+            </div>
 
             <div class="bs-flex bs-gap-4" style="flex-wrap: wrap;">
                 <div class="bs-flex-1" style="min-width: 200px;">
@@ -68,15 +90,21 @@
             <div class="bs-flex bs-flex-col bs-gap-3">
                 @foreach (var line in settlement.Lines.OrderByDescending(l => l.TotalCoffeeGrams))
                 {
-                    <div class="bs-card" style="padding: 1.5rem; background: var(--bs-gray-50); border: 1px solid var(--bs-border);">
+                    <div class="bs-card" style="padding: 1.5rem; background: @(line.IsConfirmed ? "var(--bs-success-light, rgba(34, 197, 94, 0.1))" : "var(--bs-gray-50)"); border: 1px solid @(line.IsConfirmed ? "var(--bs-success)" : "var(--bs-border)");">
                         <div class="bs-flex bs-items-start bs-justify-between" style="margin-bottom: 1rem;">
                             <div>
-                                <h4 style="margin: 0 0 0.25rem 0; font-size: 1.125rem; font-weight: 600;">@line.UserName</h4>
+                                <div class="bs-flex bs-items-center bs-gap-2" style="margin-bottom: 0.25rem;">
+                                    <h4 style="margin: 0; font-size: 1.125rem; font-weight: 600;">@line.UserName</h4>
+                                    @if (line.IsConfirmed)
+                                    {
+                                        <span class="material-symbols-outlined" style="color: var(--bs-success); font-size: 1.25rem;" title="Payment Confirmed">check_circle</span>
+                                    }
+                                </div>
                                 <p class="bs-text-subtle" style="font-size: 0.875rem; margin: 0;">@line.UserEmail</p>
                             </div>
                             <div style="text-align: right;">
-                                <p style="font-size: 1.5rem; font-weight: 700; margin: 0; color: var(--bs-warning);">
-                                    @line.Currency @line.AmountDue.ToString("F2")
+                                <p style="font-size: 1.5rem; font-weight: 700; margin: 0; color: @(line.IsConfirmed ? "var(--bs-success)" : "var(--bs-warning)");">
+                                    @settlement.Currency @line.AmountDue.ToString("F2")
                                 </p>
                                 <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0;">
                                     @line.ConsumptionPercentage.ToString("F1")% of total
@@ -84,20 +112,96 @@
                             </div>
                         </div>
 
-                        <div class="bs-flex bs-gap-4">
-                            <div>
-                                <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Coffee Consumed</p>
-                                <p style="font-size: 1.125rem; font-weight: 600; margin: 0;">@line.TotalCoffeeGrams.ToString("F0")g</p>
-                            </div>
-                            @if (line.TotalMilkMl.HasValue && line.TotalMilkMl.Value > 0)
-                            {
+                        <div class="bs-flex bs-items-end bs-justify-between">
+                            <div class="bs-flex bs-gap-4">
                                 <div>
-                                    <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Milk Used</p>
-                                    <p style="font-size: 1.125rem; font-weight: 600; margin: 0;">@line.TotalMilkMl.Value.ToString("F0")ml</p>
+                                    <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Coffee Consumed</p>
+                                    <p style="font-size: 1.125rem; font-weight: 600; margin: 0;">@line.TotalCoffeeGrams.ToString("F0")g</p>
                                 </div>
-                            }
+                                @if (line.TotalMilkMl.HasValue && line.TotalMilkMl.Value > 0)
+                                {
+                                    <div>
+                                        <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Milk Used</p>
+                                        <p style="font-size: 1.125rem; font-weight: 600; margin: 0;">@line.TotalMilkMl.Value.ToString("F0")ml</p>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Confirmation Status / Button -->
+                            <div style="text-align: right;">
+                                @if (line.IsConfirmed)
+                                {
+                                    <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0;">
+                                        Confirmed @(line.ConfirmedAt.HasValue ? line.ConfirmedAt.Value.ToString("MMM dd, yyyy") : "")
+                                    </p>
+                                }
+                                else if (CanConfirmPayment(line.UserId))
+                                {
+                                    <button class="bs-btn bs-btn-sm bs-btn-primary"
+                                            style="font-size: 0.875rem;"
+                                            disabled="@isConfirming"
+                                            @onclick="@(() => HandleConfirmPayment(line.UserId))">
+                                        @if (isConfirming && confirmingUserId == line.UserId)
+                                        {
+                                            <span>Confirming...</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">check</span>
+                                            <span>Confirm Payment</span>
+                                        }
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="bs-text-subtle" style="font-size: 0.75rem;">Awaiting confirmation</span>
+                                }
+                            </div>
                         </div>
                     </div>
+                }
+            </div>
+        </div>
+
+        <!-- Export Actions -->
+        <div class="bs-card" style="padding: 1.5rem; margin-top: 1.5rem;">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600;">Export & Share</h3>
+            <div class="bs-flex bs-gap-3" style="flex-wrap: wrap;">
+                <button class="bs-btn bs-btn-secondary" disabled="@isExporting" @onclick="HandleExportPdf">
+                    @if (isExporting && exportType == "pdf")
+                    {
+                        <span>Exporting...</span>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined">picture_as_pdf</span>
+                        <span>Export PDF</span>
+                    }
+                </button>
+                <button class="bs-btn bs-btn-secondary" disabled="@isExporting" @onclick="HandleExportExcel">
+                    @if (isExporting && exportType == "excel")
+                    {
+                        <span>Exporting...</span>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined">table_chart</span>
+                        <span>Export Excel</span>
+                    }
+                </button>
+                @if (isAdmin)
+                {
+                    <button class="bs-btn bs-btn-primary" disabled="@isSendingEmails" @onclick="HandleSendEmails">
+                        @if (isSendingEmails)
+                        {
+                            <span>Sending...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined">mail</span>
+                            <span>Email All Members</span>
+                        }
+                    </button>
                 }
             </div>
         </div>
@@ -132,9 +236,34 @@
     private string toastTitle = "";
     private string toastMessage = "";
 
+    private Guid currentUserId;
+    private bool isAdmin;
+    private bool isConfirming;
+    private Guid confirmingUserId;
+    private bool isExporting;
+    private string exportType = "";
+    private bool isSendingEmails;
+
     protected override async Task OnInitializedAsync()
     {
+        currentUserId = UserContext.CurrentUserId.Value;
+        await LoadSpace();
         await LoadSettlement();
+    }
+
+    private async Task LoadSpace()
+    {
+        try
+        {
+            var space = await SpacesService.GetSpaceByIdAsync(Guid.Parse(SpaceId));
+            if (space != null)
+            {
+                isAdmin = space.Members.Any(m => m.UserId == currentUserId && m.Role == "Admin");
+            }
+        }
+        catch (Exception)
+        {
+        }
     }
 
     private async Task LoadSettlement()
@@ -142,16 +271,10 @@
         isLoading = true;
         try
         {
-            var query = new GetSettlementByIdQuery(new SettlementId(Guid.Parse(SettlementId)));
-            var result = await Mediator.Send(query);
-
-            if (result.IsSuccess)
+            settlement = await SettlementService.GetSettlementByIdAsync(Guid.Parse(SettlementId));
+            if (settlement == null)
             {
-                settlement = result.Value;
-            }
-            else
-            {
-                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+                ShowToast(true, "Error", "Settlement not found");
             }
         }
         catch (Exception ex)
@@ -162,6 +285,158 @@
         {
             isLoading = false;
         }
+    }
+
+    private bool CanConfirmPayment(Guid lineUserId)
+    {
+        return isAdmin || lineUserId == currentUserId;
+    }
+
+    private async Task HandleConfirmPayment(Guid memberUserId)
+    {
+        if (settlement == null) return;
+
+        isConfirming = true;
+        confirmingUserId = memberUserId;
+
+        try
+        {
+            var success = await SettlementService.ConfirmPaymentAsync(Guid.Parse(SettlementId), memberUserId);
+
+            if (success)
+            {
+                ShowToast(false, "Success", "Payment confirmed successfully");
+                await LoadSettlement();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to confirm payment");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to confirm payment: {ex.Message}");
+        }
+        finally
+        {
+            isConfirming = false;
+            confirmingUserId = Guid.Empty;
+        }
+    }
+
+    private string GetStatusDisplayText(string status)
+    {
+        return status switch
+        {
+            "Completed" => "Completed",
+            "AwaitingConfirmation" => "Awaiting Confirmation",
+            "Generated" => "Generated",
+            _ => status
+        };
+    }
+
+    private async Task HandleExportPdf()
+    {
+        if (settlement == null) return;
+
+        isExporting = true;
+        exportType = "pdf";
+
+        try
+        {
+            var bytes = await SettlementService.ExportPdfAsync(Guid.Parse(SettlementId));
+            if (bytes != null)
+            {
+                var fileName = $"Settlement_{settlement.BillingPeriodName}_{DateTime.Now:yyyyMMdd}.pdf";
+                await SaveFileAsync(bytes, fileName);
+                ShowToast(false, "Success", "PDF exported successfully");
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to export PDF");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to export PDF: {ex.Message}");
+        }
+        finally
+        {
+            isExporting = false;
+            exportType = "";
+        }
+    }
+
+    private async Task HandleExportExcel()
+    {
+        if (settlement == null) return;
+
+        isExporting = true;
+        exportType = "excel";
+
+        try
+        {
+            var bytes = await SettlementService.ExportExcelAsync(Guid.Parse(SettlementId));
+            if (bytes != null)
+            {
+                var fileName = $"Settlement_{settlement.BillingPeriodName}_{DateTime.Now:yyyyMMdd}.xlsx";
+                await SaveFileAsync(bytes, fileName);
+                ShowToast(false, "Success", "Excel exported successfully");
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to export Excel");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to export Excel: {ex.Message}");
+        }
+        finally
+        {
+            isExporting = false;
+            exportType = "";
+        }
+    }
+
+    private async Task HandleSendEmails()
+    {
+        if (settlement == null) return;
+
+        isSendingEmails = true;
+
+        try
+        {
+            var emailsSent = await SettlementService.SendEmailsAsync(Guid.Parse(SettlementId), attachPdf: true);
+            if (emailsSent > 0)
+            {
+                ShowToast(false, "Success", $"Sent {emailsSent} email(s) to space members");
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to send emails");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to send emails: {ex.Message}");
+        }
+        finally
+        {
+            isSendingEmails = false;
+        }
+    }
+
+    private async Task SaveFileAsync(byte[] bytes, string fileName)
+    {
+        var filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+        await File.WriteAllBytesAsync(filePath, bytes);
+
+        await Share.RequestAsync(new ShareFileRequest
+        {
+            Title = "Share Settlement Report",
+            File = new ShareFile(filePath)
+        });
     }
 
     private void ShowToast(bool isError, string title, string message)

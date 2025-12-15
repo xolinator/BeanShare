@@ -1,7 +1,8 @@
 using System.Net.Http.Json;
 using BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics;
 using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics;
-using BeanShare.Contracts.Analytics;
+using BeanShare.Contracts.Analytics.SpaceAnalytics;
+using BeanShare.Contracts.Analytics.UserStatistics;
 
 namespace BeanShare.Maui.Services;
 
@@ -42,8 +43,8 @@ public class AnalyticsService : IAnalyticsService
                     UserId = tc.UserId,
                     UserName = tc.UserName,
                     CupCount = tc.CupCount,
-                    TotalCost = tc.TotalCost.HasValue
-                        ? Domain.ValueObjects.Money.Create(tc.TotalCost.Value, Domain.ValueObjects.Currency.Create("USD"))
+                    TotalCost = tc.TotalCost.HasValue && !string.IsNullOrEmpty(tc.TotalCostCurrency)
+                        ? Domain.ValueObjects.Money.Create(tc.TotalCost.Value, Domain.ValueObjects.Currency.Create(tc.TotalCostCurrency))
                         : null
                 }).ToList(),
                 PopularCoffeeTypes = response.PopularCoffeeTypes.Select(pc => new Application.Features.Analytics.Queries.GetSpaceAnalytics.PopularCoffeeDto
@@ -53,14 +54,14 @@ public class AnalyticsService : IAnalyticsService
                     TotalGrams = pc.TotalGrams,
                     Percentage = pc.Percentage
                 }).ToList(),
-                CurrentStockValue = response.CurrentStockValue.HasValue
-                    ? Domain.ValueObjects.Money.Create(response.CurrentStockValue.Value, Domain.ValueObjects.Currency.Create("USD"))
+                CurrentStockValue = response.CurrentStockValue.HasValue && !string.IsNullOrEmpty(response.CurrentStockValueCurrency)
+                    ? Domain.ValueObjects.Money.Create(response.CurrentStockValue.Value, Domain.ValueObjects.Currency.Create(response.CurrentStockValueCurrency))
                     : null,
                 CurrentStockGrams = response.CurrentStockGrams,
                 DailyConsumptionTrend = response.DailyConsumptionTrend,
                 HourlyConsumptionPattern = response.HourlyConsumptionPattern,
-                TotalCostThisMonth = response.TotalCostThisMonth.HasValue
-                    ? Domain.ValueObjects.Money.Create(response.TotalCostThisMonth.Value, Domain.ValueObjects.Currency.Create("USD"))
+                TotalCostThisMonth = response.TotalCostThisMonth.HasValue && !string.IsNullOrEmpty(response.TotalCostThisMonthCurrency)
+                    ? Domain.ValueObjects.Money.Create(response.TotalCostThisMonth.Value, Domain.ValueObjects.Currency.Create(response.TotalCostThisMonthCurrency))
                     : null
             };
         }
@@ -131,9 +132,20 @@ public class AnalyticsService : IAnalyticsService
             CupsThisWeek = response.CupsThisWeek,
             CupsToday = response.CupsToday,
             AverageCupsPerDay = response.AverageCupsPerDay,
-            TotalCost = response.TotalCost.HasValue
-                ? Domain.ValueObjects.Money.Create(response.TotalCost.Value, Domain.ValueObjects.Currency.Create("USD"))
+            TotalCost = response.TotalCost.HasValue && !string.IsNullOrEmpty(response.TotalCostCurrency)
+                ? Domain.ValueObjects.Money.Create(response.TotalCost.Value, Domain.ValueObjects.Currency.Create(response.TotalCostCurrency))
                 : null,
+            IsCostFullyConverted = response.IsCostFullyConverted,
+            CostBreakdown = response.CostBreakdown.Select(b => new CurrencyBreakdownDto
+            {
+                CurrencyCode = b.CurrencyCode,
+                OriginalAmount = b.OriginalAmount,
+                ConvertedAmount = b.ConvertedAmount.HasValue && !string.IsNullOrEmpty(b.ConvertedCurrency)
+                    ? Domain.ValueObjects.Money.Create(b.ConvertedAmount.Value, Domain.ValueObjects.Currency.Create(b.ConvertedCurrency))
+                    : null,
+                WasConverted = b.WasConverted
+            }).ToList(),
+            PreferredCurrencyCode = response.PreferredCurrencyCode,
             MostConsumedCoffeeType = response.MostConsumedCoffeeType,
             FirstConsumptionDate = response.FirstConsumptionDate,
             LastConsumptionDate = response.LastConsumptionDate,

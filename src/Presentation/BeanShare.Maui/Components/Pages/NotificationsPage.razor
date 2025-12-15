@@ -1,4 +1,5 @@
 @page "/notifications"
+@inject INotificationService NotificationService
 
 <PageTitle>Notifications - BeanShare</PageTitle>
 
@@ -7,14 +8,21 @@
         <h1 class="bs-font-bold" style="font-size: 2rem;">Notifications</h1>
         @if (notifications.Any(n => !n.IsRead))
         {
-            <button class="bs-btn bs-btn-outline" @onclick="MarkAllAsRead">
+            <button class="bs-btn bs-btn-outline" @onclick="MarkAllAsReadAsync" disabled="@isLoading">
                 <span class="material-symbols-outlined" style="margin-right: 0.5rem;">done_all</span>
                 Mark all as read
             </button>
         }
     </div>
 
-    @if (!notifications.Any())
+    @if (isLoading)
+    {
+        <div class="bs-card" style="text-align: center; padding: 4rem 2rem;">
+            <div class="bs-spinner"></div>
+            <p style="margin-top: 1rem;">Loading notifications...</p>
+        </div>
+    }
+    else if (!notifications.Any())
     {
         <div class="bs-card" style="text-align: center; padding: 4rem 2rem;">
             <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--bs-gray-400);">notifications_none</span>
@@ -27,7 +35,7 @@
         <div class="bs-flex bs-flex-col bs-gap-3">
             @foreach (var notification in notifications.OrderByDescending(n => n.CreatedAt))
             {
-                <div class="notification-item @(notification.IsRead ? "notification-read" : "")" @onclick="() => MarkAsRead(notification.Id)">
+                <div class="notification-item @(notification.IsRead ? "notification-read" : "")" @onclick="() => MarkAsReadAsync(notification.Id)">
                     <div class="bs-flex bs-gap-3">
                         <div class="notification-icon">
                             <span class="material-symbols-outlined">@GetNotificationIcon(notification.Type)</span>
@@ -104,78 +112,91 @@
 @code {
     private List<NotificationItem> notifications = new();
     private bool hasMore = false;
+    private bool isLoading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        notifications = new List<NotificationItem>
-        {
-            new NotificationItem
-            {
-                Id = Guid.NewGuid(),
-                Type = NotificationType.Stock,
-                Title = "Low stock alert",
-                Message = "Ethiopia Yirgacheffe stock is running low (150g remaining). Consider ordering more soon.",
-                CreatedAt = DateTime.UtcNow.AddHours(-2),
-                IsRead = false
-            },
-            new NotificationItem
-            {
-                Id = Guid.NewGuid(),
-                Type = NotificationType.Billing,
-                Title = "Billing period closed",
-                Message = "The November billing period has been closed. Settlement report is now available.",
-                CreatedAt = DateTime.UtcNow.AddDays(-1),
-                IsRead = false
-            },
-            new NotificationItem
-            {
-                Id = Guid.NewGuid(),
-                Type = NotificationType.Member,
-                Title = "New member joined",
-                Message = "Sarah Johnson has joined the 'Office Coffee Club' space.",
-                CreatedAt = DateTime.UtcNow.AddDays(-2),
-                IsRead = true
-            },
-            new NotificationItem
-            {
-                Id = Guid.NewGuid(),
-                Type = NotificationType.Settlement,
-                Title = "Settlement completed",
-                Message = "October settlement has been processed. You owe $12.50 for your coffee consumption.",
-                CreatedAt = DateTime.UtcNow.AddDays(-5),
-                IsRead = true
-            },
-            new NotificationItem
-            {
-                Id = Guid.NewGuid(),
-                Type = NotificationType.Analytics,
-                Title = "Weekly consumption report",
-                Message = "Your weekly analytics report is ready. You consumed 15 cups this week.",
-                CreatedAt = DateTime.UtcNow.AddDays(-7),
-                IsRead = true
-            }
-        };
+        await LoadNotifications();
     }
 
-    private void MarkAsRead(Guid notificationId)
+    private async Task LoadNotifications()
     {
-        var notification = notifications.FirstOrDefault(n => n.Id == notificationId);
-        if (notification != null)
+        isLoading = true;
+        try
         {
-            notification.IsRead = true;
+            var result = await NotificationService.GetNotificationsAsync();
+            if (result != null)
+            {
+                notifications = result.Notifications.Select(n => new NotificationItem
+                {
+                    Id = n.Id,
+                    Type = ParseNotificationType(n.Type),
+                    Title = n.Title,
+                    Message = n.Message,
+                    CreatedAt = n.CreatedAt,
+                    IsRead = n.IsRead,
+                    SpaceId = n.SpaceId,
+                    ActionUrl = n.ActionUrl
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading notifications: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    private void MarkAllAsRead()
+    private async Task MarkAsReadAsync(Guid notificationId)
     {
-        foreach (var notification in notifications)
+        var notification = notifications.FirstOrDefault(n => n.Id == notificationId);
+        if (notification != null && !notification.IsRead)
         {
-            notification.IsRead = true;
+            var success = await NotificationService.MarkAsReadAsync(notificationId);
+            if (success)
+            {
+                notification.IsRead = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task MarkAllAsReadAsync()
+    {
+        var count = await NotificationService.MarkAllAsReadAsync();
+        if (count > 0)
+        {
+            foreach (var notification in notifications)
+            {
+                notification.IsRead = true;
+            }
+            StateHasChanged();
         }
     }
 
     private void LoadMore()
     {
+    }
+
+    private NotificationType ParseNotificationType(string type)
+    {
+        return type.ToLowerInvariant() switch
+        {
+            "lowstock" => NotificationType.Stock,
+            "newcoffeeadded" => NotificationType.Stock,
+            "billingperiodopened" => NotificationType.Billing,
+            "billingperiodclosed" => NotificationType.Billing,
+            "settlementready" => NotificationType.Settlement,
+            "memberjoined" => NotificationType.Member,
+            "memberleft" => NotificationType.Member,
+            "spaceinvite" => NotificationType.Member,
+            "consumptionrecorded" => NotificationType.Consumption,
+            "systemannouncement" => NotificationType.Analytics,
+            _ => NotificationType.Analytics
+        };
     }
 
     private string GetNotificationIcon(NotificationType type)
@@ -216,6 +237,8 @@
         public string Message { get; set; } = "";
         public DateTime CreatedAt { get; set; }
         public bool IsRead { get; set; }
+        public Guid? SpaceId { get; set; }
+        public string? ActionUrl { get; set; }
     }
 
     private enum NotificationType

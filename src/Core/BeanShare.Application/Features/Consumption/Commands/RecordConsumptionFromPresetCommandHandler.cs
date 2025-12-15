@@ -88,7 +88,9 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
                 product,
                 quantity,
                 consumedAt,
-                _clock);
+                _clock,
+                presetId,
+                preset.Name);
 
             await _consumptionRepository.AddAsync(consumptionEntry, cancellationToken);
 

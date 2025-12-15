@@ -17,6 +17,11 @@ public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> opti
     public DbSet<BillingPeriod> BillingPeriods => Set<BillingPeriod>();
     public DbSet<Settlement> Settlements => Set<Settlement>();
     public DbSet<PresetRecipe> PresetRecipes => Set<PresetRecipe>();
+    public DbSet<GlobalPreset> GlobalPresets => Set<GlobalPreset>();
+    public DbSet<SpaceGlobalPresetConfig> SpaceGlobalPresetConfigs => Set<SpaceGlobalPresetConfig>();
+    public DbSet<UserPresetFavorite> UserPresetFavorites => Set<UserPresetFavorite>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,5 +36,10 @@ public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> opti
         modelBuilder.ApplyConfiguration(new BillingPeriodConfiguration());
         modelBuilder.ApplyConfiguration(new SettlementConfiguration());
         modelBuilder.ApplyConfiguration(new PresetRecipeConfiguration());
+        modelBuilder.ApplyConfiguration(new GlobalPresetConfiguration());
+        modelBuilder.ApplyConfiguration(new SpaceGlobalPresetConfigConfiguration());
+        modelBuilder.ApplyConfiguration(new UserPresetFavoriteConfiguration());
+        modelBuilder.ApplyConfiguration(new ExchangeRateConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
     }
 }

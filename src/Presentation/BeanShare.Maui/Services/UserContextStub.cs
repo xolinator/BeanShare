@@ -6,53 +6,74 @@ namespace BeanShare.Maui.Services;
 
 /// <summary>
 /// Stub implementation of IUserContext for MAUI client.
-/// In MAUI, user context is stored in SecureStorage.
+/// Uses cached values to avoid deadlocks with SecureStorage on the UI thread.
 /// </summary>
 public class UserContextStub : IUserContext
 {
-    public UserId CurrentUserId => GetUserIdFromStorage();
-    public string Email => GetUserEmailFromStorage();
+    // Static cache to avoid deadlocks - set during login/app startup
+    private static UserId? _cachedUserId;
+    private static string? _cachedEmail;
+    private static bool _initialized;
+
+    public UserId CurrentUserId => _cachedUserId ?? GetUserIdFallback();
+    public string Email => _cachedEmail ?? string.Empty;
     public IReadOnlyCollection<string> Roles => new List<string> { "User" };
 
-    private UserId GetUserIdFromStorage()
+    /// <summary>
+    /// Initialize the cache from SecureStorage. Must be called on app startup or after login.
+    /// </summary>
+    public static async Task InitializeAsync()
     {
+        if (_initialized) return;
+
         try
         {
-            var userIdTask = MainThread.InvokeOnMainThreadAsync(async () =>
-                await SecureStorage.Default.GetAsync("user_id"));
+            string? userId = null;
+            string? email = null;
 
-            var userId = userIdTask.GetAwaiter().GetResult();
-
-            if (string.IsNullOrEmpty(userId))
-                return UserId.New();
-
-            if (Guid.TryParse(userId, out var guid))
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                return new UserId(guid);
-            }
+                userId = await SecureStorage.Default.GetAsync("user_id");
+                email = await SecureStorage.Default.GetAsync("user_email");
+            });
 
-            return UserId.New();
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var guid))
+            {
+                _cachedUserId = new UserId(guid);
+            }
+            _cachedEmail = email ?? string.Empty;
+            _initialized = true;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[UserContextStub] Error getting user ID: {ex.Message}");
-            return UserId.New();
+            Debug.WriteLine($"[UserContextStub] Error initializing: {ex.Message}");
         }
     }
 
-    private string GetUserEmailFromStorage()
+    /// <summary>
+    /// Set the cached user info. Called during login.
+    /// </summary>
+    public static void SetUser(Guid userId, string email)
     {
-        try
-        {
-            var emailTask = MainThread.InvokeOnMainThreadAsync(async () =>
-                await SecureStorage.Default.GetAsync("user_email"));
+        _cachedUserId = new UserId(userId);
+        _cachedEmail = email;
+        _initialized = true;
+    }
 
-            return emailTask.GetAwaiter().GetResult() ?? string.Empty;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[UserContextStub] Error getting user email: {ex.Message}");
-            return string.Empty;
-        }
+    /// <summary>
+    /// Clear the cached user info. Called during logout.
+    /// </summary>
+    public static void ClearUser()
+    {
+        _cachedUserId = null;
+        _cachedEmail = null;
+        _initialized = false;
+    }
+
+    private UserId GetUserIdFallback()
+    {
+        // Return a default UserId if not initialized - pages should handle null-like scenarios
+        Debug.WriteLine("[UserContextStub] Warning: User ID not cached, returning new UserId");
+        return UserId.New();
     }
 }

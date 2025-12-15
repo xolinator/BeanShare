@@ -10,6 +10,9 @@ public sealed record UserStatisticsDto
     public int CupsToday { get; init; }
     public double AverageCupsPerDay { get; init; }
     public Money? TotalCost { get; init; }
+    public bool IsCostFullyConverted { get; init; }
+    public IReadOnlyList<CurrencyBreakdownDto> CostBreakdown { get; init; } = [];
+    public string? PreferredCurrencyCode { get; init; }
     public string? MostConsumedCoffeeType { get; init; }
     public DateTime? FirstConsumptionDate { get; init; }
     public DateTime? LastConsumptionDate { get; init; }

@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<IUserContext, OidcUserContext>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         services.AddAuthentication(options =>
         {

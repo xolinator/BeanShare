@@ -73,4 +73,20 @@ public sealed class MockUserService : IUserService
     {
         return Task.FromResult<IReadOnlyList<User>>(_users.OrderBy(u => u.Name).ToList());
     }
+
+    public Task<User?> GetByIdForUpdateAsync(UserId userId, CancellationToken cancellationToken = default)
+    {
+        var user = _users.FirstOrDefault(u => u.Id == userId);
+        return Task.FromResult(user);
+    }
+
+    public Task UpdateAsync(User user, CancellationToken cancellationToken = default)
+    {
+        var existingIndex = _users.FindIndex(u => u.Id == user.Id);
+        if (existingIndex >= 0)
+        {
+            _users[existingIndex] = user;
+        }
+        return Task.CompletedTask;
+    }
 }

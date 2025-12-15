@@ -2,9 +2,11 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.Spaces.Dtos;
 using BeanShare.Application.Features.Spaces.Queries;
+using BeanShare.Application.Services;
 using BeanShare.Application.Tests.TestHelpers;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
+using BeanShare.Domain.Entities;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using FluentAssertions;
@@ -21,19 +23,21 @@ public class SpaceQueryTests
     {
         var spaceRepository = Substitute.For<ISpaceRepository>();
         var userContext = Substitute.For<IUserContext>();
+        var userService = Substitute.For<IUserService>();
         var mapper = Substitute.For<IMapper>();
         var clock = Substitute.For<IClock>();
-        
+
         var userId = new UserId(Guid.NewGuid());
         var spaceId = SpaceId.New();
         var inviteCode = new InviteCode("CAFE23");
-        
+
         userContext.CurrentUserId.Returns(userId);
         clock.UtcNow.Returns(DateTime.UtcNow);
-        
+        userService.GetByIdsAsync(Arg.Any<IEnumerable<UserId>>(), default).Returns(new List<User>());
+
         var space = Space.Create(spaceId, "Test Space", Currency.USD, userId, inviteCode, clock);
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(space);
-        
+
         var spaceDto = new SpaceDto
         {
             Id = spaceId,
@@ -48,7 +52,7 @@ public class SpaceQueryTests
         };
         mapper.Map<SpaceDto>(space).Returns(spaceDto);
 
-        var handler = new GetSpaceByIdQueryHandler(spaceRepository, userContext, mapper);
+        var handler = new GetSpaceByIdQueryHandler(spaceRepository, userContext, userService, mapper);
         var query = new GetSpaceByIdQuery(spaceId);
 
         var result = await handler.Handle(query, default);
@@ -63,12 +67,13 @@ public class SpaceQueryTests
     {
         var spaceRepository = Substitute.For<ISpaceRepository>();
         var userContext = Substitute.For<IUserContext>();
+        var userService = Substitute.For<IUserService>();
         var mapper = Substitute.For<IMapper>();
-        
+
         var spaceId = SpaceId.New();
         spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns((Space?)null);
 
-        var handler = new GetSpaceByIdQueryHandler(spaceRepository, userContext, mapper);
+        var handler = new GetSpaceByIdQueryHandler(spaceRepository, userContext, userService, mapper);
         var query = new GetSpaceByIdQuery(spaceId);
 
         var result = await handler.Handle(query, default);

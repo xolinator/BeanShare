@@ -51,6 +51,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.LastLoginAt)
             .IsRequired();
 
+        builder.Property(u => u.PreferredCurrencyCode)
+            .HasMaxLength(3)
+            .IsRequired(false);
+
         builder.HasIndex(u => new { u.Provider, u.ProviderUserId })
             .IsUnique()
             .HasDatabaseName("IX_Users_Provider_ProviderUserId");

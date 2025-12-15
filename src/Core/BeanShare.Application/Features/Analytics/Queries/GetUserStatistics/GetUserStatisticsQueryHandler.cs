@@ -12,17 +12,23 @@ public sealed class GetUserStatisticsQueryHandler : IRequestHandler<GetUserStati
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ISpaceRepository _spaceRepository;
     private readonly ICostCalculationService _costCalculationService;
+    private readonly ICurrencyConversionService _currencyConversionService;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
 
     public GetUserStatisticsQueryHandler(
         IConsumptionRepository consumptionRepository,
         ISpaceRepository spaceRepository,
         ICostCalculationService costCalculationService,
+        ICurrencyConversionService currencyConversionService,
+        IUserService userService,
         IClock clock)
     {
         _consumptionRepository = consumptionRepository;
         _spaceRepository = spaceRepository;
         _costCalculationService = costCalculationService;
+        _currencyConversionService = currencyConversionService;
+        _userService = userService;
         _clock = clock;
     }
 
@@ -79,7 +85,10 @@ public sealed class GetUserStatisticsQueryHandler : IRequestHandler<GetUserStati
             .OrderBy(kvp => kvp.Key)
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Money? totalCost = null;
+        var user = await _userService.GetByIdAsync(request.UserId, cancellationToken);
+        string? preferredCurrencyCode = user?.PreferredCurrencyCode;
+
+        var spaceCosts = new List<Money>();
         var consumptionsBySpace = consumptions.GroupBy(c => c.SpaceId);
 
         foreach (var spaceGroup in consumptionsBySpace)
@@ -91,21 +100,36 @@ public sealed class GetUserStatisticsQueryHandler : IRequestHandler<GetUserStati
 
             if (spaceCost != null)
             {
-                if (totalCost == null)
-                {
-                    totalCost = spaceCost;
-                }
-                else
-                {
-                    if (totalCost.Currency.Code == spaceCost.Currency.Code)
-                    {
-                        totalCost = totalCost.Add(spaceCost);
-                    }
-                }
+                spaceCosts.Add(spaceCost);
+                preferredCurrencyCode ??= spaceCost.Currency.Code;
             }
         }
 
         var activeSpaces = consumptions.Select(c => c.SpaceId).Distinct().Count();
+
+        Money? totalCost = null;
+        bool isCostFullyConverted = false;
+        var costBreakdown = new List<CurrencyBreakdownDto>();
+
+        if (spaceCosts.Count > 0 && preferredCurrencyCode != null)
+        {
+            var targetCurrency = Currency.Create(preferredCurrencyCode);
+            var conversionResult = await _currencyConversionService.ConvertAllAsync(spaceCosts, targetCurrency, cancellationToken);
+
+            isCostFullyConverted = conversionResult.FullyConverted;
+            totalCost = conversionResult.ConvertedTotal;
+
+  
+            costBreakdown = conversionResult.Breakdown
+                .Select(b => new CurrencyBreakdownDto
+                {
+                    CurrencyCode = b.Currency.Code,
+                    OriginalAmount = b.OriginalAmount.Amount,
+                    ConvertedAmount = b.ConvertedAmount,
+                    WasConverted = b.ConversionSuccessful
+                })
+                .ToList();
+        }
 
         return new UserStatisticsDto
         {
@@ -115,6 +139,9 @@ public sealed class GetUserStatisticsQueryHandler : IRequestHandler<GetUserStati
             CupsToday = cupsToday,
             AverageCupsPerDay = Math.Round(avgCupsPerDay, 1),
             TotalCost = totalCost,
+            IsCostFullyConverted = isCostFullyConverted,
+            CostBreakdown = costBreakdown,
+            PreferredCurrencyCode = preferredCurrencyCode,
             MostConsumedCoffeeType = mostConsumedType,
             FirstConsumptionDate = firstConsumption,
             LastConsumptionDate = lastConsumption,

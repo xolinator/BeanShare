@@ -5,6 +5,7 @@
 @inject ISpacesService SpacesService
 @inject IConsumptionService ConsumptionService
 @inject IStockService StockService
+@inject IPresetService PresetService
 @inject NavigationManager Navigation
 @inject HttpClient Http
 
@@ -56,7 +57,8 @@ else
 
             <ConsumptionForm OnSubmit="HandleLogConsumption"
                            StockProducts="@stockProducts"
-                           PresetData="@presetData" />
+                           PresetData="@presetData"
+                           QuickPresets="@quickPresets" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -81,6 +83,7 @@ else
 
     private List<ConsumptionEntryDto> recentConsumptions = new();
     private List<StockLevelDto> stockProducts = new();
+    private List<PresetOption> quickPresets = new();
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
     private int remainingStock = 0;
@@ -103,6 +106,7 @@ else
             await LoadSpace();
             await LoadStock();
             await LoadConsumption();
+            await LoadQuickPresets();
             await LoadPresetIfProvided();
         }
     }
@@ -207,6 +211,23 @@ else
         }
     }
 
+    private async Task LoadQuickPresets()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            return;
+        }
+
+        try
+        {
+            quickPresets = await PresetService.GetQuickPresetsAsync(spaceGuid);
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load presets: {ex.Message}");
+        }
+    }
+
     private async Task HandleTabChange(string newTab)
     {
         if (newTab == "members")
@@ -233,8 +254,12 @@ else
 
             var success = await ConsumptionService.RecordConsumptionAsync(
                 spaceGuid,
+                model.ProductName ?? "Coffee",
+                model.ProductBrand ?? "Generic",
+                model.ProductType ?? "Ground",
                 model.Grams,
-                consumedAtUtc
+                consumedAtUtc,
+                model.PresetName
             );
 
             if (success)

@@ -61,3 +61,4 @@ scripts/*.ps1
 *.ps1
 /scripts/dev-setup.sh
 src/Presentation/BeanShare.Api/nul
+/nul

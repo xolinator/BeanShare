@@ -1,16 +1,21 @@
 @page "/profile"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using MediatR
 @using BeanShare.Application.Abstractions
 @using BeanShare.Application.Features.Spaces.Queries
 @using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics
+@using BeanShare.Application.Features.Users.Commands.UpdateProfile
 @using BeanShare.Domain.Common
 @using System.Linq
+@using System.Net.Http.Headers
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IMediator Mediator
 @inject IUserContext UserContext
+@inject IConfiguration Configuration
+@inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>My Profile - BeanShare</PageTitle>
 
@@ -18,15 +23,29 @@
     <div class="profile-header">
         <div class="profile-header-content">
             <div class="profile-avatar-section">
-                @if (!string.IsNullOrEmpty(userProfile?.PictureUrl))
+                <div class="avatar-container">
+                    @if (!string.IsNullOrEmpty(userProfile?.PictureUrl))
+                    {
+                        <img src="@GetAvatarUrl()" alt="@userProfile.Name" class="profile-avatar" />
+                    }
+                    else
+                    {
+                        <div class="profile-avatar-placeholder">
+                            <span class="material-symbols-outlined">account_circle</span>
+                        </div>
+                    }
+                    <label class="avatar-upload-btn" for="avatarInput">
+                        <span class="material-symbols-outlined">photo_camera</span>
+                    </label>
+                    <InputFile id="avatarInput" OnChange="HandleAvatarUpload" accept="image/png,image/jpeg,image/gif,image/webp" style="display: none;" />
+                </div>
+                @if (isUploadingAvatar)
                 {
-                    <img src="@userProfile.PictureUrl" alt="@userProfile.Name" class="profile-avatar" />
+                    <div class="avatar-upload-status">Uploading...</div>
                 }
-                else
+                @if (!string.IsNullOrEmpty(avatarUploadError))
                 {
-                    <div class="profile-avatar-placeholder">
-                        <span class="material-symbols-outlined">account_circle</span>
-                    </div>
+                    <div class="avatar-upload-error">@avatarUploadError</div>
                 }
             </div>
             <div class="profile-info">
@@ -215,7 +234,11 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1rem;
+        gap: 0.5rem;
+    }
+
+    .avatar-container {
+        position: relative;
     }
 
     .profile-avatar {
@@ -224,6 +247,7 @@
         border-radius: 50%;
         border: 4px solid white;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        object-fit: cover;
     }
 
     .profile-avatar-placeholder {
@@ -240,6 +264,49 @@
     .profile-avatar-placeholder span {
         font-size: 80px;
         color: #94a3b8;
+    }
+
+    .avatar-upload-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 36px;
+        height: 36px;
+        background: #4169E1;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        transition: all 0.2s;
+    }
+
+    .avatar-upload-btn:hover {
+        background: #3058c7;
+        transform: scale(1.1);
+    }
+
+    .avatar-upload-btn span {
+        font-size: 18px;
+        color: white;
+    }
+
+    .avatar-upload-status {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.9);
+        padding: 0.25rem 0.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+    }
+
+    .avatar-upload-error {
+        font-size: 0.75rem;
+        color: #fee2e2;
+        padding: 0.25rem 0.5rem;
+        background: rgba(220, 38, 38, 0.3);
+        border-radius: 4px;
     }
 
     .profile-info h1 {
@@ -592,6 +659,10 @@
     private string editPhone = "";
     private string editTimeZone = "UTC";
 
+    private bool isUploadingAvatar = false;
+    private string? avatarUploadError;
+    private int avatarCacheBuster = 0;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadUserProfile();
@@ -699,6 +770,94 @@
     {
         Navigation.NavigateTo("/spaces/create");
     }
+
+    private string GetAvatarUrl()
+    {
+        if (string.IsNullOrEmpty(userProfile?.PictureUrl))
+            return "";
+
+        if (userProfile.PictureUrl.StartsWith("/uploads/"))
+        {
+            var apiBaseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
+            return $"{apiBaseUrl}{userProfile.PictureUrl}?v={avatarCacheBuster}";
+        }
+
+        return userProfile.PictureUrl;
+    }
+
+    private async Task HandleAvatarUpload(InputFileChangeEventArgs e)
+    {
+        avatarUploadError = null;
+        isUploadingAvatar = true;
+        StateHasChanged();
+
+        try
+        {
+            var file = e.File;
+
+            if (file.Size > 5 * 1024 * 1024)
+            {
+                avatarUploadError = "File size exceeds 5MB limit";
+                return;
+            }
+
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+            if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+            {
+                avatarUploadError = "Invalid file type. Allowed: jpg, png, gif, webp";
+                return;
+            }
+
+            var apiBaseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
+            var httpClient = HttpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("X-User-Id", UserContext.CurrentUserId.Value.ToString());
+
+            using var content = new MultipartFormDataContent();
+            using var fileStream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var streamContent = new StreamContent(fileStream);
+            streamContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+            content.Add(streamContent, "file", file.Name);
+
+            var response = await httpClient.PostAsync($"{apiBaseUrl}/api/me/avatar", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AvatarUploadResponse>();
+                if (result?.Success == true && !string.IsNullOrEmpty(result.AvatarUrl))
+                {
+                    if (userProfile != null)
+                    {
+                        userProfile.PictureUrl = result.AvatarUrl;
+                    }
+
+                    var updateCommand = new UpdateProfileCommand(userProfile?.Name ?? "", result.AvatarUrl);
+                    await Mediator.Send(updateCommand);
+
+                    avatarCacheBuster++;
+                }
+                else
+                {
+                    avatarUploadError = result?.Error ?? "Upload failed";
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                avatarUploadError = $"Upload failed: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            avatarUploadError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isUploadingAvatar = false;
+            StateHasChanged();
+        }
+    }
+
+    private record AvatarUploadResponse(bool Success, string? AvatarUrl, string? Error);
 
     private class UserProfile
     {

@@ -1,0 +1,615 @@
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.Application.Features.Spaces.Dtos
+@using BeanShare.SharedUi.Components.Consumption.Models
+
+@if (IsVisible)
+{
+    <div class="quick-modal-backdrop" @onclick="HandleBackdropClick">
+        <div class="quick-modal" @onclick:stopPropagation="true">
+            <div class="quick-modal-header">
+                <h2>Log Coffee</h2>
+                <button type="button" class="quick-modal-close" @onclick="HandleCancel">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="quick-modal-body">
+                @if (Spaces == null || !Spaces.Any())
+                {
+                    <div class="quick-modal-empty">
+                        <span class="material-symbols-outlined">coffee_maker</span>
+                        <p>No spaces available. Create or join a space first.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="quick-form-group">
+                        <label class="quick-label">Space</label>
+                        <select class="quick-select" @onchange="OnSpaceChanged" value="@selectedSpaceId">
+                            <option value="">Select a space...</option>
+                            @foreach (var space in Spaces)
+                            {
+                                <option value="@space.Id">@space.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(selectedSpaceId))
+                    {
+                        @if (isLoadingStock)
+                        {
+                            <div class="quick-loading">
+                                <div class="quick-spinner"></div>
+                                <span>Loading products...</span>
+                            </div>
+                        }
+                        else if (stockProducts == null || !stockProducts.Any())
+                        {
+                            <div class="quick-modal-empty">
+                                <span class="material-symbols-outlined">inventory_2</span>
+                                <p>No coffee in stock for this space.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="quick-form-group">
+                                <label class="quick-label">Coffee Product</label>
+                                <select class="quick-select" @onchange="OnProductChanged" value="@selectedProductId">
+                                    <option value="">Select coffee...</option>
+                                    @foreach (var product in stockProducts)
+                                    {
+                                        <option value="@product.Id">
+                                            @product.ProductDisplayName (@product.CurrentStockGrams g)
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(selectedProductId))
+                            {
+                                <div class="quick-form-group">
+                                    <label class="quick-label">Amount</label>
+                                    @if (presets != null && presets.Any())
+                                    {
+                                        <div class="quick-presets">
+                                            @foreach (var preset in presets.Where(p => p.IsFavorite).Take(4))
+                                            {
+                                                <button type="button"
+                                                        class="quick-preset-btn @(selectedGrams == preset.Grams && selectedPresetName == preset.Name ? "active" : "")"
+                                                        @onclick="() => SelectPreset(preset)">
+                                                    @preset.Name (@preset.Grams g)
+                                                </button>
+                                            }
+                                            @if (!presets.Any(p => p.IsFavorite))
+                                            {
+                                                @foreach (var preset in presets.Take(4))
+                                                {
+                                                    <button type="button"
+                                                            class="quick-preset-btn @(selectedGrams == preset.Grams && selectedPresetName == preset.Name ? "active" : "")"
+                                                            @onclick="() => SelectPreset(preset)">
+                                                        @preset.Name (@preset.Grams g)
+                                                    </button>
+                                                }
+                                            }
+                                            <button type="button"
+                                                    class="quick-preset-btn @(isCustomMode ? "active" : "")"
+                                                    @onclick="SelectCustomMode">
+                                                Custom
+                                            </button>
+                                        </div>
+                                    }
+
+                                    @if (isCustomMode || presets == null || !presets.Any())
+                                    {
+                                        <div class="quick-custom-input">
+                                            <input type="number"
+                                                   class="quick-input"
+                                                   @bind="customGrams"
+                                                   @bind:event="oninput"
+                                                   min="1"
+                                                   max="100"
+                                                   placeholder="Enter grams" />
+                                            <span class="quick-input-suffix">g</span>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    <div class="quick-error">@errorMessage</div>
+                                }
+
+                                <div class="quick-modal-actions">
+                                    <button type="button" class="quick-btn quick-btn-secondary" @onclick="HandleCancel">
+                                        Cancel
+                                    </button>
+                                    <button type="button"
+                                            class="quick-btn quick-btn-primary"
+                                            @onclick="HandleSubmit"
+                                            disabled="@(isSubmitting || GetSelectedGrams() <= 0)">
+                                        @if (isSubmitting)
+                                        {
+                                            <span>Logging...</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="material-symbols-outlined">coffee</span>
+                                            <span>Log @GetSelectedGrams() g</span>
+                                        }
+                                    </button>
+                                </div>
+                            }
+                        }
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .quick-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .quick-modal {
+        background-color: var(--bs-background);
+        border-radius: 1rem;
+        width: 100%;
+        max-width: 400px;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        animation: slideUp 0.3s ease-out;
+    }
+
+    .quick-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--bs-border);
+    }
+
+    .quick-modal-header h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+
+    .quick-modal-close {
+        background: transparent;
+        border: none;
+        color: var(--bs-text-subtle);
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 0.375rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .quick-modal-close:hover {
+        background-color: var(--bs-gray-100);
+        color: var(--bs-text);
+    }
+
+    .quick-modal-body {
+        padding: 1.25rem;
+        overflow-y: auto;
+    }
+
+    .quick-modal-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: var(--bs-text-subtle);
+    }
+
+    .quick-modal-empty .material-symbols-outlined {
+        font-size: 3rem;
+        margin-bottom: 0.75rem;
+        opacity: 0.5;
+    }
+
+    .quick-modal-empty p {
+        margin: 0;
+        font-size: 0.875rem;
+    }
+
+    .quick-form-group {
+        margin-bottom: 1rem;
+    }
+
+    .quick-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--bs-text-subtle);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .quick-select,
+    .quick-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--bs-border);
+        border-radius: 0.5rem;
+        font-size: 0.9375rem;
+        background-color: var(--bs-background);
+        color: var(--bs-text);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .quick-select:focus,
+    .quick-input:focus {
+        outline: none;
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.1);
+    }
+
+    .quick-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .quick-preset-btn {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--bs-border);
+        border-radius: 0.5rem;
+        background-color: var(--bs-background);
+        color: var(--bs-text);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .quick-preset-btn:hover {
+        border-color: var(--bs-primary);
+        color: var(--bs-primary);
+    }
+
+    .quick-preset-btn.active {
+        background-color: var(--bs-primary);
+        border-color: var(--bs-primary);
+        color: white;
+    }
+
+    .quick-custom-input {
+        position: relative;
+    }
+
+    .quick-input-suffix {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--bs-text-subtle);
+        font-size: 0.875rem;
+        pointer-events: none;
+    }
+
+    .quick-custom-input .quick-input {
+        padding-right: 2rem;
+    }
+
+    .quick-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 2rem;
+        color: var(--bs-text-subtle);
+    }
+
+    .quick-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--bs-gray-300);
+        border-top-color: var(--bs-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .quick-error {
+        background-color: var(--bs-danger-light);
+        color: var(--bs-danger);
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+
+    .quick-modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .quick-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .quick-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .quick-btn-primary {
+        background-color: var(--bs-primary);
+        color: white;
+    }
+
+    .quick-btn-primary:hover:not(:disabled) {
+        background-color: var(--bs-primary-dark);
+    }
+
+    .quick-btn-secondary {
+        background-color: var(--bs-gray-100);
+        color: var(--bs-text);
+    }
+
+    .quick-btn-secondary:hover:not(:disabled) {
+        background-color: var(--bs-gray-200);
+    }
+
+    .quick-btn .material-symbols-outlined {
+        font-size: 1.125rem;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public List<SpaceSummaryDto>? Spaces { get; set; }
+
+    [Parameter]
+    public string? DefaultSpaceId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnSpaceSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<QuickConsumptionRequest> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public List<StockLevelDto>? StockProducts { get; set; }
+
+    [Parameter]
+    public List<PresetOption>? Presets { get; set; }
+
+    [Parameter]
+    public bool IsLoadingStock { get; set; }
+
+    private string selectedSpaceId = "";
+    private string selectedProductId = "";
+    private List<StockLevelDto>? stockProducts;
+    private List<PresetOption>? presets;
+    private bool isLoadingStock;
+    private int selectedGrams;
+    private string? selectedPresetName;
+    private bool isCustomMode;
+    private int customGrams;
+    private bool isSubmitting;
+    private string? errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        stockProducts = StockProducts;
+        presets = Presets;
+        isLoadingStock = IsLoadingStock;
+
+        if (IsVisible && string.IsNullOrEmpty(selectedSpaceId) && !string.IsNullOrEmpty(DefaultSpaceId))
+        {
+            selectedSpaceId = DefaultSpaceId;
+            _ = LoadSpaceData();
+        }
+    }
+
+    private async Task OnSpaceChanged(ChangeEventArgs e)
+    {
+        selectedSpaceId = e.Value?.ToString() ?? "";
+        selectedProductId = "";
+        stockProducts = null;
+        presets = null;
+        selectedGrams = 0;
+        selectedPresetName = null;
+        isCustomMode = false;
+        customGrams = 0;
+        errorMessage = null;
+
+        if (!string.IsNullOrEmpty(selectedSpaceId))
+        {
+            await LoadSpaceData();
+        }
+    }
+
+    private async Task LoadSpaceData()
+    {
+        if (Guid.TryParse(selectedSpaceId, out var spaceGuid))
+        {
+            isLoadingStock = true;
+            StateHasChanged();
+
+            await OnSpaceSelected.InvokeAsync(spaceGuid);
+        }
+    }
+
+    private void OnProductChanged(ChangeEventArgs e)
+    {
+        selectedProductId = e.Value?.ToString() ?? "";
+        errorMessage = null;
+
+        if (!string.IsNullOrEmpty(selectedProductId) && presets != null && presets.Any())
+        {
+            var defaultPreset = presets.FirstOrDefault(p => p.IsFavorite) ?? presets.FirstOrDefault();
+            if (defaultPreset != null)
+            {
+                SelectPreset(defaultPreset);
+            }
+        }
+    }
+
+    private void SelectPreset(PresetOption preset)
+    {
+        isCustomMode = false;
+        selectedGrams = preset.Grams;
+        selectedPresetName = preset.Name;
+        customGrams = 0;
+    }
+
+    private void SelectCustomMode()
+    {
+        isCustomMode = true;
+        selectedPresetName = null;
+        selectedGrams = 0;
+    }
+
+    private int GetSelectedGrams()
+    {
+        return isCustomMode ? customGrams : selectedGrams;
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = null;
+        var grams = GetSelectedGrams();
+
+        if (grams <= 0)
+        {
+            errorMessage = "Please select or enter an amount.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(selectedProductId))
+        {
+            errorMessage = "Please select a coffee product.";
+            return;
+        }
+
+        if (!Guid.TryParse(selectedSpaceId, out var spaceGuid))
+        {
+            errorMessage = "Please select a space.";
+            return;
+        }
+
+        var selectedProduct = stockProducts?.FirstOrDefault(p => p.Id.ToString() == selectedProductId);
+        if (selectedProduct == null)
+        {
+            errorMessage = "Selected product not found.";
+            return;
+        }
+
+        if (grams > selectedProduct.CurrentStockGrams)
+        {
+            errorMessage = $"Not enough stock. Only {selectedProduct.CurrentStockGrams}g available.";
+            return;
+        }
+
+        isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new QuickConsumptionRequest
+            {
+                SpaceId = spaceGuid,
+                Grams = grams,
+                ProductName = selectedProduct.ProductName,
+                ProductBrand = selectedProduct.ProductBrand,
+                ProductType = selectedProduct.ProductType,
+                PresetName = isCustomMode ? null : selectedPresetName,
+                ConsumedAt = DateTime.Now
+            };
+
+            await OnSubmit.InvokeAsync(request);
+
+            // Reset form after successful submission
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to log consumption: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleBackdropClick()
+    {
+        HandleCancel();
+    }
+
+    private async void HandleCancel()
+    {
+        ResetForm();
+        await OnCancel.InvokeAsync();
+    }
+
+    private void ResetForm()
+    {
+        selectedSpaceId = DefaultSpaceId ?? "";
+        selectedProductId = "";
+        stockProducts = null;
+        presets = null;
+        selectedGrams = 0;
+        selectedPresetName = null;
+        isCustomMode = false;
+        customGrams = 0;
+        errorMessage = null;
+    }
+}

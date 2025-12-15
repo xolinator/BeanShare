@@ -1,5 +1,5 @@
 using BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics;
-using BeanShare.Contracts.Analytics;
+using BeanShare.Contracts.Analytics.SpaceAnalytics;
 using BeanShare.Domain.ValueObjects;
 using FastEndpoints;
 using MediatR;
@@ -45,14 +45,15 @@ public sealed class GetSpaceAnalyticsEndpoint : Endpoint<GetSpaceAnalyticsReques
             TotalMembers = result.TotalMembers,
             TotalConsumptionsThisMonth = result.TotalConsumptionsThisMonth,
             TotalConsumptionsAllTime = result.TotalConsumptionsAllTime,
-            TopConsumers = result.TopConsumers.Select(tc => new Contracts.Analytics.TopConsumerDto
+            TopConsumers = result.TopConsumers.Select(tc => new Contracts.Analytics.SpaceAnalytics.TopConsumerDto
             {
                 UserId = tc.UserId,
                 UserName = tc.UserName,
                 CupCount = tc.CupCount,
-                TotalCost = tc.TotalCost?.Amount
+                TotalCost = tc.TotalCost?.Amount,
+                TotalCostCurrency = tc.TotalCost?.Currency.Code
             }).ToList(),
-            PopularCoffeeTypes = result.PopularCoffeeTypes.Select(pc => new Contracts.Analytics.PopularCoffeeDto
+            PopularCoffeeTypes = result.PopularCoffeeTypes.Select(pc => new Contracts.Analytics.SpaceAnalytics.PopularCoffeeDto
             {
                 CoffeeName = pc.CoffeeName,
                 ConsumptionCount = pc.ConsumptionCount,
@@ -60,10 +61,12 @@ public sealed class GetSpaceAnalyticsEndpoint : Endpoint<GetSpaceAnalyticsReques
                 Percentage = pc.Percentage
             }).ToList(),
             CurrentStockValue = result.CurrentStockValue?.Amount,
+            CurrentStockValueCurrency = result.CurrentStockValue?.Currency.Code,
             CurrentStockGrams = result.CurrentStockGrams,
             DailyConsumptionTrend = result.DailyConsumptionTrend,
             HourlyConsumptionPattern = result.HourlyConsumptionPattern,
-            TotalCostThisMonth = result.TotalCostThisMonth?.Amount
+            TotalCostThisMonth = result.TotalCostThisMonth?.Amount,
+            TotalCostThisMonthCurrency = result.TotalCostThisMonth?.Currency.Code
         };
 
         await SendOkAsync(response, ct);

@@ -66,7 +66,9 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
                 product,
                 quantity,
                 consumedAt,
-                _clock);
+                _clock,
+                presetId: null,
+                presetName: request.PresetName);
 
             await _consumptionRepository.AddAsync(consumptionEntry, cancellationToken);
 

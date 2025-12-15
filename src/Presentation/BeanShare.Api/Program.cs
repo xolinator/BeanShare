@@ -32,6 +32,9 @@ if (useMockServices)
     builder.Services.AddSingleton<BeanShare.Domain.Services.ICostingPolicy, BeanShare.Domain.Services.WeightedAverageCostingPolicy>();
     builder.Services.AddSingleton<BeanShare.Application.Services.IUserService, MockUserService>();
     builder.Services.AddSingleton<BeanShare.Application.Services.ICostCalculationService, MockCostCalculationService>();
+    builder.Services.AddScoped<IAuthenticationService, MockIdentityAuthenticationService>();
+    builder.Services.AddSingleton<IJwtTokenService, MockJwtTokenService>();
+    builder.Services.AddHttpClient();
 }
 else
 {
@@ -39,11 +42,16 @@ else
         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
     builder.Services.AddInfrastructure(connectionString);
+    builder.Services.AddExchangeRates(builder.Configuration);
+    builder.Services.AddCommunicationServices(builder.Configuration);
 
     if (useMockAuthentication)
     {
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, MockUserContext>();
+        builder.Services.AddScoped<IAuthenticationService, MockIdentityAuthenticationService>();
+        builder.Services.AddSingleton<IJwtTokenService, MockJwtTokenService>();
+        builder.Services.AddHttpClient();
     }
     else
     {
@@ -119,7 +127,6 @@ app.UseFastEndpoints(c =>
     c.Serializer.Options.PropertyNamingPolicy = null;
 });
 
-// Seed database in development mode
 if (app.Environment.IsDevelopment() && !useMockServices)
 {
     using (var scope = app.Services.CreateScope())

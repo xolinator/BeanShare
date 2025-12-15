@@ -1,5 +1,6 @@
 using BeanShare.Api.Infrastructure.Mocks;
 using BeanShare.Application.Abstractions;
+using BeanShare.Infrastructure.Identity;
 using BeanShare.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -51,6 +52,11 @@ public sealed class PostgreSqlFixture : WebApplicationFactory<Program>, IAsyncLi
             services.RemoveAll<IUserContext>();
             services.AddHttpContextAccessor();
             services.AddScoped<IUserContext, MockUserContext>();
+
+            services.RemoveAll<IAuthenticationService>();
+            services.RemoveAll<IJwtTokenService>();
+            services.AddScoped<IAuthenticationService, MockIdentityAuthenticationService>();
+            services.AddSingleton<IJwtTokenService, MockJwtTokenService>();
         });
 
         builder.ConfigureLogging(logging =>

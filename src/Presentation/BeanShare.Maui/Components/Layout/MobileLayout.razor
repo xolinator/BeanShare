@@ -2,11 +2,18 @@
 @using BeanShare.Maui.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
 @using BeanShare.Maui.Services
+@using BeanShare.Application.Features.Spaces.Dtos
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.Extensions.Logging
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISpacesService SpacesService
+@inject IStockService StockService
+@inject IConsumptionService ConsumptionService
+@inject IPresetService PresetService
 @inject ILogger<MobileLayout> Logger
+@inject IAlertService AlertService
 @implements IDisposable
 
 <div class="mobile-app-container">
@@ -50,6 +57,17 @@
 {
     <BeanShare.SharedUi.Components.Spaces.JoinSpaceModal IsVisible="true" OnSubmit="HandleJoinSpaceSubmit" OnCancel="CloseJoinSpace" />
 }
+
+<BeanShare.SharedUi.Components.Consumption.QuickConsumptionModal
+    IsVisible="@showConsumptionModal"
+    Spaces="@userSpaces"
+    DefaultSpaceId="@currentSpaceId"
+    StockProducts="@quickConsumptionStock"
+    Presets="@quickConsumptionPresets"
+    IsLoadingStock="@isLoadingQuickConsumptionData"
+    OnSpaceSelected="HandleQuickConsumptionSpaceSelected"
+    OnSubmit="HandleQuickConsumptionSubmit"
+    OnCancel="CloseConsumptionModal" />
 
 <style>
     .mobile-app-container {
@@ -166,12 +184,16 @@
     private string currentSpaceId = "";
     private bool showCreateSpaceModal = false;
     private bool showJoinSpaceModal = false;
-#pragma warning disable CS0414 // Field is assigned but its value is never used
     private bool showConsumptionModal = false;
     private bool showAddStockModal = false;
-#pragma warning restore CS0414
     private bool isRefreshing = false;
     private EventCallback<bool> RefreshCallback;
+
+    // Quick consumption modal state
+    private List<SpaceSummaryDto>? userSpaces;
+    private List<StockLevelDto>? quickConsumptionStock;
+    private List<PresetOption>? quickConsumptionPresets;
+    private bool isLoadingQuickConsumptionData;
 
     protected override async Task OnInitializedAsync()
     {
@@ -303,7 +325,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error creating space");
-            await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("Error", "Failed to create space. Please try again.", "OK");
+            await AlertService.ShowAlertAsync("Error", "Failed to create space. Please try again.");
             showCreateSpaceModal = false;
         }
     }
@@ -332,19 +354,107 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error joining space");
-            await Microsoft.Maui.Controls.Application.Current.MainPage.DisplayAlert("Error", "Failed to join space. Please check the invite code and try again.", "OK");
+            await AlertService.ShowAlertAsync("Error", "Failed to join space. Please check the invite code and try again.");
             showJoinSpaceModal = false;
         }
     }
 
-    private void ShowLogConsumption()
+    private async Task ShowLogConsumption()
     {
-        // Not implemented yet - would need Consumption modal from SharedUI
+        try
+        {
+            userSpaces = await SpacesService.GetUserSpacesAsync();
+            quickConsumptionStock = null;
+            quickConsumptionPresets = null;
+            showConsumptionModal = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading spaces for quick consumption");
+            await AlertService.ShowAlertAsync("Error", "Failed to load spaces. Please try again.");
+        }
+    }
+
+    private void CloseConsumptionModal()
+    {
+        showConsumptionModal = false;
+        quickConsumptionStock = null;
+        quickConsumptionPresets = null;
+    }
+
+    private async Task HandleQuickConsumptionSpaceSelected(Guid spaceId)
+    {
+        isLoadingQuickConsumptionData = true;
+        quickConsumptionStock = null;
+        quickConsumptionPresets = null;
+        StateHasChanged();
+
+        try
+        {
+            var stockResult = await StockService.GetSpaceStockAsync(spaceId);
+            var presetsResult = await PresetService.GetQuickPresetsAsync(spaceId);
+
+            if (stockResult?.StockLevels != null)
+            {
+                quickConsumptionStock = stockResult.StockLevels.ToList();
+            }
+
+            quickConsumptionPresets = presetsResult;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading space data for quick consumption");
+            await AlertService.ShowAlertAsync("Error", "Failed to load space data. Please try again.");
+        }
+        finally
+        {
+            isLoadingQuickConsumptionData = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleQuickConsumptionSubmit(QuickConsumptionRequest request)
+    {
+        try
+        {
+            var success = await ConsumptionService.RecordConsumptionAsync(
+                request.SpaceId,
+                request.ProductName,
+                request.ProductBrand,
+                request.ProductType,
+                request.Grams,
+                request.ConsumedAt,
+                request.PresetName
+            );
+
+            if (success)
+            {
+                showConsumptionModal = false;
+                await AlertService.ShowAlertAsync("Success", $"Logged {request.Grams}g of coffee!");
+            }
+            else
+            {
+                await AlertService.ShowAlertAsync("Error", "Failed to log consumption. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error logging consumption");
+            await AlertService.ShowAlertAsync("Error", "Failed to log consumption. Please try again.");
+        }
     }
 
     private void ShowAddStock()
     {
-        // Not implemented yet - would need Stock modal from SharedUI
+        if (!string.IsNullOrEmpty(currentSpaceId))
+        {
+            Navigation.NavigateTo($"/spaces/{currentSpaceId}/stock");
+        }
+        else
+        {
+            Navigation.NavigateTo("/spaces");
+        }
     }
 
     public void Dispose()

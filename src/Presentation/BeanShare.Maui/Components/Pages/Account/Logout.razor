@@ -69,26 +69,38 @@
     {
         try
         {
-            await AuthService.LogoutAsync();
+            System.Diagnostics.Debug.WriteLine("[Logout] Starting logout process");
 
-            await MainThread.InvokeOnMainThreadAsync(() =>
+            var tcs = new TaskCompletionSource<bool>();
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                SecureStorage.Default.RemoveAll();
-                return Task.CompletedTask;
+                try
+                {
+                    SecureStorage.Default.RemoveAll();
+                    System.Diagnostics.Debug.WriteLine("[Logout] SecureStorage cleared");
+                    tcs.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Logout] Error clearing storage: {ex.Message}");
+                    tcs.SetException(ex);
+                }
             });
+            await tcs.Task;
+
+            await AuthService.LogoutAsync();
+            System.Diagnostics.Debug.WriteLine("[Logout] Auth service logout completed");
 
             if (AuthStateProvider is MauiAuthenticationStateProvider mauiAuthProvider)
             {
                 mauiAuthProvider.NotifyAuthenticationStateChanged();
+                System.Diagnostics.Debug.WriteLine("[Logout] Auth state notified");
             }
 
-            timer = new System.Threading.Timer(_ =>
-            {
-                InvokeAsync(() =>
-                {
-                    Navigation.NavigateTo("/login", forceLoad: true);
-                });
-            }, null, 1000, System.Threading.Timeout.Infinite);
+            await Task.Delay(500);
+
+            System.Diagnostics.Debug.WriteLine("[Logout] Navigating to login");
+            Navigation.NavigateTo("/login", forceLoad: true);
         }
         catch (Exception ex)
         {

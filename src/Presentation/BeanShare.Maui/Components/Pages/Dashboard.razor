@@ -57,14 +57,69 @@
                 </div>
             </div>
 
-            <div class="kpi-card-mobile" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="kpi-card-mobile" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);" @onclick="ToggleCurrencyBreakdown">
                 <div class="kpi-content-mobile">
                     <span class="material-symbols-outlined">payments</span>
                     <div class="kpi-value-mobile">@GetShortCost()</div>
-                    <div class="kpi-label-mobile">Total Cost</div>
+                    <div class="kpi-label-mobile">
+                        @if (!statistics.IsCostFullyConverted && statistics.CostBreakdown.Any())
+                        {
+                            <span style="font-size: 0.625rem;">Tap for details</span>
+                        }
+                        else
+                        {
+                            <span>Total Cost</span>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Currency Breakdown Modal -->
+        @if (showCurrencyBreakdown && statistics.CostBreakdown.Any())
+        {
+            <div class="currency-overlay" @onclick="ToggleCurrencyBreakdown">
+                <div class="currency-modal" @onclick:stopPropagation="true">
+                    <div class="modal-header-mobile">
+                        <h3>Cost Breakdown</h3>
+                        <button class="close-btn-mobile" @onclick="ToggleCurrencyBreakdown">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="modal-body-mobile">
+                        @if (!statistics.IsCostFullyConverted)
+                        {
+                            <div class="warning-box">
+                                <span class="material-symbols-outlined">warning</span>
+                                <span>Some currencies could not be converted</span>
+                            </div>
+                        }
+                        @foreach (var breakdown in statistics.CostBreakdown)
+                        {
+                            <div class="breakdown-row">
+                                <div class="currency-badge">@breakdown.CurrencyCode</div>
+                                <div class="amount-col">
+                                    <div class="amount-original">@breakdown.OriginalAmount.ToString("N2")</div>
+                                    @if (breakdown.WasConverted && breakdown.ConvertedAmount != null)
+                                    {
+                                        <div class="amount-converted">
+                                            @breakdown.ConvertedAmount.Currency.FormatAmount(breakdown.ConvertedAmount.Amount)
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (statistics.TotalCost != null)
+                        {
+                            <div class="total-box">
+                                <span>Total:</span>
+                                <span class="total-amount">@statistics.TotalCost.Currency.FormatAmount(statistics.TotalCost.Amount)</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
 
         <!-- Today's Stats -->
         <div class="section-card">
@@ -511,11 +566,146 @@
     .btn-primary:active {
         background: #3058c7;
     }
+
+    /* Currency Breakdown Modal */
+    .currency-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+    }
+
+    .currency-modal {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 350px;
+        max-height: 80vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header-mobile {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-header-mobile h3 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .close-btn-mobile {
+        background: none;
+        border: none;
+        padding: 0.25rem;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-body-mobile {
+        padding: 1rem;
+        overflow-y: auto;
+    }
+
+    .warning-box {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: #fef3c7;
+        border-radius: 8px;
+        color: #92400e;
+        margin-bottom: 1rem;
+        font-size: 0.75rem;
+    }
+
+    .warning-box span.material-symbols-outlined {
+        color: #f59e0b;
+        font-size: 1.25rem;
+    }
+
+    .breakdown-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+
+    .currency-badge {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #1e293b;
+        background: #e2e8f0;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .amount-col {
+        text-align: right;
+    }
+
+    .amount-original {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 0.875rem;
+    }
+
+    .amount-converted {
+        font-size: 0.75rem;
+        color: #22c55e;
+        margin-top: 0.125rem;
+    }
+
+    .total-box {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        border-radius: 8px;
+        margin-top: 0.5rem;
+        color: white;
+        font-weight: 500;
+    }
+
+    .total-amount {
+        font-size: 1.125rem;
+        font-weight: 700;
+    }
 </style>
 
 @code {
     private UserStatisticsDto? statistics;
     private bool isLoading = true;
+    private bool showCurrencyBreakdown = false;
+
+    private void ToggleCurrencyBreakdown()
+    {
+        if (statistics?.CostBreakdown.Any() == true)
+        {
+            showCurrencyBreakdown = !showCurrencyBreakdown;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,7 +1,9 @@
 @page "/settings"
 @using Microsoft.AspNetCore.Components.Authorization
+@using BeanShare.SharedUi.Services
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IThemeService ThemeService
 
 <div class="settings-page">
     <div class="settings-tabs">
@@ -755,6 +757,7 @@
 
     private async Task LoadSettings()
     {
+        theme = await ThemeService.GetThemeAsync();
     }
 
     private string GetTabClass(string tab)
@@ -767,9 +770,10 @@
         activeTab = tab;
     }
 
-    private void SetTheme(string newTheme)
+    private async Task SetTheme(string newTheme)
     {
         theme = newTheme;
+        await ThemeService.SetThemeAsync(newTheme);
     }
 
     private void ChangePassword()

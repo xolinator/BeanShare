@@ -14,17 +14,20 @@ namespace BeanShare.Application.Features.Spaces.Commands;
 public sealed class RemoveMemberCommandHandler : IRequestHandler<RemoveMemberCommand, Result<MemberActionDto>>
 {
     private readonly ISpaceRepository _spaceRepository;
+    private readonly ISettlementRepository _settlementRepository;
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
     private readonly IClock _clock;
 
     public RemoveMemberCommandHandler(
         ISpaceRepository spaceRepository,
+        ISettlementRepository settlementRepository,
         IUserContext userContext,
         IMapper mapper,
         IClock clock)
     {
         _spaceRepository = spaceRepository;
+        _settlementRepository = settlementRepository;
         _userContext = userContext;
         _mapper = mapper;
         _clock = clock;
@@ -61,6 +64,15 @@ public sealed class RemoveMemberCommandHandler : IRequestHandler<RemoveMemberCom
         if (targetMember.Role == SpaceRole.Admin && space.AdminCount <= 1)
         {
             return Result<MemberActionDto>.Failure(Error.CannotRemoveLastAdmin());
+        }
+
+        var settlements = await _settlementRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
+        var hasUnpaidSettlements = settlements.Any(s =>
+            s.Lines.Any(l => l.UserId == targetUserId && !l.IsConfirmed));
+
+        if (hasUnpaidSettlements)
+        {
+            return Result<MemberActionDto>.Failure(Error.UnpaidSettlements(command.UserId));
         }
 
         try
