@@ -17,7 +17,6 @@ public sealed record QuickPresetDto(
     Guid? SpacePresetId,
     string Name,
     string CoffeeType,
-    string Brand,
     string Preparation,
     decimal DefaultGrams,
     string? Description,

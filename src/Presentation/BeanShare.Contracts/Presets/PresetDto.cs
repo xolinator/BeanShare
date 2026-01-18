@@ -7,7 +7,6 @@ public sealed record PresetDto
     public required string UserName { get; init; }
     public required string Name { get; init; }
     public required string CoffeeType { get; init; }
-    public required string Brand { get; init; }
     public required string Preparation { get; init; }
     public required decimal DefaultGrams { get; init; }
     public string? Notes { get; init; }

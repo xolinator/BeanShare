@@ -85,7 +85,7 @@ public sealed class ConfirmPaymentHandler : IRequestHandler<ConfirmPaymentComman
         }
         catch (InvalidOperationException ex)
         {
-            return Result.Failure(new Error("CONFIRMATION_FAILED", ex.Message));
+            return Result.Failure(Error.ConfirmationFailed(ex.Message));
         }
     }
 }

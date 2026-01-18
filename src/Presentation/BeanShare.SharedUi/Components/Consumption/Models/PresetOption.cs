@@ -6,7 +6,6 @@ public sealed class PresetOption
     public Guid? SpacePresetId { get; set; }
     public string Name { get; set; } = "";
     public string CoffeeType { get; set; } = "";
-    public string Brand { get; set; } = "";
     public string Preparation { get; set; } = "";
     public int Grams { get; set; }
     public string? Description { get; set; }

@@ -10,7 +10,6 @@ public sealed class PresetRecipe : Entity
     public SpaceId SpaceId { get; private set; }
     public string Name { get; private set; }
     public string CoffeeType { get; private set; }
-    public string Brand { get; private set; }
     public string Preparation { get; private set; }
     public Weight DefaultGrams { get; private set; }
     public string? Notes { get; private set; }
@@ -24,7 +23,6 @@ public sealed class PresetRecipe : Entity
         Id = new PresetRecipeId(Guid.Empty);
         Name = string.Empty;
         CoffeeType = string.Empty;
-        Brand = string.Empty;
         Preparation = string.Empty;
         DefaultGrams = Weight.Zero;
         UserId = default!;
@@ -37,7 +35,6 @@ public sealed class PresetRecipe : Entity
         SpaceId spaceId,
         string name,
         string coffeeType,
-        string brand,
         string preparation,
         Weight defaultGrams,
         DateTime createdAt,
@@ -49,7 +46,6 @@ public sealed class PresetRecipe : Entity
         SpaceId = spaceId;
         Name = name;
         CoffeeType = coffeeType;
-        Brand = brand;
         Preparation = preparation;
         DefaultGrams = defaultGrams;
         Notes = notes;
@@ -64,7 +60,6 @@ public sealed class PresetRecipe : Entity
         SpaceId spaceId,
         string name,
         string coffeeType,
-        string brand,
         string preparation,
         Weight defaultGrams,
         DateTime createdAt,
@@ -76,9 +71,6 @@ public sealed class PresetRecipe : Entity
 
         if (string.IsNullOrWhiteSpace(coffeeType))
             throw new ArgumentException("Coffee type is required", nameof(coffeeType));
-
-        if (string.IsNullOrWhiteSpace(brand))
-            throw new ArgumentException("Brand is required", nameof(brand));
 
         if (string.IsNullOrWhiteSpace(preparation))
             throw new ArgumentException("Preparation method is required", nameof(preparation));
@@ -92,7 +84,6 @@ public sealed class PresetRecipe : Entity
             spaceId,
             name,
             coffeeType,
-            brand,
             preparation,
             defaultGrams,
             createdAt,
@@ -103,7 +94,6 @@ public sealed class PresetRecipe : Entity
     public void Update(
         string name,
         string coffeeType,
-        string brand,
         string preparation,
         Weight defaultGrams,
         string? notes,
@@ -115,9 +105,6 @@ public sealed class PresetRecipe : Entity
         if (string.IsNullOrWhiteSpace(coffeeType))
             throw new ArgumentException("Coffee type is required", nameof(coffeeType));
 
-        if (string.IsNullOrWhiteSpace(brand))
-            throw new ArgumentException("Brand is required", nameof(brand));
-
         if (string.IsNullOrWhiteSpace(preparation))
             throw new ArgumentException("Preparation method is required", nameof(preparation));
 
@@ -126,7 +113,6 @@ public sealed class PresetRecipe : Entity
 
         Name = name;
         CoffeeType = coffeeType;
-        Brand = brand;
         Preparation = preparation;
         DefaultGrams = defaultGrams;
         Notes = notes;

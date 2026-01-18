@@ -5,23 +5,22 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @inject AuthenticationStateProvider AuthStateProvider
-@inject BeanShare.Infrastructure.Identity.IAuthenticationService AuthService
-@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Logging out - BeanShare</PageTitle>
 
-@if (!_redirecting)
-{
-    <div class="logout-container">
-        <div class="logout-card">
-            <div class="logout-spinner">
-                <span class="material-symbols-outlined spinning">progress_activity</span>
-            </div>
-            <h2>Logging out...</h2>
-            <p>You are being securely logged out of BeanShare</p>
+<div class="logout-container">
+    <div class="logout-card">
+        <div class="logout-spinner">
+            <span class="material-symbols-outlined spinning">progress_activity</span>
         </div>
+        <h2>Logging out...</h2>
+        <p>You are being securely logged out of BeanShare</p>
     </div>
-}
+</div>
+
+@* Hidden form that posts to the logout endpoint *@
+<form id="logoutForm" method="post" action="/account/logout" style="display:none;">
+</form>
 
 <style>
     .logout-container {
@@ -73,24 +72,13 @@
 </style>
 
 @code {
-    private bool _redirecting = false;
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            var httpContext = HttpContextAccessor.HttpContext;
-            if (httpContext != null)
-                await AuthService.SignOutAsync(httpContext);
-        }
-        catch { }
-    }
+    private bool _submitted = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_redirecting)
+        if (firstRender && !_submitted)
         {
-            _redirecting = true;
+            _submitted = true;
 
             try
             {
@@ -101,11 +89,11 @@
 
             try
             {
-                await JSRuntime.InvokeVoidAsync("eval", "setTimeout(function() { window.location.href = '/login'; }, 100);");
+                await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('logoutForm').submit();");
             }
             catch
             {
-                Navigation.NavigateTo("/login", forceLoad: true);
+                Navigation.NavigateTo("/account/logout", forceLoad: true);
             }
         }
     }

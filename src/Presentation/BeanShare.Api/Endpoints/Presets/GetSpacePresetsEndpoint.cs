@@ -50,7 +50,6 @@ public sealed class GetSpacePresetsEndpoint : EndpointWithoutRequest<GetSpacePre
                 UserName = p.UserName,
                 Name = p.Name,
                 CoffeeType = p.CoffeeType,
-                Brand = p.Brand,
                 Preparation = p.Preparation,
                 DefaultGrams = p.DefaultGrams,
                 Notes = p.Notes,

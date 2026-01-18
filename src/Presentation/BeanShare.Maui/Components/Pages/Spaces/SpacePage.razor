@@ -95,6 +95,24 @@ else
             <SpaceAnalytics Analytics="@spaceAnalytics"
                            IsLoading="@isLoadingAnalytics" />
         }
+        else if (activeTab == "billing")
+        {
+            <div style="text-align: center; padding: 2rem;">
+                <p>Manage billing periods for this space.</p>
+                <button class="bs-btn bs-btn-primary" @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}/billing"))'>
+                    Go to Billing
+                </button>
+            </div>
+        }
+        else if (activeTab == "settlements")
+        {
+            <div style="text-align: center; padding: 2rem;">
+                <p>View and manage settlements for this space.</p>
+                <button class="bs-btn bs-btn-primary" @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}/settlements"))'>
+                    Go to Settlements
+                </button>
+            </div>
+        }
         else if (activeTab == "presets")
         {
             <div style="text-align: center; padding: 2rem;">

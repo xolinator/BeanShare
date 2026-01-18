@@ -50,7 +50,6 @@ public sealed class GetSpaceGlobalPresetsQueryHandler : IRequestHandler<GetSpace
             GlobalPresetId: preset.Id.Value,
             Name: preset.Name,
             CoffeeType: preset.DefaultCoffeeType,
-            Brand: preset.DefaultBrand,
             Preparation: preset.DefaultPreparation,
             DefaultGrams: preset.DefaultGrams.Grams,
             Description: preset.Description,

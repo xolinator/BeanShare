@@ -1,13 +1,14 @@
 @page "/spaces/{SpaceId}/presets"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
-@using BeanShare.Contracts.Presets
-@using System.Net.Http.Headers
+@using ContractPresets = BeanShare.Contracts.Presets
+@using BeanShare.Application.Features.Presets.Queries
+@using BeanShare.Application.Features.Presets.Commands
 @using System.ComponentModel.DataAnnotations
+@using MediatR
 @attribute [Authorize]
 @inject NavigationManager Navigation
-@inject HttpClient Http
-@inject IHttpContextAccessor HttpContextAccessor
+@inject IMediator Mediator
 @inject ILogger<Presets> Logger
 
 <PageTitle>Presets - BeanShare</PageTitle>
@@ -118,7 +119,7 @@
                         <div>
                             <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">@preset.Name</h3>
                             <p style="color: var(--bs-text-subtle); font-size: 0.875rem; margin: 0;">
-                                @preset.CoffeeType - @preset.Brand
+                                @preset.CoffeeType
                             </p>
                         </div>
                         @if (preset.IsShared)
@@ -205,12 +206,6 @@
                         <label class="bs-label">Coffee Type</label>
                         <InputText class="bs-input" @bind-Value="presetForm.CoffeeType" placeholder="Arabica" />
                         <ValidationMessage For="@(() => presetForm.CoffeeType)" class="bs-validation-message" />
-                    </div>
-
-                    <div class="bs-form-group">
-                        <label class="bs-label">Brand</label>
-                        <InputText class="bs-input" @bind-Value="presetForm.Brand" placeholder="Ethiopia Yirgacheffe" />
-                        <ValidationMessage For="@(() => presetForm.Brand)" class="bs-validation-message" />
                     </div>
 
                     <div class="bs-form-group">
@@ -323,8 +318,8 @@
 @code {
     [Parameter] public string SpaceId { get; set; } = "";
 
-    private List<PresetDto>? presets;
-    private List<SpaceGlobalPresetDto>? globalPresets;
+    private List<ContractPresets.PresetDto>? presets;
+    private List<ContractPresets.SpaceGlobalPresetDto>? globalPresets;
     private bool isLoading = true;
     private bool isLoadingGlobalPresets = false;
     private bool isGlobalPresetsSectionOpen = false;
@@ -333,7 +328,7 @@
     private bool showEditModal = false;
     private bool isSaving = false;
     private PresetFormModel presetForm = new();
-    private PresetDto? editingPreset;
+    private ContractPresets.PresetDto? editingPreset;
 
     protected override async Task OnInitializedAsync()
     {
@@ -347,16 +342,37 @@
         {
             isLoading = true;
 
-            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var query = new GetSpacePresetsQuery(Guid.Parse(SpaceId));
+            var result = await Mediator.Send(query);
 
-            var response = await Http.GetFromJsonAsync<GetSpacePresetsResponse>($"/api/spaces/{SpaceId}/presets");
-            presets = response?.Presets?.ToList() ?? new List<PresetDto>();
+            if (result.IsSuccess)
+            {
+                presets = result.Value.Presets.Select(p => new ContractPresets.PresetDto
+                {
+                    Id = p.Id,
+                    UserId = p.UserId,
+                    UserName = p.UserName,
+                    Name = p.Name,
+                    CoffeeType = p.CoffeeType,
+                    Preparation = p.Preparation,
+                    DefaultGrams = p.DefaultGrams,
+                    Notes = p.Notes,
+                    IsShared = p.IsShared,
+                    IsOwner = p.IsOwner,
+                    CreatedAt = p.CreatedAt,
+                    LastUsedAt = p.LastUsedAt,
+                    UsageCount = p.UsageCount
+                }).ToList();
+            }
+            else
+            {
+                presets = new List<ContractPresets.PresetDto>();
+            }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading presets");
-            presets = new List<PresetDto>();
+            presets = new List<ContractPresets.PresetDto>();
         }
         finally
         {
@@ -371,7 +387,7 @@
         showEditModal = false;
     }
 
-    private void ShowEditModal(PresetDto preset)
+    private void ShowEditModal(ContractPresets.PresetDto preset)
     {
         editingPreset = preset;
         presetForm = new PresetFormModel
@@ -379,7 +395,6 @@
             SpaceId = Guid.Parse(SpaceId),
             Name = preset.Name,
             CoffeeType = preset.CoffeeType,
-            Brand = preset.Brand,
             Preparation = preset.Preparation,
             DefaultGrams = preset.DefaultGrams,
             Notes = preset.Notes,
@@ -403,41 +418,41 @@
         {
             isSaving = true;
 
-            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
             if (showEditModal && editingPreset != null)
             {
-                var updateRequest = new UpdatePresetRequest
-                {
-                    Name = presetForm.Name,
-                    CoffeeType = presetForm.CoffeeType,
-                    Brand = presetForm.Brand,
-                    Preparation = presetForm.Preparation,
-                    DefaultGrams = presetForm.DefaultGrams,
-                    Notes = presetForm.Notes,
-                    IsShared = presetForm.IsShared
-                };
+                var command = new UpdatePresetCommand(
+                    editingPreset.Id,
+                    presetForm.Name,
+                    presetForm.CoffeeType,
+                    presetForm.Preparation,
+                    presetForm.DefaultGrams,
+                    presetForm.Notes,
+                    presetForm.IsShared);
 
-                var response = await Http.PutAsJsonAsync($"/api/presets/{editingPreset.Id}", updateRequest);
-                response.EnsureSuccessStatusCode();
+                var result = await Mediator.Send(command);
+                if (result.IsFailure)
+                {
+                    Logger.LogError("Failed to update preset: {Errors}", string.Join(", ", result.Errors.Select(e => e.Message)));
+                    return;
+                }
             }
             else
             {
-                var createRequest = new CreatePresetRequest
-                {
-                    SpaceId = presetForm.SpaceId,
-                    Name = presetForm.Name,
-                    CoffeeType = presetForm.CoffeeType,
-                    Brand = presetForm.Brand,
-                    Preparation = presetForm.Preparation,
-                    DefaultGrams = presetForm.DefaultGrams,
-                    Notes = presetForm.Notes,
-                    IsShared = presetForm.IsShared
-                };
+                var command = new CreatePresetCommand(
+                    presetForm.SpaceId,
+                    presetForm.Name,
+                    presetForm.CoffeeType,
+                    presetForm.Preparation,
+                    presetForm.DefaultGrams,
+                    presetForm.Notes,
+                    presetForm.IsShared);
 
-                var response = await Http.PostAsJsonAsync("/api/presets", createRequest);
-                response.EnsureSuccessStatusCode();
+                var result = await Mediator.Send(command);
+                if (result.IsFailure)
+                {
+                    Logger.LogError("Failed to create preset: {Errors}", string.Join(", ", result.Errors.Select(e => e.Message)));
+                    return;
+                }
             }
 
             CloseModal();
@@ -453,18 +468,21 @@
         }
     }
 
-    private async Task DeletePreset(PresetDto preset)
+    private async Task DeletePreset(ContractPresets.PresetDto preset)
     {
         if (!preset.IsOwner)
             return;
 
         try
         {
-            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var command = new DeletePresetCommand(preset.Id);
+            var result = await Mediator.Send(command);
 
-            var response = await Http.DeleteAsync($"/api/presets/{preset.Id}");
-            response.EnsureSuccessStatusCode();
+            if (result.IsFailure)
+            {
+                Logger.LogError("Failed to delete preset: {Errors}", string.Join(", ", result.Errors.Select(e => e.Message)));
+                return;
+            }
 
             await LoadPresets();
         }
@@ -474,7 +492,7 @@
         }
     }
 
-    private async Task UsePreset(PresetDto preset)
+    private async Task UsePreset(ContractPresets.PresetDto preset)
     {
         Navigation.NavigateTo($"/spaces/{SpaceId}/consumption?presetId={preset.Id}");
     }
@@ -490,16 +508,32 @@
         {
             isLoadingGlobalPresets = true;
 
-            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var query = new GetSpaceGlobalPresetsQuery(Guid.Parse(SpaceId));
+            var result = await Mediator.Send(query);
 
-            var response = await Http.GetFromJsonAsync<GetSpaceGlobalPresetsResponse>($"/api/spaces/{SpaceId}/global-presets");
-            globalPresets = response?.Presets?.ToList() ?? new List<SpaceGlobalPresetDto>();
+            if (result.IsSuccess)
+            {
+                globalPresets = result.Value.Presets.Select(p => new ContractPresets.SpaceGlobalPresetDto
+                {
+                    GlobalPresetId = p.GlobalPresetId,
+                    Name = p.Name,
+                    CoffeeType = p.CoffeeType,
+                    Preparation = p.Preparation,
+                    DefaultGrams = p.DefaultGrams,
+                    Description = p.Description,
+                    IsEnabled = p.IsEnabled,
+                    DisplayOrder = p.DisplayOrder
+                }).ToList();
+            }
+            else
+            {
+                globalPresets = new List<ContractPresets.SpaceGlobalPresetDto>();
+            }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading global presets");
-            globalPresets = new List<SpaceGlobalPresetDto>();
+            globalPresets = new List<ContractPresets.SpaceGlobalPresetDto>();
         }
         finally
         {
@@ -507,29 +541,34 @@
         }
     }
 
-    private async Task ToggleGlobalPreset(SpaceGlobalPresetDto preset)
+    private async Task ToggleGlobalPreset(ContractPresets.SpaceGlobalPresetDto preset)
     {
         try
         {
             isTogglingPreset = true;
             StateHasChanged();
 
-            var token = HttpContextAccessor.HttpContext?.Request.Cookies["auth-token"] ?? "";
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var command = new ToggleGlobalPresetCommand(
+                Guid.Parse(SpaceId),
+                preset.GlobalPresetId,
+                !preset.IsEnabled);
 
-            var request = new ToggleGlobalPresetRequest { IsEnabled = !preset.IsEnabled };
-            var response = await Http.PutAsJsonAsync($"/api/spaces/{SpaceId}/global-presets/{preset.GlobalPresetId}/toggle", request);
-            response.EnsureSuccessStatusCode();
+            var result = await Mediator.Send(command);
+
+            if (result.IsFailure)
+            {
+                Logger.LogError("Failed to toggle global preset: {Errors}", string.Join(", ", result.Errors.Select(e => e.Message)));
+                return;
+            }
 
             var index = globalPresets?.FindIndex(p => p.GlobalPresetId == preset.GlobalPresetId) ?? -1;
             if (index >= 0 && globalPresets != null)
             {
-                globalPresets[index] = new SpaceGlobalPresetDto
+                globalPresets[index] = new ContractPresets.SpaceGlobalPresetDto
                 {
                     GlobalPresetId = preset.GlobalPresetId,
                     Name = preset.Name,
                     CoffeeType = preset.CoffeeType,
-                    Brand = preset.Brand,
                     Preparation = preset.Preparation,
                     DefaultGrams = preset.DefaultGrams,
                     Description = preset.Description,
@@ -559,9 +598,6 @@
 
         [Required(ErrorMessage = "Coffee type is required")]
         public string CoffeeType { get; set; } = "";
-
-        [Required(ErrorMessage = "Brand is required")]
-        public string Brand { get; set; } = "";
 
         [Required(ErrorMessage = "Preparation method is required")]
         public string Preparation { get; set; } = "";

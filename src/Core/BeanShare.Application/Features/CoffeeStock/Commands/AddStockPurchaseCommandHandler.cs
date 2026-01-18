@@ -72,8 +72,8 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
                 var existingPurchases = coffeeStock.Purchases.ToList();
                 if (existingPurchases.Any() && existingPurchases.First().Cost.Currency != command.CostCurrency)
                 {
-                    return Result<StockPurchaseDto>.Failure(new Error("stock.currency_conflict",
-                        $"This space uses {existingPurchases.First().Cost.Currency}. Cannot add purchase in {command.CostCurrency}."));
+                    return Result<StockPurchaseDto>.Failure(
+                        Error.CurrencyConflict(existingPurchases.First().Cost.Currency, command.CostCurrency));
                 }
             }
 

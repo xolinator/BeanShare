@@ -28,7 +28,7 @@ public sealed class ConsumeStockCommandHandler : IRequestHandler<ConsumeStockCom
         var spaceId = new SpaceId(request.SpaceId);
         if (!Enum.TryParse<Domain.ValueObjects.CoffeeType>(request.ProductType, true, out var coffeeType))
         {
-            return Result<ConsumedStockDto>.Failure(new Error("stock.invalid_product_type", "Unknown coffee type"));
+            return Result<ConsumedStockDto>.Failure(Error.InvalidProductType());
         }
         var product = CoffeeProduct.Create(request.ProductName, request.ProductBrand, coffeeType);
         var quantity = Weight.FromGrams(request.QuantityGrams);
@@ -36,7 +36,7 @@ public sealed class ConsumeStockCommandHandler : IRequestHandler<ConsumeStockCom
         var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
         if (coffeeStock == null)
         {
-            return Result<ConsumedStockDto>.Failure(new Error("stock.not_found", "No coffee stock found for this space"));
+            return Result<ConsumedStockDto>.Failure(Error.StockNotFound(request.SpaceId));
         }
 
         try
@@ -54,11 +54,11 @@ public sealed class ConsumeStockCommandHandler : IRequestHandler<ConsumeStockCom
         }
         catch (StockDomainException ex) when (ex.Message.Contains("not found"))
         {
-            return Result<ConsumedStockDto>.Failure(new Error("stock.product_not_found", "Product not found in stock"));
+            return Result<ConsumedStockDto>.Failure(Error.ProductNotFoundInStock());
         }
         catch (StockDomainException ex) when (ex.Message.Contains("Cannot consume"))
         {
-            return Result<ConsumedStockDto>.Failure(new Error("stock.insufficient", ex.Message));
+            return Result<ConsumedStockDto>.Failure(Error.InsufficientStock(ex.Message));
         }
     }
 }

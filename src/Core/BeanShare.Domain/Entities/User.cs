@@ -66,6 +66,14 @@ public sealed class User
         return new User(new UserId(Guid.NewGuid()), email, name, provider, createdAt, providerUserId, null, pictureUrl);
     }
 
+    public static User CreateFromKeycloak(Guid keycloakUserId, string email, string name, AuthenticationProvider provider, DateTime createdAt, string? pictureUrl = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return new User(new UserId(keycloakUserId), email, name, provider, createdAt, keycloakUserId.ToString(), null, pictureUrl);
+    }
+
     public void UpdateLastLogin(DateTime lastLoginAt)
     {
         LastLoginAt = lastLoginAt;

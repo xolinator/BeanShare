@@ -70,8 +70,13 @@ internal sealed class ConsumptionEntryConfiguration : IEntityTypeConfiguration<C
             .HasColumnType("timestamptz")
             .IsRequired();
 
-        // Configure nullable BillingPeriodId - Ignore it for now since it's causing issues
-        builder.Ignore(x => x.BillingPeriodId);
+        // Configure nullable BillingPeriodId for billing period assignment
+        builder.Property(x => x.BillingPeriodId)
+            .HasConversion(
+                new ValueConverter<BillingPeriodId?, Guid?>(
+                    id => id.HasValue ? id.Value.Value : (Guid?)null,
+                    value => value.HasValue ? new BillingPeriodId(value.Value) : (BillingPeriodId?)null))
+            .IsRequired(false);
 
         builder.Property(x => x.PresetId)
             .HasConversion(

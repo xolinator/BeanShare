@@ -92,7 +92,7 @@ public sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavi
         }
         catch (InvalidOperationException)
         {
-            return Task.FromResult(Result.Failure(new Error("auth.unauthenticated", "User is not authenticated")));
+            return Task.FromResult(Result.Failure(Error.Unauthenticated()));
         }
     }
 
@@ -107,20 +107,20 @@ public sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavi
         var spaceId = ExtractSpaceId(request, requirement.SpaceIdPropertyName);
         if (spaceId == null)
         {
-            return Result.Failure(new Error("auth.invalid_request", $"Property '{requirement.SpaceIdPropertyName}' not found or invalid"));
+            return Result.Failure(Error.InvalidRequest(requirement.SpaceIdPropertyName));
         }
 
         var specification = new SpaceByIdSpecification(spaceId.Value);
         var space = await _spaceRepository.GetSingleBySpecAsync(specification, cancellationToken);
         if (space == null)
         {
-            return Result.Failure(new Error("auth.space_not_found", "Space not found"));
+            return Result.Failure(Error.SpaceNotFound(spaceId.Value.Value));
         }
 
         var userId = _userContext.CurrentUserId;
         if (!space.HasMember(userId))
         {
-            return Result.Failure(new Error("auth.not_member", "User is not a member of this space"));
+            return Result.Failure(Error.NotMember());
         }
 
         return Result.Success();
@@ -137,20 +137,20 @@ public sealed class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavi
         var spaceId = ExtractSpaceId(request, requirement.SpaceIdPropertyName);
         if (spaceId == null)
         {
-            return Result.Failure(new Error("auth.invalid_request", $"Property '{requirement.SpaceIdPropertyName}' not found or invalid"));
+            return Result.Failure(Error.InvalidRequest(requirement.SpaceIdPropertyName));
         }
 
         var specification = new SpaceByIdSpecification(spaceId.Value);
         var space = await _spaceRepository.GetSingleBySpecAsync(specification, cancellationToken);
         if (space == null)
         {
-            return Result.Failure(new Error("auth.space_not_found", "Space not found"));
+            return Result.Failure(Error.SpaceNotFound(spaceId.Value.Value));
         }
 
         var userId = _userContext.CurrentUserId;
         if (!space.IsAdmin(userId))
         {
-            return Result.Failure(new Error("auth.not_admin", "User is not an admin of this space"));
+            return Result.Failure(Error.NotAdmin());
         }
 
         return Result.Success();

@@ -23,6 +23,12 @@
        @onclick:preventDefault="@PreventNavigation">
         Billing
     </a>
+    <a class="bs-tab @(ActiveTab == "settlements" ? "bs-tab-active" : "")"
+       href="@GetTabUrl("settlements")"
+       @onclick="@(() => HandleTabClick("settlements"))"
+       @onclick:preventDefault="@PreventNavigation">
+        Settlements
+    </a>
     <a class="bs-tab @(ActiveTab == "presets" ? "bs-tab-active" : "")"
        href="@GetTabUrl("presets")"
        @onclick="@(() => HandleTabClick("presets"))"

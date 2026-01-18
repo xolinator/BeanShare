@@ -49,7 +49,6 @@ public sealed class GetPresetByIdEndpoint : EndpointWithoutRequest<Contracts.Pre
             UserName = preset.UserName,
             Name = preset.Name,
             CoffeeType = preset.CoffeeType,
-            Brand = preset.Brand,
             Preparation = preset.Preparation,
             DefaultGrams = preset.DefaultGrams,
             Notes = preset.Notes,

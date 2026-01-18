@@ -27,10 +27,6 @@ internal sealed class GlobalPresetConfiguration : IEntityTypeConfiguration<Globa
             .HasMaxLength(200)
             .IsRequired();
 
-        builder.Property(x => x.DefaultBrand)
-            .HasMaxLength(200)
-            .IsRequired();
-
         builder.Property(x => x.DefaultPreparation)
             .HasMaxLength(200)
             .IsRequired();

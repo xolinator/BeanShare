@@ -1,5 +1,9 @@
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Logging;
 
 namespace BeanShare.Maui.Services;
@@ -10,9 +14,14 @@ public class AuthenticationService : IAuthenticationService
     private readonly ILogger<AuthenticationService> _logger;
     private UserInfo? _currentUser;
 
-    private const string GoogleClientId = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
-    private const string FacebookAppId = "YOUR_FACEBOOK_APP_ID";
+    private const string KeycloakAuthority = "http://localhost:8080/realms/beanshare";
+    private const string KeycloakClientId = "beanshare-mobile";
     private const string CallbackScheme = "beanshare";
+    private const string CallbackUrl = "beanshare://callback";
+
+    private static readonly string AuthorizationEndpoint = $"{KeycloakAuthority}/protocol/openid-connect/auth";
+    private static readonly string TokenEndpoint = $"{KeycloakAuthority}/protocol/openid-connect/token";
+    private static readonly string EndSessionEndpoint = $"{KeycloakAuthority}/protocol/openid-connect/logout";
 
     public AuthenticationService(HttpClient httpClient, ILogger<AuthenticationService> logger)
     {
@@ -20,238 +29,232 @@ public class AuthenticationService : IAuthenticationService
         _logger = logger;
     }
 
-    public async Task<AuthResult> LoginAsync(string email, string password)
+    public Task<AuthResult> LoginAsync(string email, string password)
     {
-        try
-        {
-            _logger.LogInformation("Attempting login for user: {Email}", email);
-
-            var response = await _httpClient.PostAsJsonAsync("/api/auth/login", new
-            {
-                Email = email,
-                Password = password
-            });
-
-            if (response.IsSuccessStatusCode)
-            {
-                var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
-                if (authResponse != null)
-                {
-                    _logger.LogInformation("Login successful for user: {Email}", email);
-                    return await HandleAuthSuccessAsync(authResponse);
-                }
-            }
-
-            var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning("Login failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
-            return new AuthResult(false, null, "Invalid email or password");
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "API connection failed during login");
-            return new AuthResult(false, null, "Unable to connect to the server. Please check your connection and try again.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error during login");
-            return new AuthResult(false, null, "An error occurred during login");
-        }
+        return LoginWithKeycloakAsync();
     }
 
-    public async Task<AuthResult> RegisterAsync(string email, string name, string password)
+    public Task<AuthResult> RegisterAsync(string email, string name, string password)
     {
-        try
-        {
-            _logger.LogInformation("Attempting registration for user: {Email}", email);
-
-            var response = await _httpClient.PostAsJsonAsync("/api/auth/register", new
-            {
-                Email = email,
-                Name = name,
-                Password = password
-            });
-
-            if (response.IsSuccessStatusCode)
-            {
-                var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
-                if (authResponse != null)
-                {
-                    _logger.LogInformation("Registration successful for user: {Email}", email);
-                    return await HandleAuthSuccessAsync(authResponse);
-                }
-            }
-
-            var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning("Registration failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
-            return new AuthResult(false, null, "Registration failed. Email may already be in use.");
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "API connection failed during registration");
-            return new AuthResult(false, null, "Unable to connect to the server. Please check your connection and try again.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error during registration");
-            return new AuthResult(false, null, "An error occurred during registration");
-        }
+        return LoginWithKeycloakAsync();
     }
 
-    public async Task<AuthResult> LoginWithGoogleAsync()
+    public Task<AuthResult> LoginWithGoogleAsync()
+    {
+        return LoginWithKeycloakAsync("google");
+    }
+
+    public Task<AuthResult> LoginWithFacebookAsync()
+    {
+        return LoginWithKeycloakAsync("facebook");
+    }
+
+    public async Task<AuthResult> LoginWithKeycloakAsync(string? identityProviderHint = null)
     {
         try
         {
-            _logger.LogInformation("Starting Google OAuth flow");
+            _logger.LogInformation("Starting Keycloak PKCE authentication flow. IDP hint: {IdpHint}", identityProviderHint ?? "none");
 
-            var authUrl = new Uri($"https://accounts.google.com/o/oauth2/v2/auth?" +
-                $"client_id={GoogleClientId}&" +
-                $"redirect_uri={CallbackScheme}://callback&" +
-                $"response_type=code&" +
-                $"scope=openid%20email%20profile");
+            var codeVerifier = GenerateCodeVerifier();
+            var codeChallenge = GenerateCodeChallenge(codeVerifier);
+            var state = GenerateRandomString(32);
 
-            var callbackUrl = new Uri($"{CallbackScheme}://callback");
+            var authUrlBuilder = new StringBuilder(AuthorizationEndpoint);
+            authUrlBuilder.Append($"?client_id={Uri.EscapeDataString(KeycloakClientId)}");
+            authUrlBuilder.Append($"&redirect_uri={Uri.EscapeDataString(CallbackUrl)}");
+            authUrlBuilder.Append("&response_type=code");
+            authUrlBuilder.Append("&scope=openid%20profile%20email");
+            authUrlBuilder.Append($"&code_challenge={Uri.EscapeDataString(codeChallenge)}");
+            authUrlBuilder.Append("&code_challenge_method=S256");
+            authUrlBuilder.Append($"&state={Uri.EscapeDataString(state)}");
+
+            if (!string.IsNullOrEmpty(identityProviderHint))
+            {
+                authUrlBuilder.Append($"&kc_idp_hint={Uri.EscapeDataString(identityProviderHint)}");
+            }
+
+            var authUrl = new Uri(authUrlBuilder.ToString());
+            var callbackUri = new Uri(CallbackUrl);
+
+            _logger.LogDebug("Authorization URL: {AuthUrl}", authUrl);
 
             var result = await WebAuthenticator.Default.AuthenticateAsync(
                 new WebAuthenticatorOptions
                 {
                     Url = authUrl,
-                    CallbackUrl = callbackUrl,
-                    PrefersEphemeralWebBrowserSession = true
+                    CallbackUrl = callbackUri,
+                    PrefersEphemeralWebBrowserSession = false
                 });
 
             var code = result?.Properties.GetValueOrDefault("code");
-            var idToken = result?.Properties.GetValueOrDefault("id_token");
-            var accessToken = result?.AccessToken;
+            var returnedState = result?.Properties.GetValueOrDefault("state");
 
-            if (string.IsNullOrEmpty(code) && string.IsNullOrEmpty(idToken) && string.IsNullOrEmpty(accessToken))
+            if (string.IsNullOrEmpty(code))
             {
-                _logger.LogWarning("Google OAuth returned no tokens");
-                return new AuthResult(false, null, "Google authentication failed. No tokens received.");
+                _logger.LogWarning("Keycloak authentication returned no authorization code");
+                return new AuthResult(false, null, "Authentication failed. No authorization code received.");
             }
 
-            return await ExchangeTokenAsync("Google", idToken ?? accessToken ?? code!);
+            if (returnedState != state)
+            {
+                _logger.LogWarning("State mismatch in OAuth callback. Expected: {Expected}, Got: {Got}", state, returnedState);
+                return new AuthResult(false, null, "Authentication failed. State mismatch.");
+            }
+
+            return await ExchangeCodeForTokensAsync(code, codeVerifier);
         }
         catch (TaskCanceledException)
         {
-            _logger.LogInformation("Google login was cancelled by user");
-            return new AuthResult(false, null, "Google authentication was cancelled.");
+            _logger.LogInformation("Keycloak login was cancelled by user");
+            return new AuthResult(false, null, "Authentication was cancelled.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Google login failed");
-            return new AuthResult(false, null, $"Google authentication failed: {ex.Message}");
+            _logger.LogError(ex, "Keycloak authentication failed");
+            return new AuthResult(false, null, $"Authentication failed: {ex.Message}");
         }
     }
 
-    public async Task<AuthResult> LoginWithFacebookAsync()
+    private async Task<AuthResult> ExchangeCodeForTokensAsync(string code, string codeVerifier)
     {
         try
         {
-            _logger.LogInformation("Starting Facebook OAuth flow");
+            _logger.LogInformation("Exchanging authorization code for tokens");
 
-            var authUrl = new Uri($"https://www.facebook.com/v18.0/dialog/oauth?" +
-                $"client_id={FacebookAppId}&" +
-                $"redirect_uri={CallbackScheme}://callback&" +
-                $"response_type=token&" +
-                $"scope=email,public_profile");
-
-            var callbackUrl = new Uri($"{CallbackScheme}://callback");
-
-            var result = await WebAuthenticator.Default.AuthenticateAsync(
-                new WebAuthenticatorOptions
-                {
-                    Url = authUrl,
-                    CallbackUrl = callbackUrl,
-                    PrefersEphemeralWebBrowserSession = true
-                });
-
-            var accessToken = result?.AccessToken;
-
-            if (string.IsNullOrEmpty(accessToken))
+            var tokenRequest = new Dictionary<string, string>
             {
-                accessToken = result?.Properties.GetValueOrDefault("access_token");
+                ["grant_type"] = "authorization_code",
+                ["client_id"] = KeycloakClientId,
+                ["code"] = code,
+                ["redirect_uri"] = CallbackUrl,
+                ["code_verifier"] = codeVerifier
+            };
+
+            using var httpClient = new HttpClient();
+            var response = await httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(tokenRequest));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Token exchange failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
+                return new AuthResult(false, null, "Failed to exchange authorization code for tokens.");
             }
 
-            if (string.IsNullOrEmpty(accessToken))
+            var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>();
+            if (tokenResponse == null)
             {
-                _logger.LogWarning("Facebook OAuth returned no access token");
-                return new AuthResult(false, null, "Facebook authentication failed. No token received.");
+                _logger.LogError("Failed to parse token response");
+                return new AuthResult(false, null, "Failed to parse token response.");
             }
 
-            return await ExchangeTokenAsync("Facebook", accessToken);
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogInformation("Facebook login was cancelled by user");
-            return new AuthResult(false, null, "Facebook authentication was cancelled.");
+            _logger.LogInformation("Token exchange successful. Access token received.");
+
+            await StoreTokensAsync(tokenResponse);
+
+            var userInfo = await ExtractUserInfoFromTokenAsync(tokenResponse.IdToken ?? tokenResponse.AccessToken);
+            if (userInfo == null)
+            {
+                _logger.LogError("Failed to extract user info from token");
+                return new AuthResult(false, null, "Failed to extract user information.");
+            }
+
+            _currentUser = userInfo;
+
+            await SyncUserWithApiAsync(tokenResponse.AccessToken);
+
+            _httpClient.DefaultRequestHeaders.Remove("Authorization");
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+
+            return new AuthResult(true, userInfo, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Facebook login failed");
-            return new AuthResult(false, null, $"Facebook authentication failed: {ex.Message}");
+            _logger.LogError(ex, "Token exchange failed");
+            return new AuthResult(false, null, $"Token exchange failed: {ex.Message}");
         }
     }
 
-    private async Task<AuthResult> ExchangeTokenAsync(string provider, string token)
+    private async Task SyncUserWithApiAsync(string accessToken)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/api/auth/external", new
-            {
-                Provider = provider,
-                IdToken = token,
-                AccessToken = token
-            });
+            using var httpClient = new HttpClient();
+            httpClient.BaseAddress = _httpClient.BaseAddress;
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
 
+            var response = await httpClient.PostAsync("/api/users/sync", null);
             if (response.IsSuccessStatusCode)
             {
-                var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>();
-                if (authResponse != null)
-                {
-                    return await HandleAuthSuccessAsync(authResponse);
-                }
+                _logger.LogInformation("User synced with API successfully");
             }
-
-            var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning("Token exchange failed: {Error}", errorContent);
-            return new AuthResult(false, null, $"{provider} authentication failed");
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("Failed to sync user with API: {StatusCode} - {Error}", response.StatusCode, error);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Token exchange failed for {Provider}", provider);
-            return new AuthResult(false, null, $"{provider} authentication failed");
+            _logger.LogWarning(ex, "Failed to sync user with API (non-fatal)");
         }
     }
 
-    private async Task<AuthResult> HandleAuthSuccessAsync(AuthResponse authResponse)
+    public async Task<bool> TryRefreshTokensAsync()
     {
-        var user = new UserInfo(
-            authResponse.UserId,
-            authResponse.Email,
-            authResponse.Name,
-            authResponse.PictureUrl);
+        try
+        {
+            string? refreshToken = null;
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                refreshToken = await SecureStorage.Default.GetAsync("refresh_token");
+            });
 
-        _currentUser = user;
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                _logger.LogDebug("No refresh token available");
+                return false;
+            }
 
-        await StoreAuthDataAsync(
-            authResponse.UserId,
-            authResponse.Email,
-            authResponse.Name,
-            authResponse.Token,
-            authResponse.PictureUrl);
+            _logger.LogInformation("Attempting to refresh tokens");
 
-        UserContextStub.SetUser(authResponse.UserId, authResponse.Email);
+            var tokenRequest = new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token",
+                ["client_id"] = KeycloakClientId,
+                ["refresh_token"] = refreshToken
+            };
 
-        _httpClient.DefaultRequestHeaders.Remove("Authorization");
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {authResponse.Token}");
+            using var httpClient = new HttpClient();
+            var response = await httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(tokenRequest));
 
-        _httpClient.DefaultRequestHeaders.Remove("X-User-Id");
-        _httpClient.DefaultRequestHeaders.Add("X-User-Id", authResponse.UserId.ToString());
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Token refresh failed: {StatusCode}", response.StatusCode);
+                return false;
+            }
 
-        return new AuthResult(true, user, null);
+            var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>();
+            if (tokenResponse == null)
+            {
+                return false;
+            }
+
+            await StoreTokensAsync(tokenResponse);
+
+            _httpClient.DefaultRequestHeaders.Remove("Authorization");
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+
+            _logger.LogInformation("Tokens refreshed successfully");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Token refresh failed");
+            return false;
+        }
     }
 
-    private async Task StoreAuthDataAsync(Guid userId, string email, string name, string token, string? pictureUrl = null)
+    private async Task StoreTokensAsync(KeycloakTokenResponse tokenResponse)
     {
         var tcs = new TaskCompletionSource<bool>();
 
@@ -259,25 +262,84 @@ public class AuthenticationService : IAuthenticationService
         {
             try
             {
-                await SecureStorage.Default.SetAsync("user_id", userId.ToString());
-                await SecureStorage.Default.SetAsync("user_email", email);
-                await SecureStorage.Default.SetAsync("user_name", name);
-                await SecureStorage.Default.SetAsync("auth_token", token);
-                if (!string.IsNullOrEmpty(pictureUrl))
+                await SecureStorage.Default.SetAsync("access_token", tokenResponse.AccessToken);
+                await SecureStorage.Default.SetAsync("auth_token", tokenResponse.AccessToken);
+
+                if (!string.IsNullOrEmpty(tokenResponse.RefreshToken))
                 {
-                    await SecureStorage.Default.SetAsync("user_picture", pictureUrl);
+                    await SecureStorage.Default.SetAsync("refresh_token", tokenResponse.RefreshToken);
                 }
-                _logger.LogInformation("Auth data stored for user {UserId}", userId);
+
+                if (!string.IsNullOrEmpty(tokenResponse.IdToken))
+                {
+                    await SecureStorage.Default.SetAsync("id_token", tokenResponse.IdToken);
+                }
+
+                var expiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+                await SecureStorage.Default.SetAsync("token_expires_at", expiresAt.ToString("O"));
+
+                _logger.LogInformation("Tokens stored securely. Expires at: {ExpiresAt}", expiresAt);
                 tcs.SetResult(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to store auth data");
+                _logger.LogError(ex, "Failed to store tokens");
                 tcs.SetException(ex);
             }
         });
 
         await tcs.Task;
+    }
+
+    private async Task<UserInfo?> ExtractUserInfoFromTokenAsync(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+
+            var sub = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+            var email = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            var name = jwtToken.Claims.FirstOrDefault(c => c.Type == "name")?.Value
+                    ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value;
+            var picture = jwtToken.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
+
+            if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var userId))
+            {
+                _logger.LogError("Failed to parse user ID from token. Sub claim: {Sub}", sub);
+                return null;
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                try
+                {
+                    await SecureStorage.Default.SetAsync("user_id", userId.ToString());
+                    await SecureStorage.Default.SetAsync("user_email", email ?? "");
+                    await SecureStorage.Default.SetAsync("user_name", name ?? "");
+                    if (!string.IsNullOrEmpty(picture))
+                    {
+                        await SecureStorage.Default.SetAsync("user_picture", picture);
+                    }
+                    tcs.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+            await tcs.Task;
+
+            UserContextStub.SetUser(userId, email ?? "");
+
+            return new UserInfo(userId, email ?? "", name ?? "", picture);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to extract user info from token");
+            return null;
+        }
     }
 
     public async Task LogoutAsync()
@@ -287,10 +349,14 @@ public class AuthenticationService : IAuthenticationService
         UserContextStub.ClearUser();
 
         _httpClient.DefaultRequestHeaders.Remove("Authorization");
-        _httpClient.DefaultRequestHeaders.Remove("X-User-Id");
+
+        string? idToken = null;
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            idToken = await SecureStorage.Default.GetAsync("id_token");
+        });
 
         var tcs = new TaskCompletionSource<bool>();
-
         MainThread.BeginInvokeOnMainThread(() =>
         {
             try
@@ -298,8 +364,12 @@ public class AuthenticationService : IAuthenticationService
                 SecureStorage.Default.Remove("user_id");
                 SecureStorage.Default.Remove("user_email");
                 SecureStorage.Default.Remove("user_name");
-                SecureStorage.Default.Remove("auth_token");
                 SecureStorage.Default.Remove("user_picture");
+                SecureStorage.Default.Remove("access_token");
+                SecureStorage.Default.Remove("auth_token");
+                SecureStorage.Default.Remove("refresh_token");
+                SecureStorage.Default.Remove("id_token");
+                SecureStorage.Default.Remove("token_expires_at");
                 _logger.LogInformation("Logout completed - storage cleared");
                 tcs.SetResult(true);
             }
@@ -311,16 +381,47 @@ public class AuthenticationService : IAuthenticationService
         });
 
         await tcs.Task;
+
+        if (!string.IsNullOrEmpty(idToken))
+        {
+            try
+            {
+                var logoutUrl = $"{EndSessionEndpoint}?id_token_hint={Uri.EscapeDataString(idToken)}&post_logout_redirect_uri={Uri.EscapeDataString(CallbackUrl)}";
+                await Browser.Default.OpenAsync(new Uri(logoutUrl), BrowserLaunchMode.SystemPreferred);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to open Keycloak logout page (non-fatal)");
+            }
+        }
     }
 
     public async Task<bool> IsAuthenticatedAsync()
     {
-        string? userId = null;
+        string? accessToken = null;
+        string? expiresAtStr = null;
+
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
-            userId = await SecureStorage.Default.GetAsync("user_id");
+            accessToken = await SecureStorage.Default.GetAsync("access_token");
+            expiresAtStr = await SecureStorage.Default.GetAsync("token_expires_at");
         });
-        return !string.IsNullOrEmpty(userId);
+
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(expiresAtStr) && DateTime.TryParse(expiresAtStr, out var expiresAt))
+        {
+            if (expiresAt < DateTime.UtcNow.AddMinutes(1))
+            {
+                var refreshed = await TryRefreshTokensAsync();
+                return refreshed;
+            }
+        }
+
+        return true;
     }
 
     public async Task<UserInfo?> GetCurrentUserAsync()
@@ -332,7 +433,7 @@ public class AuthenticationService : IAuthenticationService
         string? email = null;
         string? name = null;
         string? pictureUrl = null;
-        string? token = null;
+        string? accessToken = null;
 
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
@@ -340,7 +441,7 @@ public class AuthenticationService : IAuthenticationService
             email = await SecureStorage.Default.GetAsync("user_email");
             name = await SecureStorage.Default.GetAsync("user_name");
             pictureUrl = await SecureStorage.Default.GetAsync("user_picture");
-            token = await SecureStorage.Default.GetAsync("auth_token");
+            accessToken = await SecureStorage.Default.GetAsync("access_token");
         });
 
         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var id))
@@ -348,14 +449,11 @@ public class AuthenticationService : IAuthenticationService
             _currentUser = new UserInfo(id, email ?? "", name ?? "", pictureUrl);
             UserContextStub.SetUser(id, email ?? "");
 
-            if (!string.IsNullOrEmpty(token) && !token.StartsWith("mock_"))
+            if (!string.IsNullOrEmpty(accessToken))
             {
                 _httpClient.DefaultRequestHeaders.Remove("Authorization");
-                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
             }
-
-            _httpClient.DefaultRequestHeaders.Remove("X-User-Id");
-            _httpClient.DefaultRequestHeaders.Add("X-User-Id", id.ToString());
 
             return _currentUser;
         }
@@ -363,12 +461,55 @@ public class AuthenticationService : IAuthenticationService
         return null;
     }
 
-    private record AuthResponse(
-        string Token,
-        Guid UserId,
-        string Email,
-        string Name,
-        string? PictureUrl,
-        string Provider,
-        DateTime ExpiresAt);
+    private static string GenerateCodeVerifier()
+    {
+        var bytes = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(bytes);
+        return Base64UrlEncode(bytes);
+    }
+
+    private static string GenerateCodeChallenge(string codeVerifier)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = sha256.ComputeHash(Encoding.ASCII.GetBytes(codeVerifier));
+        return Base64UrlEncode(bytes);
+    }
+
+    private static string GenerateRandomString(int length)
+    {
+        var bytes = new byte[length];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(bytes);
+        return Base64UrlEncode(bytes);
+    }
+
+    private static string Base64UrlEncode(byte[] bytes)
+    {
+        return Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+    }
+
+    private class KeycloakTokenResponse
+    {
+        [JsonPropertyName("access_token")]
+        public string AccessToken { get; set; } = string.Empty;
+
+        [JsonPropertyName("refresh_token")]
+        public string? RefreshToken { get; set; }
+
+        [JsonPropertyName("id_token")]
+        public string? IdToken { get; set; }
+
+        [JsonPropertyName("expires_in")]
+        public int ExpiresIn { get; set; }
+
+        [JsonPropertyName("refresh_expires_in")]
+        public int RefreshExpiresIn { get; set; }
+
+        [JsonPropertyName("token_type")]
+        public string TokenType { get; set; } = string.Empty;
+    }
 }

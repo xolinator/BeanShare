@@ -8,4 +8,6 @@ public sealed record RecordConsumptionRequest
     public required string ProductType { get; init; }
     public required decimal QuantityGrams { get; init; }
     public DateTime? ConsumedAt { get; init; }
+    public string? PresetName { get; init; }
+    public Guid? ForUserId { get; init; }
 }

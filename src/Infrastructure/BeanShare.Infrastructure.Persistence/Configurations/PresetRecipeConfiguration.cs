@@ -40,10 +40,6 @@ internal sealed class PresetRecipeConfiguration : IEntityTypeConfiguration<Prese
             .HasMaxLength(200)
             .IsRequired();
 
-        builder.Property(x => x.Brand)
-            .HasMaxLength(200)
-            .IsRequired();
-
         builder.Property(x => x.Preparation)
             .HasMaxLength(200)
             .IsRequired();

@@ -38,7 +38,9 @@ public sealed class RecordConsumptionEndpoint(IMediator mediator)
             req.ProductBrand,
             req.ProductType,
             req.QuantityGrams,
-            req.ConsumedAt);
+            req.ConsumedAt,
+            req.PresetName,
+            req.ForUserId);
 
         var result = await mediator.Send(command, ct);
 

@@ -56,23 +56,23 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
 
         if (!Enum.TryParse<Domain.ValueObjects.CoffeeType>(preset.CoffeeType, true, out var coffeeType))
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("consumption.invalid_type", "Invalid coffee type in preset"));
+            return Result<ConsumptionEntryDto>.Failure(Error.InvalidCoffeeTypeInPreset());
         }
 
         var quantityGrams = request.CustomQuantityGrams ?? preset.DefaultGrams.Grams;
-        var product = CoffeeProduct.Create(preset.Name, preset.Brand, coffeeType);
+        var product = CoffeeProduct.Create(preset.Name, preset.Name, coffeeType);
         var quantity = Weight.FromGrams(quantityGrams);
         var consumedAt = request.ConsumedAt ?? _clock.UtcNow;
 
         if (consumedAt > _clock.UtcNow)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("consumption.invalid_time", "Consumption time cannot be in the future"));
+            return Result<ConsumptionEntryDto>.Failure(Error.InvalidConsumptionTime());
         }
 
         var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
         if (coffeeStock == null)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("stock.not_found", "No coffee stock found for this space"));
+            return Result<ConsumptionEntryDto>.Failure(Error.StockNotFound(request.SpaceId));
         }
 
         try
@@ -117,11 +117,11 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
         }
         catch (ProductNotFoundException)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("stock.product_not_found", "Product not found in stock"));
+            return Result<ConsumptionEntryDto>.Failure(Error.ProductNotFoundInStock());
         }
         catch (InsufficientStockException ex)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("stock.insufficient", ex.Message));
+            return Result<ConsumptionEntryDto>.Failure(Error.InsufficientStock(ex.Message));
         }
     }
 }

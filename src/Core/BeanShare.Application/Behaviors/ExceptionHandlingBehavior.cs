@@ -15,11 +15,11 @@ public sealed class ExceptionHandlingBehavior<TRequest, TResponse> : IPipelineBe
         }
         catch (SpaceDomainException ex)
         {
-            return CreateFailureResult<TResponse>(new Error("DOMAIN_ERROR", ex.Message));
+            return CreateFailureResult<TResponse>(Error.DomainError(ex.Message));
         }
         catch (DomainException ex)
         {
-            return CreateFailureResult<TResponse>(new Error("DOMAIN_ERROR", ex.Message));
+            return CreateFailureResult<TResponse>(Error.DomainError(ex.Message));
         }
     }
 

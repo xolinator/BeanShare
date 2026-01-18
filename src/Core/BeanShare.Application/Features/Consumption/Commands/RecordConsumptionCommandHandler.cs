@@ -4,6 +4,7 @@ using BeanShare.Application.Features.Consumption.Dtos;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
 using BeanShare.Domain.Exceptions;
+using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
 
@@ -13,17 +14,20 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly IConsumptionRepository _consumptionRepository;
+    private readonly ISpaceRepository _spaceRepository;
     private readonly IUserContext _userContext;
     private readonly IClock _clock;
 
     public RecordConsumptionCommandHandler(
         ICoffeeStockRepository coffeeStockRepository,
         IConsumptionRepository consumptionRepository,
+        ISpaceRepository spaceRepository,
         IUserContext userContext,
         IClock clock)
     {
         _coffeeStockRepository = coffeeStockRepository;
         _consumptionRepository = consumptionRepository;
+        _spaceRepository = spaceRepository;
         _userContext = userContext;
         _clock = clock;
     }
@@ -31,11 +35,30 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
     public async Task<Result<ConsumptionEntryDto>> Handle(RecordConsumptionCommand request, CancellationToken cancellationToken)
     {
         var spaceId = new SpaceId(request.SpaceId);
-        var userId = _userContext.CurrentUserId;
+
+        UserId targetUserId;
+        if (request.ForUserId.HasValue)
+        {
+            var spec = new SpaceByIdSpecification(spaceId);
+            var space = await _spaceRepository.GetSingleBySpecAsync(spec, cancellationToken);
+
+            if (space == null)
+                return Result<ConsumptionEntryDto>.Failure(Error.SpaceNotFound(request.SpaceId));
+
+            var forUser = new UserId(request.ForUserId.Value);
+            if (!space.HasMember(forUser))
+                return Result<ConsumptionEntryDto>.Failure(Error.MemberNotFound(request.ForUserId.Value, request.SpaceId));
+
+            targetUserId = forUser;
+        }
+        else
+        {
+            targetUserId = _userContext.CurrentUserId;
+        }
 
         if (!Enum.TryParse<Domain.ValueObjects.CoffeeType>(request.ProductType, true, out var coffeeType))
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("consumption.invalid_type", "Invalid coffee type"));
+            return Result<ConsumptionEntryDto>.Failure(Error.InvalidCoffeeType());
         }
 
         var product = CoffeeProduct.Create(request.ProductName, request.ProductBrand, coffeeType);
@@ -44,13 +67,13 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
 
         if (consumedAt > _clock.UtcNow)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("consumption.invalid_time", "Consumption time cannot be in the future"));
+            return Result<ConsumptionEntryDto>.Failure(Error.InvalidConsumptionTime());
         }
 
         var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
         if (coffeeStock == null)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("stock.not_found", "No coffee stock found for this space"));
+            return Result<ConsumptionEntryDto>.Failure(Error.StockNotFound(request.SpaceId));
         }
 
         try
@@ -62,7 +85,7 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
 
             var consumptionEntry = ConsumptionEntry.Create(
                 spaceId,
-                userId,
+                targetUserId,
                 product,
                 quantity,
                 consumedAt,
@@ -91,11 +114,11 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
         }
         catch (ProductNotFoundException)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("stock.product_not_found", "Product not found in stock"));
+            return Result<ConsumptionEntryDto>.Failure(Error.ProductNotFoundInStock());
         }
         catch (InsufficientStockException ex)
         {
-            return Result<ConsumptionEntryDto>.Failure(new Error("stock.insufficient", ex.Message));
+            return Result<ConsumptionEntryDto>.Failure(Error.InsufficientStock(ex.Message));
         }
     }
 }

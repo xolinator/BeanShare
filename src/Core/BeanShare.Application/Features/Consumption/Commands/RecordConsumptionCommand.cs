@@ -13,5 +13,6 @@ public sealed record RecordConsumptionCommand(
     string ProductType,
     decimal QuantityGrams,
     DateTime? ConsumedAt,
-    string? PresetName = null
+    string? PresetName = null,
+    Guid? ForUserId = null
 ) : IAuthorize, ICommand<Result<ConsumptionEntryDto>>;

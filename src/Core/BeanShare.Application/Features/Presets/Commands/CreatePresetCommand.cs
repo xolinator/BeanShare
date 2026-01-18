@@ -7,7 +7,6 @@ public sealed record CreatePresetCommand(
     Guid SpaceId,
     string Name,
     string CoffeeType,
-    string Brand,
     string Preparation,
     decimal DefaultGrams,
     string? Notes,

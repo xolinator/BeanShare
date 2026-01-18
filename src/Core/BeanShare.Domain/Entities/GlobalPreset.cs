@@ -12,7 +12,6 @@ public sealed class GlobalPreset : Entity
     public GlobalPresetId Id { get; private set; }
     public string Name { get; private set; }
     public string DefaultCoffeeType { get; private set; }
-    public string DefaultBrand { get; private set; }
     public string DefaultPreparation { get; private set; }
     public Weight DefaultGrams { get; private set; }
     public string? Description { get; private set; }
@@ -25,7 +24,6 @@ public sealed class GlobalPreset : Entity
         Id = new GlobalPresetId(Guid.Empty);
         Name = string.Empty;
         DefaultCoffeeType = string.Empty;
-        DefaultBrand = string.Empty;
         DefaultPreparation = string.Empty;
         DefaultGrams = Weight.Zero;
     }
@@ -34,7 +32,6 @@ public sealed class GlobalPreset : Entity
         GlobalPresetId id,
         string name,
         string defaultCoffeeType,
-        string defaultBrand,
         string defaultPreparation,
         Weight defaultGrams,
         int displayOrder,
@@ -44,7 +41,6 @@ public sealed class GlobalPreset : Entity
         Id = id;
         Name = name;
         DefaultCoffeeType = defaultCoffeeType;
-        DefaultBrand = defaultBrand;
         DefaultPreparation = defaultPreparation;
         DefaultGrams = defaultGrams;
         Description = description;
@@ -56,7 +52,6 @@ public sealed class GlobalPreset : Entity
     public static GlobalPreset Create(
         string name,
         string defaultCoffeeType,
-        string defaultBrand,
         string defaultPreparation,
         Weight defaultGrams,
         int displayOrder,
@@ -69,9 +64,6 @@ public sealed class GlobalPreset : Entity
         if (string.IsNullOrWhiteSpace(defaultCoffeeType))
             throw new ArgumentException("Coffee type is required", nameof(defaultCoffeeType));
 
-        if (string.IsNullOrWhiteSpace(defaultBrand))
-            throw new ArgumentException("Brand is required", nameof(defaultBrand));
-
         if (string.IsNullOrWhiteSpace(defaultPreparation))
             throw new ArgumentException("Preparation method is required", nameof(defaultPreparation));
 
@@ -82,7 +74,6 @@ public sealed class GlobalPreset : Entity
             new GlobalPresetId(Guid.NewGuid()),
             name,
             defaultCoffeeType,
-            defaultBrand,
             defaultPreparation,
             defaultGrams,
             displayOrder,
@@ -97,7 +88,6 @@ public sealed class GlobalPreset : Entity
         Guid id,
         string name,
         string defaultCoffeeType,
-        string defaultBrand,
         string defaultPreparation,
         Weight defaultGrams,
         int displayOrder,
@@ -110,9 +100,6 @@ public sealed class GlobalPreset : Entity
         if (string.IsNullOrWhiteSpace(defaultCoffeeType))
             throw new ArgumentException("Coffee type is required", nameof(defaultCoffeeType));
 
-        if (string.IsNullOrWhiteSpace(defaultBrand))
-            throw new ArgumentException("Brand is required", nameof(defaultBrand));
-
         if (string.IsNullOrWhiteSpace(defaultPreparation))
             throw new ArgumentException("Preparation method is required", nameof(defaultPreparation));
 
@@ -123,7 +110,6 @@ public sealed class GlobalPreset : Entity
             new GlobalPresetId(id),
             name,
             defaultCoffeeType,
-            defaultBrand,
             defaultPreparation,
             defaultGrams,
             displayOrder,

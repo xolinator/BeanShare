@@ -25,7 +25,6 @@ public sealed class UpdatePresetEndpoint : Endpoint<UpdatePresetRequest, UpdateP
             {
                 Name = "Morning Espresso",
                 CoffeeType = "Arabica",
-                Brand = "Ethiopia Yirgacheffe",
                 Preparation = "Espresso",
                 DefaultGrams = 20,
                 Notes = "Updated: Double shot, 1:2.5 ratio",
@@ -42,7 +41,6 @@ public sealed class UpdatePresetEndpoint : Endpoint<UpdatePresetRequest, UpdateP
             presetId,
             req.Name,
             req.CoffeeType,
-            req.Brand,
             req.Preparation,
             req.DefaultGrams,
             req.Notes,

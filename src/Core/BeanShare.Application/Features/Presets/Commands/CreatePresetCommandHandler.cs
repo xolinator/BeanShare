@@ -36,11 +36,6 @@ public sealed class CreatePresetCommandHandler : IRequestHandler<CreatePresetCom
             return Result<CreatePresetResult>.Failure(Error.ValidationFailure(nameof(request.CoffeeType), "Coffee type is required"));
         }
 
-        if (string.IsNullOrWhiteSpace(request.Brand))
-        {
-            return Result<CreatePresetResult>.Failure(Error.ValidationFailure(nameof(request.Brand), "Brand is required"));
-        }
-
         if (string.IsNullOrWhiteSpace(request.Preparation))
         {
             return Result<CreatePresetResult>.Failure(Error.ValidationFailure(nameof(request.Preparation), "Preparation method is required"));
@@ -61,7 +56,6 @@ public sealed class CreatePresetCommandHandler : IRequestHandler<CreatePresetCom
                 spaceId,
                 request.Name.Trim(),
                 request.CoffeeType.Trim(),
-                request.Brand.Trim(),
                 request.Preparation.Trim(),
                 defaultGrams,
                 _clock.UtcNow,

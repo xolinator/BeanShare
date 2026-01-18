@@ -89,4 +89,10 @@ public sealed class MockUserService : IUserService
         }
         return Task.CompletedTask;
     }
+
+    public Task AddAsync(User user, CancellationToken cancellationToken = default)
+    {
+        _users.Add(user);
+        return Task.CompletedTask;
+    }
 }

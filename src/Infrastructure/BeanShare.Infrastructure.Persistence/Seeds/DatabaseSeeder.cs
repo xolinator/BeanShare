@@ -22,7 +22,8 @@ public class DatabaseSeeder
             new UserSeeder(),
             new SpaceSeeder(),
             new CoffeeStockSeeder(),
-            new ConsumptionSeeder()
+            new ConsumptionSeeder(),
+            new BillingPeriodSeeder()
         };
     }
 

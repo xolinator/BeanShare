@@ -13,9 +13,9 @@ public class MockIdentityAuthenticationService : IdentityAuthService
 {
     private static readonly Dictionary<string, User> _users = new()
     {
-        ["john.smith@beanshare.com"] = User.CreateWithIdAndPassword(
+        ["arnzrk@gmail.com"] = User.CreateWithIdAndPassword(
             Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            "john.smith@beanshare.com",
+            "arnzrk@gmail.com",
             "John Smith",
             "hashed_password",
             DateTime.UtcNow),

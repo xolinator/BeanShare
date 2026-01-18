@@ -471,7 +471,7 @@
         if (string.IsNullOrEmpty(userProfile?.PictureUrl))
             return "";
 
-        var baseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
+        var baseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5247";
         var url = userProfile.PictureUrl.StartsWith("http")
             ? userProfile.PictureUrl
             : $"{baseUrl}{userProfile.PictureUrl}";
@@ -531,7 +531,7 @@
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(GetContentType(extension));
             content.Add(fileContent, "file", result.FileName);
 
-            var baseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
+            var baseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5247";
             var response = await HttpClient.PostAsync($"{baseUrl}/api/me/avatar", content);
 
             if (response.IsSuccessStatusCode)
@@ -541,6 +541,10 @@
                 {
                     userProfile!.PictureUrl = uploadResponse.AvatarUrl;
                     avatarCacheBuster = DateTime.UtcNow.Ticks.ToString();
+
+                    var updateCommand = new UpdateProfileCommand(userProfile.Name, uploadResponse.AvatarUrl);
+                    await Mediator.Send(updateCommand);
+
                     await AlertService.ShowAlertAsync("Success", "Avatar updated successfully!");
                 }
                 else

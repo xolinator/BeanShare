@@ -2,6 +2,7 @@ using BeanShare.Domain.Enums;
 using BeanShare.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BeanShare.BlazorWeb.Endpoints;
@@ -12,6 +13,7 @@ public static class AccountEndpoints
     {
         var group = endpoints.MapGroup("/account");
 
+        group.MapGet("/login", Login);
         group.MapPost("/external-login", ExternalLogin).DisableAntiforgery();
         group.MapGet("/external-callback", ExternalCallback);
         group.MapPost("/logout", Logout).DisableAntiforgery();
@@ -19,33 +21,92 @@ public static class AccountEndpoints
         return endpoints;
     }
 
+    private static Task<IResult> Login(
+        HttpContext httpContext,
+        [FromQuery] string? returnUrl,
+        [FromServices] IConfiguration configuration)
+    {
+        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+
+        if (useKeycloak)
+        {
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = returnUrl ?? "/spaces"
+            };
+
+            return Task.FromResult(Results.Challenge(properties, new[] { OpenIdConnectDefaults.AuthenticationScheme }));
+        }
+
+        return Task.FromResult(Results.Redirect($"/login?returnUrl={Uri.EscapeDataString(returnUrl ?? "/spaces")}"));
+    }
+
     private static Task<IResult> ExternalLogin(
         [FromForm] string provider,
         [FromForm] string? returnUrl,
+        [FromServices] IConfiguration configuration,
         HttpContext httpContext)
     {
+        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+
+        if (useKeycloak)
+        {
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = returnUrl ?? "/spaces"
+            };
+
+            var idpHint = provider.ToLowerInvariant() switch
+            {
+                "google" => "google",
+                "facebook" => "facebook",
+                _ => null
+            };
+
+            if (idpHint != null)
+            {
+                properties.Items["kc_idp_hint"] = idpHint;
+            }
+
+            return Task.FromResult(Results.Challenge(properties, new[] { OpenIdConnectDefaults.AuthenticationScheme }));
+        }
+
         if (string.IsNullOrEmpty(provider) ||
             (provider != "Google" && provider != "Facebook"))
         {
             return Task.FromResult(Results.BadRequest("Invalid provider"));
         }
 
-        // Use real OAuth flow - redirect to the OAuth provider
         var redirectUrl = $"/account/external-callback?returnUrl={Uri.EscapeDataString(returnUrl ?? "/spaces")}";
 
-        var properties = new AuthenticationProperties
+        var authProperties = new AuthenticationProperties
         {
             RedirectUri = redirectUrl
         };
 
-        return Task.FromResult(Results.Challenge(properties, new[] { provider }));
+        return Task.FromResult(Results.Challenge(authProperties, new[] { provider }));
     }
 
     private static async Task<IResult> ExternalCallback(
         HttpContext httpContext,
         [FromQuery] string? returnUrl,
-        [FromServices] Infrastructure.Identity.IAuthenticationService authService)
+        [FromServices] IConfiguration configuration,
+        [FromServices] IServiceProvider serviceProvider)
     {
+        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+
+        if (useKeycloak)
+        {
+            var finalReturnUrl = string.IsNullOrEmpty(returnUrl) ? "/spaces" : returnUrl;
+            return Results.Redirect(finalReturnUrl);
+        }
+
+        var authService = serviceProvider.GetService<Infrastructure.Identity.IAuthenticationService>();
+        if (authService == null)
+        {
+            return Results.Redirect("/login?error=service_unavailable");
+        }
+
         try
         {
             var result = await httpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -83,9 +144,33 @@ public static class AccountEndpoints
 
     private static async Task<IResult> Logout(
         HttpContext httpContext,
-        [FromServices] Infrastructure.Identity.IAuthenticationService authService)
+        [FromServices] IConfiguration configuration,
+        [FromServices] IServiceProvider serviceProvider)
     {
-        await authService.SignOutAsync(httpContext);
+        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+
+        if (useKeycloak)
+        {
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = "/"
+            };
+
+            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            return Results.SignOut(properties, new[] { OpenIdConnectDefaults.AuthenticationScheme });
+        }
+
+        var authService = serviceProvider.GetService<Infrastructure.Identity.IAuthenticationService>();
+        if (authService != null)
+        {
+            await authService.SignOutAsync(httpContext);
+        }
+        else
+        {
+            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        }
+
         return Results.Redirect("/login");
     }
 }

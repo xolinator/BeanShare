@@ -27,7 +27,6 @@ public class PresetService : IPresetService
                 SpacePresetId = p.SpacePresetId,
                 Name = p.Name,
                 CoffeeType = p.CoffeeType,
-                Brand = p.Brand,
                 Preparation = p.Preparation,
                 Grams = (int)p.DefaultGrams,
                 Description = p.Description,

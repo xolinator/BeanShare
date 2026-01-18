@@ -12,13 +12,14 @@ public sealed class ConsumptionCommandTests
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
     private readonly IConsumptionRepository _consumptionRepository = Substitute.For<IConsumptionRepository>();
+    private readonly ISpaceRepository _spaceRepository = Substitute.For<ISpaceRepository>();
     private readonly IUserContext _userContext = Substitute.For<IUserContext>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly RecordConsumptionCommandHandler _handler;
 
     public ConsumptionCommandTests()
     {
-        _handler = new RecordConsumptionCommandHandler(_coffeeStockRepository, _consumptionRepository, _userContext, _clock);
+        _handler = new RecordConsumptionCommandHandler(_coffeeStockRepository, _consumptionRepository, _spaceRepository, _userContext, _clock);
     }
 
     [Fact]

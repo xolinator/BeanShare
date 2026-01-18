@@ -17,6 +17,7 @@ builder.Services.AddMapster();
 
 var useMockServices = builder.Configuration.GetValue<bool>("UseMockServices", false);
 var useMockAuthentication = builder.Configuration.GetValue<bool>("UseMockAuthentication", false);
+var useKeycloak = builder.Configuration.GetValue<bool>("UseKeycloak", false);
 
 if (useMockServices)
 {
@@ -77,25 +78,66 @@ if (useMockServices || useMockAuthentication)
             .Build();
     });
 }
-else
+else if (useKeycloak)
 {
+    // Keycloak OIDC configuration
+    var keycloakAuthority = builder.Configuration["Keycloak:Authority"]
+        ?? throw new InvalidOperationException("Keycloak:Authority not configured");
+    var keycloakAudience = builder.Configuration["Keycloak:Audience"] ?? "beanshare-api";
+
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, KeycloakUserContext>();
+    builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
+
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
-            var jwt = builder.Configuration.GetSection("Authentication:Jwt");
-            options.Authority = jwt["Authority"];
-            options.Audience = jwt["Audience"];
+            options.Authority = keycloakAuthority;
+            options.Audience = keycloakAudience;
             options.RequireHttpsMetadata = builder.Environment.IsProduction();
             options.MapInboundClaims = false;
-            var metadata = jwt["MetadataAddress"];
-            if (!string.IsNullOrWhiteSpace(metadata))
-                options.MetadataAddress = metadata;
             options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
             {
                 ValidateIssuer = true,
+                ValidIssuer = keycloakAuthority,
                 ValidateAudience = true,
+                ValidAudience = keycloakAudience,
+                ValidateLifetime = true,
+                NameClaimType = "preferred_username",
+                RoleClaimType = "realm_access",
+                ClockSkew = TimeSpan.FromMinutes(5)
+            };
+        });
+
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+            .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+}
+else
+{
+    var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+    var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "BeanShare";
+    var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "BeanShare";
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.RequireHttpsMetadata = builder.Environment.IsProduction();
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = jwtIssuer,
+                ValidateAudience = true,
+                ValidAudience = jwtAudience,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                    System.Text.Encoding.UTF8.GetBytes(jwtSecret)),
                 ClockSkew = TimeSpan.FromMinutes(5)
             };
         });
@@ -113,10 +155,18 @@ builder.Services.SwaggerDocument();
 
 var app = builder.Build();
 
+var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+if (!Directory.Exists(wwwrootPath))
+{
+    Directory.CreateDirectory(wwwrootPath);
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwaggerGen();
 }
+
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();

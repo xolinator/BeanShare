@@ -55,7 +55,6 @@ public sealed class GetSpacePresetsQueryHandler : IRequestHandler<GetSpacePreset
                 userNames.GetValueOrDefault(p.UserId, "Unknown User"),
                 p.Name,
                 p.CoffeeType,
-                p.Brand,
                 p.Preparation,
                 p.DefaultGrams.Grams,
                 p.Notes,

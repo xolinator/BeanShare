@@ -53,6 +53,9 @@ public sealed class UserService : IUserService
     public async Task<IReadOnlyList<User>> GetByIdsAsync(IEnumerable<UserId> userIds, CancellationToken cancellationToken = default)
     {
         var idList = userIds.ToList();
+        if (!idList.Any())
+            return new List<User>();
+
         var result = new List<User>();
         var idsToFetch = new List<UserId>();
 
@@ -71,16 +74,19 @@ public sealed class UserService : IUserService
 
         if (idsToFetch.Any())
         {
-            var users = await _context.Users
-                .AsNoTracking()
-                .Where(u => idsToFetch.Contains(u.Id))
-                .ToListAsync(cancellationToken);
-
-            foreach (var user in users)
+            // Fetch each user individually to avoid Contains translation issues with value objects
+            foreach (var userId in idsToFetch)
             {
-                var cacheKey = $"{UserCacheKeyPrefix}{user.Id.Value}";
-                _cache.Set(cacheKey, user, CacheDuration);
-                result.Add(user);
+                var user = await _context.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+                if (user != null)
+                {
+                    var cacheKey = $"{UserCacheKeyPrefix}{user.Id.Value}";
+                    _cache.Set(cacheKey, user, CacheDuration);
+                    result.Add(user);
+                }
             }
         }
 
@@ -142,5 +148,11 @@ public sealed class UserService : IUserService
 
         var emailCacheKey = $"{UserCacheKeyPrefix}email_{user.Email.ToLowerInvariant()}";
         _cache.Remove(emailCacheKey);
+    }
+
+    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
+    {
+        await _context.Users.AddAsync(user, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

@@ -3,101 +3,122 @@
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
-@inject IAuthenticationService AuthService
+@inject IConfiguration Configuration
+@inject IServiceProvider ServiceProvider
 
 <PageTitle>Create Account - BeanShare</PageTitle>
 
-<div class="bs-login-container">
-    <div class="bs-login-card">
-        <div class="bs-login-header">
-            <h1 class="bs-login-title">Create Your Account</h1>
-            <p class="bs-login-subtitle">Join BeanShare to manage your coffee spaces</p>
-        </div>
-
-        @if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="bs-alert bs-alert-error">
-                @_errorMessage
+@if (_useKeycloak)
+{
+    <HeadContent>
+        <meta http-equiv="refresh" content="0; url=@_keycloakRegistrationUrl" />
+    </HeadContent>
+    <div class="bs-login-container">
+        <div class="bs-login-card">
+            <div class="bs-login-header">
+                <h1 class="bs-login-title">Create Your Account</h1>
+                <p class="bs-login-subtitle">Redirecting to secure registration...</p>
+                <noscript>
+                    <p><a href="@_keycloakRegistrationUrl">Click here if not redirected</a></p>
+                </noscript>
             </div>
-        }
-
-        <EditForm Model="@_model" OnValidSubmit="@HandleRegister" FormName="RegisterForm">
-            <DataAnnotationsValidator />
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="name">Full Name</label>
-                <InputText id="name" @bind-Value="_model.Name" class="bs-input" placeholder="John Doe" />
-                <ValidationMessage For="@(() => _model.Name)" class="bs-validation-message" />
-            </div>
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="email">Email</label>
-                <InputText id="email" @bind-Value="_model.Email" class="bs-input" placeholder="you@example.com" />
-                <ValidationMessage For="@(() => _model.Email)" class="bs-validation-message" />
-            </div>
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="password">Password</label>
-                <InputText id="password" type="password" @bind-Value="_model.Password" class="bs-input" placeholder="At least 8 characters" />
-                <ValidationMessage For="@(() => _model.Password)" class="bs-validation-message" />
-            </div>
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="confirmPassword">Confirm Password</label>
-                <InputText id="confirmPassword" type="password" @bind-Value="_model.ConfirmPassword" class="bs-input" placeholder="Re-enter your password" />
-                <ValidationMessage For="@(() => _model.ConfirmPassword)" class="bs-validation-message" />
-            </div>
-
-            <button type="submit" class="bs-btn bs-btn-primary bs-w-full" disabled="@_isLoading">
-                @if (_isLoading)
-                {
-                    <span>Creating account...</span>
-                }
-                else
-                {
-                    <span>Create Account</span>
-                }
-            </button>
-        </EditForm>
-
-        <div class="bs-divider">
-            <span>OR</span>
-        </div>
-
-        <div class="bs-login-providers">
-            <form action="/account/external-login" method="post">
-                <input type="hidden" name="provider" value="Google" />
-                <input type="hidden" name="returnUrl" value="@GetReturnUrl()" />
-                <button type="submit" class="bs-login-button bs-login-google">
-                    <svg class="bs-login-icon" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
-                    </svg>
-                    Sign up with Google
-                </button>
-            </form>
-
-            <form action="/account/external-login" method="post">
-                <input type="hidden" name="provider" value="Facebook" />
-                <input type="hidden" name="returnUrl" value="@GetReturnUrl()" />
-                <button type="submit" class="bs-login-button bs-login-facebook">
-                    <svg class="bs-login-icon" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z"/>
-                    </svg>
-                    Sign up with Facebook
-                </button>
-            </form>
-        </div>
-
-        <div class="bs-login-footer">
-            <p class="bs-login-register">
-                Already have an account? <a href="/login?returnUrl=@GetReturnUrl()" class="bs-link">Sign in</a>
-            </p>
-            <p class="bs-login-terms">
-                By continuing, you agree to BeanShare's Terms of Service and Privacy Policy
-            </p>
         </div>
     </div>
-</div>
+}
+else
+{
+    <div class="bs-login-container">
+        <div class="bs-login-card">
+            <div class="bs-login-header">
+                <h1 class="bs-login-title">Create Your Account</h1>
+                <p class="bs-login-subtitle">Join BeanShare to manage your coffee spaces</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="bs-alert bs-alert-error">
+                    @_errorMessage
+                </div>
+            }
+
+            <EditForm Model="@_model" OnValidSubmit="@HandleRegister" FormName="RegisterForm">
+                <DataAnnotationsValidator />
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="name">Full Name</label>
+                    <InputText id="name" @bind-Value="_model.Name" class="bs-input" placeholder="John Doe" />
+                    <ValidationMessage For="@(() => _model.Name)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="email">Email</label>
+                    <InputText id="email" @bind-Value="_model.Email" class="bs-input" placeholder="you@example.com" />
+                    <ValidationMessage For="@(() => _model.Email)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="password">Password</label>
+                    <InputText id="password" type="password" @bind-Value="_model.Password" class="bs-input" placeholder="At least 8 characters" />
+                    <ValidationMessage For="@(() => _model.Password)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="confirmPassword">Confirm Password</label>
+                    <InputText id="confirmPassword" type="password" @bind-Value="_model.ConfirmPassword" class="bs-input" placeholder="Re-enter your password" />
+                    <ValidationMessage For="@(() => _model.ConfirmPassword)" class="bs-validation-message" />
+                </div>
+
+                <button type="submit" class="bs-btn bs-btn-primary bs-w-full" disabled="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span>Creating account...</span>
+                    }
+                    else
+                    {
+                        <span>Create Account</span>
+                    }
+                </button>
+            </EditForm>
+
+            <div class="bs-divider">
+                <span>OR</span>
+            </div>
+
+            <div class="bs-login-providers">
+                <form action="/account/external-login" method="post">
+                    <input type="hidden" name="provider" value="Google" />
+                    <input type="hidden" name="returnUrl" value="@GetReturnUrl()" />
+                    <button type="submit" class="bs-login-button bs-login-google">
+                        <svg class="bs-login-icon" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                        </svg>
+                        Sign up with Google
+                    </button>
+                </form>
+
+                <form action="/account/external-login" method="post">
+                    <input type="hidden" name="provider" value="Facebook" />
+                    <input type="hidden" name="returnUrl" value="@GetReturnUrl()" />
+                    <button type="submit" class="bs-login-button bs-login-facebook">
+                        <svg class="bs-login-icon" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z"/>
+                        </svg>
+                        Sign up with Facebook
+                    </button>
+                </form>
+            </div>
+
+            <div class="bs-login-footer">
+                <p class="bs-login-register">
+                    Already have an account? <a href="/login?returnUrl=@GetReturnUrl()" class="bs-link">Sign in</a>
+                </p>
+                <p class="bs-login-terms">
+                    By continuing, you agree to BeanShare's Terms of Service and Privacy Policy
+                </p>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [SupplyParameterFromForm]
@@ -105,6 +126,23 @@
 
     private bool _isLoading;
     private string? _errorMessage;
+    private bool _useKeycloak;
+    private string _keycloakRegistrationUrl = "";
+
+    protected override void OnInitialized()
+    {
+        _useKeycloak = Configuration.GetValue<bool>("UseKeycloak", false);
+
+        if (_useKeycloak)
+        {
+            var keycloakAuthority = Configuration["Keycloak:Authority"] ?? "http://localhost:8080/realms/beanshare";
+            var clientId = Configuration["Keycloak:ClientId"] ?? "beanshare-web";
+            var baseUrl = HttpContextAccessor.HttpContext?.Request.Scheme + "://" +
+                         HttpContextAccessor.HttpContext?.Request.Host;
+            _keycloakRegistrationUrl = $"{keycloakAuthority}/protocol/openid-connect/registrations?client_id={clientId}&response_type=code&scope=openid&redirect_uri={Uri.EscapeDataString($"{baseUrl}/signin-oidc")}";
+        }
+    }
+
 
     private string GetReturnUrl()
     {
@@ -114,6 +152,14 @@
 
     private async Task HandleRegister()
     {
+        var authService = ServiceProvider.GetService<IAuthenticationService>();
+
+        if (_useKeycloak || authService == null)
+        {
+            _errorMessage = "Registration is handled by the identity provider";
+            return;
+        }
+
         _isLoading = true;
         _errorMessage = null;
 
@@ -126,14 +172,14 @@
                 return;
             }
 
-            var result = await AuthService.RegisterAsync(_model.Email, _model.Name, _model.Password);
+            var result = await authService.RegisterAsync(_model.Email, _model.Name, _model.Password);
 
             if (result.Success && result.User != null)
             {
                 var httpContext = HttpContextAccessor.HttpContext;
                 if (httpContext != null)
                 {
-                    await AuthService.SignInAsync(httpContext, result.User);
+                    await authService.SignInAsync(httpContext, result.User);
                     Navigation.NavigateTo(GetReturnUrl(), forceLoad: true);
                 }
             }

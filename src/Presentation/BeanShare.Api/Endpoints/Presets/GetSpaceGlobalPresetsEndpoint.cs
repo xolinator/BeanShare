@@ -17,6 +17,7 @@ public sealed class GetSpaceGlobalPresetsEndpoint : EndpointWithoutRequest<GetSp
     public override void Configure()
     {
         Get("/api/spaces/{spaceId}/global-presets");
+        AllowAnonymous();
         Summary(s =>
         {
             s.Summary = "Get all global presets with enabled/disabled status for a space";
@@ -47,7 +48,6 @@ public sealed class GetSpaceGlobalPresetsEndpoint : EndpointWithoutRequest<GetSp
                 GlobalPresetId = p.GlobalPresetId,
                 Name = p.Name,
                 CoffeeType = p.CoffeeType,
-                Brand = p.Brand,
                 Preparation = p.Preparation,
                 DefaultGrams = p.DefaultGrams,
                 Description = p.Description,

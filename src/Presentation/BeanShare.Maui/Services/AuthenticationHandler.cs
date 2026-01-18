@@ -10,40 +10,31 @@ public class AuthenticationHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        string? userId = null;
-        string? authToken = null;
+        string? accessToken = null;
 
         if (MainThread.IsMainThread)
         {
-            userId = await SecureStorage.Default.GetAsync("user_id");
-            authToken = await SecureStorage.Default.GetAsync("auth_token");
+            accessToken = await SecureStorage.Default.GetAsync("access_token");
         }
         else
         {
             await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                userId = await SecureStorage.Default.GetAsync("user_id");
-                authToken = await SecureStorage.Default.GetAsync("auth_token");
+                accessToken = await SecureStorage.Default.GetAsync("access_token");
             });
         }
 
-        System.Diagnostics.Debug.WriteLine($"[AuthenticationHandler] User ID from SecureStorage: {userId ?? "NULL"}");
         System.Diagnostics.Debug.WriteLine($"[AuthenticationHandler] Request URL: {request.RequestUri}");
+        System.Diagnostics.Debug.WriteLine($"[AuthenticationHandler] Access token present: {!string.IsNullOrEmpty(accessToken)}");
 
-        if (!string.IsNullOrEmpty(userId))
+        if (!string.IsNullOrEmpty(accessToken))
         {
-            request.Headers.Remove("X-User-Id");
-            request.Headers.Add("X-User-Id", userId);
-            System.Diagnostics.Debug.WriteLine($"[AuthenticationHandler] Added X-User-Id header: {userId}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            System.Diagnostics.Debug.WriteLine("[AuthenticationHandler] Added Bearer token to request");
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine("[AuthenticationHandler] WARNING: No user ID found in SecureStorage!");
-        }
-
-        if (!string.IsNullOrEmpty(authToken))
-        {
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authToken);
+            System.Diagnostics.Debug.WriteLine("[AuthenticationHandler] WARNING: No access token found in SecureStorage!");
         }
 
         return await base.SendAsync(request, cancellationToken);

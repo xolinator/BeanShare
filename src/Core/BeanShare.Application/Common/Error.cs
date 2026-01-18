@@ -33,6 +33,32 @@ public readonly record struct Error(string Code, string Message)
         public const string UserNotFound = "USER_NOT_FOUND";
         public const string NotificationNotFound = "NOTIFICATION_NOT_FOUND";
         public const string UnpaidSettlements = "UNPAID_SETTLEMENTS";
+
+        // Authentication errors
+        public const string Unauthenticated = "UNAUTHENTICATED";
+        public const string InvalidRequest = "INVALID_REQUEST";
+        public const string NotMember = "NOT_MEMBER";
+        public const string NotAdmin = "NOT_ADMIN";
+
+        // Domain errors
+        public const string DomainError = "DOMAIN_ERROR";
+        public const string ConfirmationFailed = "CONFIRMATION_FAILED";
+
+        // Consumption errors
+        public const string InvalidCoffeeType = "INVALID_COFFEE_TYPE";
+        public const string InvalidConsumptionTime = "INVALID_CONSUMPTION_TIME";
+
+        // Stock errors
+        public const string StockNotFound = "STOCK_NOT_FOUND";
+        public const string StockLevelNotFound = "STOCK_LEVEL_NOT_FOUND";
+        public const string NoRemainingStock = "NO_REMAINING_STOCK";
+        public const string ProductNotFoundInStock = "PRODUCT_NOT_FOUND_IN_STOCK";
+        public const string InsufficientStock = "INSUFFICIENT_STOCK";
+        public const string InvalidProductType = "INVALID_PRODUCT_TYPE";
+        public const string CurrencyConflict = "CURRENCY_CONFLICT";
+
+        // Currency errors
+        public const string InvalidCurrency = "INVALID_CURRENCY";
     }
 
     public static Error SpaceNotFound(Guid spaceId) =>
@@ -115,4 +141,54 @@ public readonly record struct Error(string Code, string Message)
 
     public static Error UnpaidSettlements(Guid userId) =>
         new(Codes.UnpaidSettlements, $"Cannot remove member with unpaid settlements. Please ensure all settlements are paid before removal.");
+    public static Error Unauthenticated() =>
+        new(Codes.Unauthenticated, "User is not authenticated");
+
+    public static Error InvalidRequest(string propertyName) =>
+        new(Codes.InvalidRequest, $"Property '{propertyName}' not found or invalid");
+
+    public static Error NotMember() =>
+        new(Codes.NotMember, "User is not a member of this space");
+
+    public static Error NotAdmin() =>
+        new(Codes.NotAdmin, "User is not an admin of this space");
+
+    public static Error DomainError(string message) =>
+        new(Codes.DomainError, message);
+
+    public static Error ConfirmationFailed(string message) =>
+        new(Codes.ConfirmationFailed, message);
+
+    public static Error InvalidCoffeeType() =>
+        new(Codes.InvalidCoffeeType, "Invalid coffee type");
+
+    public static Error InvalidCoffeeTypeInPreset() =>
+        new(Codes.InvalidCoffeeType, "Invalid coffee type in preset");
+
+    public static Error InvalidConsumptionTime() =>
+        new(Codes.InvalidConsumptionTime, "Consumption time cannot be in the future");
+
+    public static Error StockNotFound(Guid spaceId) =>
+        new(Codes.StockNotFound, $"No coffee stock found for space {spaceId}");
+
+    public static Error StockLevelNotFound(Guid stockLevelId) =>
+        new(Codes.StockLevelNotFound, $"Stock level {stockLevelId} not found");
+
+    public static Error NoRemainingStock() =>
+        new(Codes.NoRemainingStock, "No remaining stock to distribute");
+
+    public static Error ProductNotFoundInStock() =>
+        new(Codes.ProductNotFoundInStock, "Product not found in stock");
+
+    public static Error InsufficientStock(string message) =>
+        new(Codes.InsufficientStock, message);
+
+    public static Error InvalidProductType() =>
+        new(Codes.InvalidProductType, "Unknown coffee type");
+
+    public static Error CurrencyConflict(string existingCurrency, string newCurrency) =>
+        new(Codes.CurrencyConflict, $"Stock uses {existingCurrency} but purchase is in {newCurrency}. All purchases in a stock must use the same currency.");
+
+    public static Error InvalidCurrency(string currencyCode) =>
+        new(Codes.InvalidCurrency, $"'{currencyCode}' is not a valid ISO 4217 currency code");
 }

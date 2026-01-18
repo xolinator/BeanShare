@@ -13,7 +13,6 @@ public sealed record PresetDto(
     string UserName,
     string Name,
     string CoffeeType,
-    string Brand,
     string Preparation,
     decimal DefaultGrams,
     string? Notes,

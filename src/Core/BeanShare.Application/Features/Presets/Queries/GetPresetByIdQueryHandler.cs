@@ -42,7 +42,6 @@ public sealed class GetPresetByIdQueryHandler : IRequestHandler<GetPresetByIdQue
             userName,
             preset.Name,
             preset.CoffeeType,
-            preset.Brand,
             preset.Preparation,
             preset.DefaultGrams.Grams,
             preset.Notes,

@@ -238,6 +238,9 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BillingPeriodId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("ConsumedAt")
                         .HasColumnType("timestamptz");
 
@@ -312,11 +315,6 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamptz");
-
-                    b.Property<string>("DefaultBrand")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("DefaultCoffeeType")
                         .IsRequired()
@@ -418,11 +416,6 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Brand")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("CoffeeType")
                         .IsRequired()

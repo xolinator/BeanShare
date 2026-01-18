@@ -25,7 +25,7 @@ public class UserSeeder : IDataSeeder
 
         return new List<User>
         {
-            User.CreateWithIdAndPassword(new Guid("11111111-1111-1111-1111-111111111111"), "john.smith@beanshare.com", "John Smith", passwordHash, now),
+            User.CreateWithIdAndPassword(new Guid("11111111-1111-1111-1111-111111111111"), "arnzrk@gmail.com", "John Smith", passwordHash, now),
             User.CreateWithIdAndPassword(new Guid("22222222-2222-2222-2222-222222222222"), "sarah.johnson@beanshare.com", "Sarah Johnson", passwordHash, now),
             User.CreateWithIdAndPassword(new Guid("33333333-3333-3333-3333-333333333333"), "mike.wilson@beanshare.com", "Mike Wilson", passwordHash, now),
             User.CreateWithIdAndPassword(new Guid("44444444-4444-4444-4444-444444444444"), "emma.davis@beanshare.com", "Emma Davis", passwordHash, now),

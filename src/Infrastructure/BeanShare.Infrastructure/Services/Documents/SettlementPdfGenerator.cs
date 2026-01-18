@@ -145,7 +145,9 @@ public sealed class SettlementPdfGenerator
 
     private void ComposeTable(IContainer container, SettlementReportData data)
     {
-        container.Table(table =>
+        container.Column(outerColumn =>
+        {
+            outerColumn.Item().Table(table =>
         {
             table.ColumnsDefinition(columns =>
             {
@@ -203,26 +205,27 @@ public sealed class SettlementPdfGenerator
             }
         });
 
-        var paidLines = data.Lines.Where(l => l.IsPaid && l.ConfirmedAt.HasValue).ToList();
-        if (paidLines.Any())
-        {
-            container.PaddingTop(15).Column(column =>
+            var paidLines = data.Lines.Where(l => l.IsPaid && l.ConfirmedAt.HasValue).ToList();
+            if (paidLines.Any())
             {
-                column.Item().Text("Payment Confirmations")
-                    .FontSize(11)
-                    .SemiBold();
-
-                column.Item().PaddingTop(5).Column(detailCol =>
+                outerColumn.Item().PaddingTop(15).Column(column =>
                 {
-                    foreach (var line in paidLines.OrderBy(l => l.ConfirmedAt))
+                    column.Item().Text("Payment Confirmations")
+                        .FontSize(11)
+                        .SemiBold();
+
+                    column.Item().PaddingTop(5).Column(detailCol =>
                     {
-                        detailCol.Item().Text($"  {line.UserName}: Confirmed by {line.ConfirmedByName ?? "Self"} on {line.ConfirmedAt:dd MMM yyyy HH:mm}")
-                            .FontSize(8)
-                            .FontColor(Colors.Grey.Darken1);
-                    }
+                        foreach (var line in paidLines.OrderBy(l => l.ConfirmedAt))
+                        {
+                            detailCol.Item().Text($"  {line.UserName}: Confirmed by {line.ConfirmedByName ?? "Self"} on {line.ConfirmedAt:dd MMM yyyy HH:mm}")
+                                .FontSize(8)
+                                .FontColor(Colors.Grey.Darken1);
+                        }
+                    });
                 });
-            });
-        }
+            }
+        });
     }
 
     private void ComposeFooter(IContainer container, SettlementReportData data)

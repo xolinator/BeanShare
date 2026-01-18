@@ -37,7 +37,7 @@ public sealed class UpdatePreferredCurrencyHandler : IRequestHandler<UpdatePrefe
             }
             catch (ArgumentException)
             {
-                return Result.Failure(new Error("INVALID_CURRENCY", $"'{command.CurrencyCode}' is not a valid ISO 4217 currency code"));
+                return Result.Failure(Error.InvalidCurrency(command.CurrencyCode));
             }
         }
 

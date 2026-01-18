@@ -4,6 +4,7 @@
 @using BeanShare.Application.Features.Spaces.Queries
 @using BeanShare.Application.Features.CoffeeStock.Queries
 @using BeanShare.Application.Features.CoffeeStock.Commands
+@using BeanShare.Application.Features.CoffeeStock.Dtos
 @using Microsoft.AspNetCore.Authorization
 @*@attribute [Authorize]*@
 @inject IMediator Mediator
@@ -51,6 +52,45 @@ else
 
     <div class="bs-container" style="padding: 2rem 0;">
         <div>
+            @if (stockLevels.Any())
+            {
+                <div class="bs-mb-6">
+                    <h2 class="bs-font-bold" style="margin: 0 0 1rem 0; font-size: 1.25rem;">Current Stock</h2>
+                    <div class="bs-flex bs-flex-col bs-gap-4">
+                        @foreach (var stockLevel in stockLevels)
+                        {
+                            <div class="bs-card">
+                                <div class="bs-flex bs-items-center bs-justify-between">
+                                    <div>
+                                        <p class="bs-font-bold" style="margin: 0; font-size: 1rem;">@stockLevel.ProductDisplayName</p>
+                                        <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">@stockLevel.ProductType</p>
+                                    </div>
+                                    <div class="bs-flex bs-items-center bs-gap-3">
+                                        <div style="text-align: right;">
+                                            <p class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">@stockLevel.CurrentStockGrams g</p>
+                                            <p class="bs-text-subtle" style="margin: 0; font-size: 0.75rem;">@stockLevel.ConsumptionPercentage.ToString("F0")% consumed</p>
+                                        </div>
+                                        @if (isAdmin && stockLevel.CurrentStockGrams > 0)
+                                        {
+                                            <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                                                    @onclick="@(() => ShowSplitModal(stockLevel))"
+                                                    title="Split remaining stock among members">
+                                                <span class="material-symbols-outlined" style="font-size: 1rem;">call_split</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                                <div style="margin-top: 0.75rem;">
+                                    <div style="background: var(--bs-gray-200); border-radius: 9999px; height: 0.5rem; overflow: hidden;">
+                                        <div style="background: var(--bs-primary); height: 100%; width: @(stockLevel.ConsumptionPercentage.ToString("F0"))%; transition: width 0.3s;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock" />
 
@@ -71,6 +111,51 @@ else
                  OnSubmit="HandleAddPurchase"
                  OnCancel="@(() => showAddPurchaseModal = false)" />
 
+@if (showSplitModal && selectedStockLevel != null)
+{
+    <div class="bs-modal-overlay" @onclick="@(() => showSplitModal = false)">
+        <div class="bs-modal" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h3 class="bs-font-bold" style="margin: 0;">Split Remaining Stock</h3>
+                <button class="bs-btn-icon" @onclick="@(() => showSplitModal = false)">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="bs-modal-body">
+                <div style="background: var(--bs-warning-light); border: 1px solid var(--bs-warning); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+                    <p class="bs-font-bold" style="margin: 0 0 0.5rem 0; color: var(--bs-warning-dark);">
+                        <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 0.5rem;">warning</span>
+                        Phantom Stock Adjustment
+                    </p>
+                    <p style="margin: 0; font-size: 0.875rem; color: var(--bs-warning-dark);">
+                        This will distribute <strong>@selectedStockLevel.CurrentStockGrams g</strong> of
+                        <strong>@selectedStockLevel.ProductDisplayName</strong> among team members based on their consumption history.
+                        Use this when the physical coffee is gone but the system still shows remaining stock.
+                    </p>
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="splitReason">Reason (optional)</label>
+                    <input type="text" id="splitReason" class="bs-input" @bind="splitReason" placeholder="Phantom stock adjustment" />
+                </div>
+            </div>
+            <div class="bs-modal-footer">
+                <button class="bs-btn bs-btn-secondary" @onclick="@(() => showSplitModal = false)">Cancel</button>
+                <button class="bs-btn bs-btn-primary" @onclick="HandleSplitStock" disabled="@isSplitting">
+                    @if (isSplitting)
+                    {
+                        <span>Splitting...</span>
+                    }
+                    else
+                    {
+                        <span>Split Stock</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
        Title="@toastTitle"
@@ -88,8 +173,14 @@ else
     private bool isLoadingStock;
 
     private List<StockPurchaseDto> purchases = new();
+    private List<StockLevelDto> stockLevels = new();
 
     private bool showAddPurchaseModal;
+    private bool showSplitModal;
+    private bool isSplitting;
+    private StockLevelDto? selectedStockLevel;
+    private string splitReason = "";
+
     private bool showToast;
     private bool isToastError;
     private string toastTitle = "";
@@ -133,6 +224,7 @@ else
             if (result.IsSuccess)
             {
                 purchases = result.Value.RecentPurchases.ToList();
+                stockLevels = result.Value.StockLevels.ToList();
             }
         }
         catch (Exception ex)
@@ -197,5 +289,51 @@ else
         toastTitle = title;
         toastMessage = message;
         showToast = true;
+    }
+
+    private void ShowSplitModal(StockLevelDto stockLevel)
+    {
+        selectedStockLevel = stockLevel;
+        splitReason = "Phantom stock adjustment";
+        showSplitModal = true;
+    }
+
+    private async Task HandleSplitStock()
+    {
+        if (selectedStockLevel == null) return;
+
+        isSplitting = true;
+        StateHasChanged();
+
+        try
+        {
+            var command = new SplitRemainingStockCommand(
+                Guid.Parse(SpaceId),
+                selectedStockLevel.Id,
+                string.IsNullOrWhiteSpace(splitReason) ? "Phantom stock adjustment" : splitReason);
+
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                showSplitModal = false;
+                var dto = result.Value;
+                ShowToast(false, "Success", $"Successfully distributed {dto.TotalDistributedGrams}g among {dto.Allocations.Count} members");
+                await LoadStock();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to split stock: {ex.Message}");
+        }
+        finally
+        {
+            isSplitting = false;
+            StateHasChanged();
+        }
     }
 }

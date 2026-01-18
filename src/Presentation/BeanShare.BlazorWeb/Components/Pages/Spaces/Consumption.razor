@@ -66,7 +66,8 @@ else
             <ConsumptionForm OnSubmit="HandleLogConsumption"
                            StockProducts="@stockProducts"
                            PresetData="@presetData"
-                           QuickPresets="@quickPresets" />
+                           QuickPresets="@quickPresets"
+                           SpaceMembers="@space?.Members?.ToList()" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -209,7 +210,6 @@ else
                     SpacePresetId = p.SpacePresetId,
                     Name = p.Name,
                     CoffeeType = p.CoffeeType,
-                    Brand = p.Brand,
                     Preparation = p.Preparation,
                     Grams = (int)p.DefaultGrams,
                     Description = p.Description,
@@ -265,7 +265,8 @@ else
                     model.ProductType,
                     model.Grams,
                     consumedAtUtc,
-                    model.PresetName
+                    model.PresetName,
+                    model.ForUserId
                 ));
             }
 

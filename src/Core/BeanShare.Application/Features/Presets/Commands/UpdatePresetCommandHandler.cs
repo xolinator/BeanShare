@@ -32,11 +32,6 @@ public sealed class UpdatePresetCommandHandler : IRequestHandler<UpdatePresetCom
             return Result.Failure(Error.ValidationFailure(nameof(request.CoffeeType), "Coffee type is required"));
         }
 
-        if (string.IsNullOrWhiteSpace(request.Brand))
-        {
-            return Result.Failure(Error.ValidationFailure(nameof(request.Brand), "Brand is required"));
-        }
-
         if (string.IsNullOrWhiteSpace(request.Preparation))
         {
             return Result.Failure(Error.ValidationFailure(nameof(request.Preparation), "Preparation method is required"));
@@ -67,7 +62,6 @@ public sealed class UpdatePresetCommandHandler : IRequestHandler<UpdatePresetCom
             preset.Update(
                 request.Name.Trim(),
                 request.CoffeeType.Trim(),
-                request.Brand.Trim(),
                 request.Preparation.Trim(),
                 defaultGrams,
                 request.Notes?.Trim(),

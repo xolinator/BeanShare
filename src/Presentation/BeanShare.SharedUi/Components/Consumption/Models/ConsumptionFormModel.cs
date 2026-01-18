@@ -26,4 +26,6 @@ public sealed class ConsumptionFormModel
 
     [Required]
     public string ProductType { get; set; } = "";
+
+    public Guid? ForUserId { get; set; }
 }

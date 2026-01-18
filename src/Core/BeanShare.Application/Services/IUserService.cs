@@ -37,4 +37,9 @@ public interface IUserService
     /// Update user preferences
     /// </summary>
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Add a new user to the database
+    /// </summary>
+    Task AddAsync(User user, CancellationToken cancellationToken = default);
 }
