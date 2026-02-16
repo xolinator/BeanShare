@@ -8,6 +8,7 @@
 @using BeanShare.Application.Features.Notifications.Commands.MarkAllAsRead
 @attribute [Authorize]
 @inject IMediator Mediator
+@inject ILogger<Notifications> Logger
 
 <PageTitle>Notifications - BeanShare</PageTitle>
 
@@ -57,7 +58,7 @@
                                 </div>
                                 @if (!notification.IsRead)
                                 {
-                                    <div class="notification-badge"></div>
+                                    <div class="notification-unread-dot"></div>
                                 }
                             </div>
                         </div>
@@ -77,45 +78,6 @@
     }
 </div>
 
-<style>
-    .notification-item {
-        background: var(--bs-white);
-        border: 1px solid var(--bs-border);
-        border-radius: 0.5rem;
-        padding: 1rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .notification-item:hover {
-        border-color: var(--bs-primary-light);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-
-    .notification-read {
-        opacity: 0.7;
-    }
-
-    .notification-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: var(--bs-primary-light);
-        color: var(--bs-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .notification-badge {
-        width: 8px;
-        height: 8px;
-        background: var(--bs-primary);
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-</style>
 
 @code {
     private List<NotificationItem> notifications = new();
@@ -152,7 +114,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading notifications: {ex.Message}");
+            Logger.LogError(ex, "Error loading notifications");
         }
         finally
         {
@@ -178,7 +140,7 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error marking notification as read: {ex.Message}");
+                Logger.LogError(ex, "Error marking notification as read");
             }
         }
     }
@@ -201,13 +163,13 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error marking all as read: {ex.Message}");
+            Logger.LogError(ex, "Error marking all notifications as read");
         }
     }
 
-    private void LoadMore()
+    private async Task LoadMore()
     {
-        // Pagination will be implemented in future
+        await LoadNotifications();
     }
 
     private NotificationType ParseNotificationType(string type)

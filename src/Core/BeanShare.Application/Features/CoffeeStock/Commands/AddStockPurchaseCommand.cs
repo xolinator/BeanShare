@@ -4,7 +4,6 @@ using BeanShare.Application.Common.Authorization;
 using BeanShare.Application.Features.CoffeeStock.Dtos;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;
-
 [RequireSpaceAdmin("SpaceId")]
 public sealed record AddStockPurchaseCommand(
     Guid SpaceId,

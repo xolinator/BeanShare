@@ -1,28 +1,31 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.CoffeeStock.Dtos;
+using BeanShare.Domain.Common;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using MapsterMapper;
 using MediatR;
 
 namespace BeanShare.Application.Features.CoffeeStock.Queries;
-
 public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQuery, Result<CoffeeStockDto>>
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly ISpaceRepository _spaceRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
 
     public GetSpaceStockQueryHandler(
         ICoffeeStockRepository coffeeStockRepository,
         ISpaceRepository spaceRepository,
+        IUserRepository userRepository,
         IUserContext userContext,
         IMapper mapper)
     {
         _coffeeStockRepository = coffeeStockRepository;
         _spaceRepository = spaceRepository;
+        _userRepository = userRepository;
         _userContext = userContext;
         _mapper = mapper;
     }
@@ -58,7 +61,7 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
                 ProductVarietyCount = 0,
                 TotalCurrentStockGrams = 0,
                 TotalInvestmentAmount = 0,
-                TotalInvestmentCurrency = "USD",
+                TotalInvestmentCurrency = space.Currency.Code,
                 StockLevels = [],
                 RecentPurchases = []
             });
@@ -74,28 +77,51 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
             ProductVarietyCount = coffeeStock.ProductVarietyCount,
             TotalCurrentStockGrams = coffeeStock.TotalCurrentStock.Grams,
             TotalInvestmentAmount = coffeeStock.Purchases.Sum(p => p.Cost.Amount),
-            TotalInvestmentCurrency = "USD",
+            TotalInvestmentCurrency = space.Currency.Code,
             StockLevels = _mapper.Map<List<StockLevelDto>>(coffeeStock.StockLevels),
-            RecentPurchases = coffeeStock.Purchases
-                .OrderByDescending(p => p.CreatedAt)
-                .Take(10)
-                .Select(p => new StockPurchaseDto
-                {
-                    Id = p.Id,
-                    ProductName = p.Product.Name,
-                    ProductBrand = p.Product.Brand,
-                    ProductType = p.Product.Type.ToString(),
-                    QuantityGrams = p.Quantity.Grams,
-                    CostAmount = p.Cost.Amount,
-                    CostCurrency = p.Cost.Currency,
-                    Vendor = p.Vendor,
-                    PurchasedBy = p.PurchasedBy.Value,
-                    PurchasedAt = p.PurchasedAt,
-                    CreatedAt = p.CreatedAt,
-                    CostPerGram = p.Cost.Amount / p.Quantity.Grams
-                }).ToList()
+            RecentPurchases = await BuildPurchaseDtosAsync(coffeeStock, cancellationToken)
         };
 
         return Result<CoffeeStockDto>.Success(dto);
+    }
+
+    private async Task<List<StockPurchaseDto>> BuildPurchaseDtosAsync(
+        BeanShare.Domain.Aggregates.CoffeeStock.CoffeeStock coffeeStock,
+        CancellationToken cancellationToken)
+    {
+        var recentPurchases = coffeeStock.Purchases
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(10)
+            .ToList();
+
+        var distinctUserIds = recentPurchases
+            .Select(p => p.PurchasedBy)
+            .Distinct()
+            .ToList();
+
+        var userNames = new Dictionary<UserId, string>();
+        foreach (var userId in distinctUserIds)
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user != null)
+                userNames[userId] = user.Name;
+        }
+
+        return recentPurchases.Select(p => new StockPurchaseDto
+        {
+            Id = p.Id,
+            ProductName = p.Product.Name,
+            ProductBrand = p.Product.Brand,
+            ProductType = p.Product.Type.ToString(),
+            QuantityGrams = p.Quantity.Grams,
+            CostAmount = p.Cost.Amount,
+            CostCurrency = p.Cost.Currency,
+            Vendor = p.Vendor,
+            PurchasedBy = p.PurchasedBy.Value,
+            PurchasedByName = userNames.GetValueOrDefault(p.PurchasedBy, "Unknown"),
+            PurchasedAt = p.PurchasedAt,
+            CreatedAt = p.CreatedAt,
+            CostPerGram = p.Cost.Amount / p.Quantity.Grams
+        }).ToList();
     }
 }

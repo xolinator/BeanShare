@@ -1,4 +1,5 @@
 using BeanShare.Application.Abstractions;
+using BeanShare.Application.Constants;
 using BeanShare.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,7 +11,7 @@ public sealed class ExchangeRateUpdateService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ExchangeRateUpdateService> _logger;
-    private readonly TimeSpan _updateInterval = TimeSpan.FromHours(1);
+    private readonly TimeSpan _updateInterval = TimeSpan.FromHours(CacheSettings.ExchangeRateUpdateIntervalHours);
 
     public ExchangeRateUpdateService(
         IServiceScopeFactory scopeFactory,
@@ -57,6 +58,7 @@ public sealed class ExchangeRateUpdateService : BackgroundService
         _logger.LogInformation("Fetching exchange rates from provider...");
 
         var result = await provider.GetCurrentRatesAsync(ct);
+        // Console.WriteLine($"DEBUG: Got {result.Rates?.Count ?? 0} rates from provider, success={result.Success}"); // keeping for debugging API issues
 
         if (!result.Success)
         {

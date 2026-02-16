@@ -2,7 +2,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics;
-
 public sealed record GetSpaceAnalyticsQuery : IRequest<SpaceAnalyticsDto>
 {
     public SpaceId SpaceId { get; init; }

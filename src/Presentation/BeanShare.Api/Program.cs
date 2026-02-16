@@ -1,5 +1,6 @@
 using BeanShare.Api.Infrastructure.Mocks;
 using BeanShare.Application;
+using BeanShare.Application.Constants;
 using BeanShare.Infrastructure;
 using BeanShare.Infrastructure.Identity;
 using FastEndpoints;
@@ -35,16 +36,33 @@ if (useMockServices)
     builder.Services.AddSingleton<BeanShare.Application.Services.ICostCalculationService, MockCostCalculationService>();
     builder.Services.AddScoped<IAuthenticationService, MockIdentityAuthenticationService>();
     builder.Services.AddSingleton<IJwtTokenService, MockJwtTokenService>();
+    builder.Services.AddSingleton<BeanShare.Domain.Repositories.IGlobalPresetRepository, MockGlobalPresetRepository>();
+    builder.Services.AddSingleton<BeanShare.Domain.Repositories.IPresetRecipeRepository, MockPresetRecipeRepository>();
+    builder.Services.AddSingleton<BeanShare.Domain.Repositories.ISpaceGlobalPresetConfigRepository, MockSpaceGlobalPresetConfigRepository>();
+    builder.Services.AddSingleton<BeanShare.Domain.Repositories.IUserPresetFavoriteRepository, MockUserPresetFavoriteRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.INotificationRepository, MockNotificationRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IExchangeRateRepository, MockExchangeRateRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUserRepository, MockUserRepository>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IEmailService, MockEmailService>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ISettlementEmailTemplateService, MockSettlementEmailTemplateService>();
+    builder.Services.AddSingleton<BeanShare.Application.Services.ICurrencyConversionService, MockCurrencyConversionService>();
+    builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, MockUserSynchronizationService>();
+    builder.Services.AddSingleton<BeanShare.Infrastructure.Services.Documents.ISettlementReportGenerator, MockSettlementReportGenerator>();
+    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IExchangeRateProvider, MockExchangeRateProvider>();
     builder.Services.AddHttpClient();
 }
 else
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
 
-    builder.Services.AddInfrastructure(connectionString);
+    builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInMemoryDatabase);
     builder.Services.AddExchangeRates(builder.Configuration);
     builder.Services.AddCommunicationServices(builder.Configuration);
+
+    // Register IUserSynchronizationService for Keycloak user sync endpoint
+    builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
 
     if (useMockAuthentication)
     {
@@ -87,7 +105,6 @@ else if (useKeycloak)
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, KeycloakUserContext>();
-    builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -105,7 +122,7 @@ else if (useKeycloak)
                 ValidateLifetime = true,
                 NameClaimType = "preferred_username",
                 RoleClaimType = "realm_access",
-                ClockSkew = TimeSpan.FromMinutes(5)
+                ClockSkew = TimeSpan.FromMinutes(AuthenticationSettings.TokenClockSkewMinutes)
             };
         });
 
@@ -138,7 +155,7 @@ else
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                     System.Text.Encoding.UTF8.GetBytes(jwtSecret)),
-                ClockSkew = TimeSpan.FromMinutes(5)
+                ClockSkew = TimeSpan.FromMinutes(AuthenticationSettings.TokenClockSkewMinutes)
             };
         });
 
@@ -190,4 +207,79 @@ if (app.Environment.IsDevelopment() && !useMockServices)
     }
 }
 
+// Validate critical configuration on startup
+ValidateConfiguration(app.Configuration, app.Logger);
+
 app.Run();
+
+static void ValidateConfiguration(IConfiguration configuration, ILogger logger)
+{
+    var warnings = new List<string>();
+
+    // Check OpenExchangeRates API key
+    var openExchangeRatesAppId = configuration.GetValue<string>("OpenExchangeRates:AppId");
+    if (string.IsNullOrWhiteSpace(openExchangeRatesAppId))
+    {
+        warnings.Add("OpenExchangeRates:AppId is not configured. Currency conversion will not work. Get a free API key from https://openexchangerates.org/signup/free");
+    }
+
+    // Check database connection
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        logger.LogError("CRITICAL: Database connection string is not configured!");
+    }
+
+    // Check Keycloak configuration
+    var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+    if (useKeycloak)
+    {
+        var keycloakAuthority = configuration.GetValue<string>("Keycloak:Authority");
+        var keycloakClientSecret = configuration.GetValue<string>("Keycloak:ClientSecret");
+
+        if (string.IsNullOrWhiteSpace(keycloakAuthority))
+        {
+            logger.LogError("CRITICAL: Keycloak:Authority is not configured but UseKeycloak is true!");
+        }
+
+        if (string.IsNullOrWhiteSpace(keycloakClientSecret))
+        {
+            warnings.Add("Keycloak:ClientSecret is not configured. This may cause authentication issues.");
+        }
+    }
+
+    // Check JWT secret
+    var jwtSecret = configuration.GetValue<string>("Jwt:Secret");
+    if (string.IsNullOrWhiteSpace(jwtSecret))
+    {
+        logger.LogError("CRITICAL: JWT:Secret is not configured!");
+    }
+    else if (jwtSecret.Length < 32)
+    {
+        logger.LogWarning("JWT:Secret is less than 32 characters. Consider using a longer secret for better security.");
+    }
+
+    // Check email configuration
+    var emailEnabled = configuration.GetValue<bool>("Email:Enabled", false);
+    if (emailEnabled)
+    {
+        var smtpUsername = configuration.GetValue<string>("Email:SmtpUsername");
+        var smtpPassword = configuration.GetValue<string>("Email:SmtpPassword");
+
+        if (string.IsNullOrWhiteSpace(smtpUsername) || string.IsNullOrWhiteSpace(smtpPassword))
+        {
+            warnings.Add("Email service is enabled but credentials are not configured. Email functionality will not work.");
+        }
+    }
+
+    // Log all warnings
+    foreach (var warning in warnings)
+    {
+        logger.LogWarning("Configuration: {Warning}", warning);
+    }
+
+    if (warnings.Count == 0)
+    {
+        logger.LogInformation("Configuration validation complete. All critical settings are configured.");
+    }
+}

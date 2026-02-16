@@ -25,7 +25,6 @@ public sealed class ExportSettlementPdfEndpoint : Endpoint<ExportSettlementPdfRe
     public override void Configure()
     {
         Get("/api/settlements/{Id}/export/pdf");
-        AllowAnonymous();
         Summary(s =>
         {
             s.Summary = "Export settlement as PDF";

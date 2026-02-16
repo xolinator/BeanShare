@@ -6,7 +6,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Commands;
-
 public sealed class JoinSpaceCommandHandler : IRequestHandler<JoinSpaceCommand, Result<JoinSpaceResult>>
 {
     private readonly ISpaceRepository _spaceRepository;

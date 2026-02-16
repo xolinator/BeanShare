@@ -3,6 +3,7 @@
 @using BeanShare.Application.Features.Spaces.Dtos
 @inject IConsumptionService ConsumptionService
 @inject ISpacesService SpacesService
+@inject IAlertService AlertService
 
 <div class="container mt-4">
     <h3 class="mb-4">My Consumption History</h3>
@@ -182,8 +183,15 @@
 
     private async Task LoadSpaces()
     {
-        var result = await SpacesService.GetUserSpacesAsync();
-        spaces = result?.ToList() ?? new List<SpaceSummaryDto>();
+        try
+        {
+            var result = await SpacesService.GetUserSpacesAsync();
+            spaces = result?.ToList() ?? new List<SpaceSummaryDto>();
+        }
+        catch (Exception ex)
+        {
+            await AlertService.ShowAlertAsync("Error", $"Failed to load spaces: {ex.Message}");
+        }
     }
 
     private async Task LoadHistory()
@@ -208,6 +216,10 @@
                 pageNumber: currentPage,
                 pageSize: 20
             );
+        }
+        catch (Exception ex)
+        {
+            await AlertService.ShowAlertAsync("Error", $"Failed to load history: {ex.Message}");
         }
         finally
         {

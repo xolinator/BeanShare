@@ -11,7 +11,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Settlement.Commands.GenerateSettlement;
-
 public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettlementCommand, Result<SettlementDto>>
 {
     private readonly ISettlementRepository _settlementRepository;
@@ -98,12 +97,18 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
 
         if (!periodPurchases.Any())
         {
-            periodPurchases = coffeeStock.Purchases.ToList();
+            // Fall back to purchases up to and including the billing period end date
+            // rather than ALL historical purchases which would distort cost calculations
+            periodPurchases = coffeeStock.Purchases
+                .Where(p => p.PurchasedAt <= billingPeriod.EndDate)
+                .ToList();
         }
 
         var costingPolicy = new WeightedAverageCostingPolicy();
         var totalConsumedWeight = Weight.FromGrams(periodConsumptions.Sum(c => c.Quantity.Grams));
-        var totalCost = costingPolicy.CalculateCost(periodPurchases, totalConsumedWeight, "USD");
+        var totalCost = costingPolicy.CalculateCost(periodPurchases, totalConsumedWeight, space.Currency.Code);
+        // Debug: keeping this for testing settlement calculations if issues come up
+        // Console.WriteLine($"Settlement calc: {periodPurchases.Count} purchases, {totalConsumedWeight.Grams}g consumed, cost={totalCost.Amount}");
 
         var settlement = Domain.Aggregates.Settlement.Settlement.Create(
             billingPeriod.SpaceId,
@@ -111,6 +116,11 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
             totalCost.Currency,
             currentUserId,
             _clock);
+
+        if (totalConsumedWeight.Grams == 0)
+        {
+            return Result<SettlementDto>.Failure(Error.NoConsumptionsInPeriod());
+        }
 
         var userConsumptions = periodConsumptions.GroupBy(c => c.UserId);
 

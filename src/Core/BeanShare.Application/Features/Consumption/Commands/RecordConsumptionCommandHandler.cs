@@ -9,7 +9,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
-
 public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordConsumptionCommand, Result<ConsumptionEntryDto>>
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;
@@ -65,7 +64,7 @@ public sealed class RecordConsumptionCommandHandler : IRequestHandler<RecordCons
         var quantity = Weight.FromGrams(request.QuantityGrams);
         var consumedAt = request.ConsumedAt ?? _clock.UtcNow;
 
-        if (consumedAt > _clock.UtcNow)
+        if (consumedAt > _clock.UtcNow.AddMinutes(5))
         {
             return Result<ConsumptionEntryDto>.Failure(Error.InvalidConsumptionTime());
         }

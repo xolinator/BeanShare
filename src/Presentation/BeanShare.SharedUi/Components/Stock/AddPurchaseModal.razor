@@ -9,11 +9,20 @@
                 <DataAnnotationsValidator />
 
                 <div class="bs-form-group">
+                    <label class="bs-label" for="productBrand">Brand</label>
+                    <InputText id="productBrand"
+                              class="bs-input"
+                              @bind-Value="model.ProductBrand"
+                              placeholder="e.g., Starbucks, Lavazza" />
+                    <ValidationMessage For="@(() => model.ProductBrand)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
                     <label class="bs-label" for="productName">Product Name</label>
                     <InputText id="productName"
                               class="bs-input"
                               @bind-Value="model.ProductName"
-                              placeholder="e.g., Starbucks Pike Place" />
+                              placeholder="e.g., Pike Place, Super Crema" />
                     <ValidationMessage For="@(() => model.ProductName)" class="bs-validation-message" />
                 </div>
 
@@ -38,8 +47,11 @@
                 <div class="bs-form-group">
                     <label class="bs-label" for="coffeeType">Coffee Type</label>
                     <InputSelect id="coffeeType" class="bs-input" @bind-Value="model.CoffeeType">
-                        <option value="Beans">Beans</option>
-                        <option value="Ground">Ground</option>
+                        <option value="Espresso">Espresso</option>
+                        <option value="Filter">Filter</option>
+                        <option value="Instant">Instant</option>
+                        <option value="Decaf">Decaf</option>
+                        <option value="Specialty">Specialty</option>
                     </InputSelect>
                 </div>
 
@@ -74,25 +86,44 @@
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
+    [Parameter]
+    public string CurrencyCode { get; set; } = "USD";
+
     private AddPurchaseModel model = new();
     private bool isSubmitting;
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrEmpty(CurrencyCode))
+            model.Currency = CurrencyCode;
+    }
 
     private async Task HandleSubmit()
     {
         isSubmitting = true;
-        await OnSubmit.InvokeAsync(model);
-        isSubmitting = false;
-        model = new AddPurchaseModel();
+        try
+        {
+            await OnSubmit.InvokeAsync(model);
+            model = new AddPurchaseModel { Currency = CurrencyCode };
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 
     private async Task Cancel()
     {
-        model = new AddPurchaseModel();
+        model = new AddPurchaseModel { Currency = CurrencyCode };
         await OnCancel.InvokeAsync();
     }
 
     public class AddPurchaseModel
     {
+        [Required(ErrorMessage = "Brand is required")]
+        [StringLength(200, MinimumLength = 1, ErrorMessage = "Brand must be between 1 and 200 characters")]
+        public string ProductBrand { get; set; } = "";
+
         [Required(ErrorMessage = "Product name is required")]
         [StringLength(200, MinimumLength = 2, ErrorMessage = "Product name must be between 2 and 200 characters")]
         public string ProductName { get; set; } = "";
@@ -106,7 +137,7 @@
         public decimal TotalCost { get; set; }
 
         [Required]
-        public string CoffeeType { get; set; } = "Ground";
+        public string CoffeeType { get; set; } = "Espresso";
 
         public string Currency { get; set; } = "USD";
     }

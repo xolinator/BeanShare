@@ -9,9 +9,11 @@
 @using BeanShare.Application.Features.Consumption.Commands
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.AspNetCore.Authorization
+@using BeanShare.Application.Abstractions
 @attribute [Authorize]
 @inject IMediator Mediator
 @inject NavigationManager Navigation
+@inject IUserContext UserContext
 
 <PageTitle>My Spaces - BeanShare</PageTitle>
 
@@ -64,10 +66,12 @@
     Spaces="@spaces"
     StockProducts="@quickConsumptionStock"
     Presets="@quickConsumptionPresets"
+    SpaceMembers="@quickConsumptionMembers"
     IsLoadingStock="@isLoadingQuickConsumptionData"
     OnSpaceSelected="HandleQuickConsumptionSpaceSelected"
     OnSubmit="HandleQuickConsumptionSubmit"
-    OnCancel="CloseQuickConsumption" />
+    OnCancel="CloseQuickConsumption"
+    CurrentUserId="@UserContext.CurrentUserId.Value" />
 
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
@@ -75,48 +79,11 @@
        Message="@toastMessage"
        OnClose="() => showToast = false" />
 
-<style>
-    .quick-consumption-fab {
-        position: fixed;
-        bottom: 2rem;
-        right: 2rem;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background-color: var(--bs-primary);
-        color: white;
-        border: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 12px rgba(65, 105, 225, 0.4);
-        transition: all 0.2s;
-        z-index: 50;
-    }
-
-    .quick-consumption-fab:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 16px rgba(65, 105, 225, 0.5);
-    }
-
-    .quick-consumption-fab:active {
-        transform: scale(0.95);
-    }
-
-    .quick-consumption-fab .material-symbols-outlined {
-        font-size: 1.5rem;
-    }
-
-    @@media (max-width: 768px) {
-        .quick-consumption-fab {
-            bottom: 1.5rem;
-            right: 1.5rem;
-        }
-    }
-</style>
 
 @code {
+    [SupplyParameterFromQuery(Name = "action")]
+    public string? Action { get; set; }
+
     private List<SpaceSummaryDto> spaces = new();
     private bool isLoading = true;
     private bool showCreateModal;
@@ -129,11 +96,17 @@
 
     private List<StockLevelDto>? quickConsumptionStock;
     private List<PresetOption>? quickConsumptionPresets;
+    private List<MembershipDto>? quickConsumptionMembers;
     private bool isLoadingQuickConsumptionData;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadSpaces();
+
+        if (string.Equals(Action, "create", StringComparison.OrdinalIgnoreCase))
+        {
+            showCreateModal = true;
+        }
     }
 
     private async Task LoadSpaces()
@@ -210,6 +183,7 @@
     {
         quickConsumptionStock = null;
         quickConsumptionPresets = null;
+        quickConsumptionMembers = null;
         showQuickConsumptionModal = true;
     }
 
@@ -218,6 +192,7 @@
         showQuickConsumptionModal = false;
         quickConsumptionStock = null;
         quickConsumptionPresets = null;
+        quickConsumptionMembers = null;
     }
 
     private async Task HandleQuickConsumptionSpaceSelected(Guid spaceId)
@@ -225,12 +200,14 @@
         isLoadingQuickConsumptionData = true;
         quickConsumptionStock = null;
         quickConsumptionPresets = null;
+        quickConsumptionMembers = null;
         StateHasChanged();
 
         try
         {
             var stockResult = await Mediator.Send(new GetSpaceStockQuery(spaceId));
             var presetsResult = await Mediator.Send(new GetQuickPresetsQuery(spaceId));
+            var spaceResult = await Mediator.Send(new GetSpaceByIdQuery(spaceId));
 
             if (stockResult.IsSuccess)
             {
@@ -253,6 +230,11 @@
                     DisplayOrder = p.DisplayOrder
                 }).ToList();
             }
+
+            if (spaceResult.IsSuccess)
+            {
+                quickConsumptionMembers = spaceResult.Value.Members.ToList();
+            }
         }
         catch (Exception ex)
         {
@@ -269,25 +251,51 @@
     {
         try
         {
-            var command = new RecordConsumptionCommand(
-                request.SpaceId,
-                request.ProductName,
-                request.ProductBrand,
-                request.ProductType,
-                request.Grams,
-                request.ConsumedAt,
-                request.PresetName
-            );
-
-            var result = await Mediator.Send(command);
-            if (result.IsSuccess)
+            var targetUserIds = new List<Guid?>();
+            if (request.ForUserIds != null && request.ForUserIds.Count > 0)
             {
-                showQuickConsumptionModal = false;
-                ShowToast(false, "Success", $"Logged {request.Grams}g of coffee!");
+                targetUserIds.AddRange(request.ForUserIds.Select(id => (Guid?)id));
             }
             else
             {
-                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+                targetUserIds.Add(null); // null = myself
+            }
+
+            var successCount = 0;
+            var errors = new List<string>();
+
+            foreach (var targetUserId in targetUserIds)
+            {
+                var command = new RecordConsumptionCommand(
+                    request.SpaceId,
+                    request.ProductName,
+                    request.ProductBrand,
+                    request.ProductType,
+                    request.Grams,
+                    request.ConsumedAt,
+                    request.PresetName,
+                    targetUserId
+                );
+
+                var result = await Mediator.Send(command);
+                if (result.IsSuccess)
+                    successCount++;
+                else
+                    errors.AddRange(result.Errors.Select(e => e.Message));
+            }
+
+            if (successCount > 0)
+            {
+                showQuickConsumptionModal = false;
+                var msg = successCount == 1
+                    ? $"Logged {request.Grams}g of coffee!"
+                    : $"Logged {request.Grams}g of coffee for {successCount} members!";
+                ShowToast(false, "Success", msg);
+            }
+
+            if (errors.Any())
+            {
+                ShowToast(true, "Error", string.Join(", ", errors));
             }
         }
         catch (Exception ex)

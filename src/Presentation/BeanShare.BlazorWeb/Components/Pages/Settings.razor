@@ -1,11 +1,13 @@
 @page "/settings"
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using BeanShare.SharedUi.Services
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JSRuntime
 @inject IThemeService ThemeService
+@attribute [Authorize]
 
 <PageTitle>Settings - BeanShare</PageTitle>
 
@@ -147,17 +149,17 @@
                             <div class="connected-accounts">
                                 <div class="account-item">
                                     <div class="account-info">
-                                        <img src="/images/google.svg" alt="Google" />
+                                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #4285f4; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">G</div>
                                         <span>Google</span>
                                     </div>
-                                    <button class="btn-secondary">Connect</button>
+                                    <button class="btn-secondary" disabled title="OAuth integration coming soon">Connect</button>
                                 </div>
                                 <div class="account-item">
                                     <div class="account-info">
-                                        <img src="/images/facebook.svg" alt="Facebook" />
+                                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #1877f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">f</div>
                                         <span>Facebook</span>
                                     </div>
-                                    <button class="btn-secondary">Connect</button>
+                                    <button class="btn-secondary" disabled title="OAuth integration coming soon">Connect</button>
                                 </div>
                             </div>
                         </div>
@@ -208,13 +210,13 @@
                                 </div>
                                 <p>350 MB of 1 GB used</p>
                             </div>
-                            <button class="btn-secondary">Clear Cache</button>
+                            <button class="btn-secondary" disabled title="Feature coming soon">Clear Cache</button>
                         </div>
 
                         <div class="setting-group">
                             <h3>Export Data</h3>
                             <p>Download all your BeanShare data</p>
-                            <button class="btn-secondary">
+                            <button class="btn-secondary" disabled title="Feature coming soon">
                                 <span class="material-symbols-outlined">download</span>
                                 Export as JSON
                             </button>
@@ -263,549 +265,6 @@
     </div>
 }
 
-<style>
-    .settings-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 2rem;
-    }
-
-    .settings-header {
-        margin-bottom: 2rem;
-    }
-
-    .settings-header h1 {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0 0 0.5rem 0;
-    }
-
-    .settings-header p {
-        color: #64748b;
-        font-size: 1.125rem;
-    }
-
-    .settings-content {
-        display: grid;
-        grid-template-columns: 250px 1fr;
-        gap: 2rem;
-    }
-
-    .settings-nav {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .settings-nav button {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        background: transparent;
-        border: none;
-        border-radius: 8px;
-        color: #64748b;
-        font-size: 0.9375rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: left;
-    }
-
-    .settings-nav button:hover {
-        background: #f1f5f9;
-        color: #475569;
-    }
-
-    .settings-nav button.active {
-        background: #4169E1;
-        color: white;
-    }
-
-    .settings-panel {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        min-height: 600px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .panel-content {
-        flex: 1;
-        padding: 2rem;
-    }
-
-    .panel-content h2 {
-        font-size: 1.75rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin: 0 0 0.5rem 0;
-    }
-
-    .panel-description {
-        color: #64748b;
-        margin: 0 0 2rem 0;
-    }
-
-    .setting-group {
-        margin-bottom: 2.5rem;
-    }
-
-    .setting-group:last-child {
-        margin-bottom: 0;
-    }
-
-    .setting-group h3 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin: 0 0 1rem 0;
-    }
-
-    .theme-selector {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .theme-option {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-    }
-
-    .theme-option input {
-        display: none;
-    }
-
-    .theme-preview {
-        width: 100px;
-        height: 80px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid transparent;
-        transition: all 0.2s;
-    }
-
-    .theme-option.active .theme-preview {
-        border-color: #4169E1;
-    }
-
-    .light-preview {
-        background: #f8fafc;
-        color: #1e293b;
-    }
-
-    .dark-preview {
-        background: #1e293b;
-        color: white;
-    }
-
-    .auto-preview {
-        background: linear-gradient(90deg, #f8fafc 50%, #1e293b 50%);
-        color: #4169E1;
-    }
-
-    .color-selector {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .color-option {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        border: 2px solid transparent;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-    }
-
-    .color-option:hover {
-        transform: scale(1.1);
-    }
-
-    .toggle-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .toggle-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem;
-        background: #f8fafc;
-        border-radius: 8px;
-    }
-
-    .toggle-item label {
-        font-weight: 500;
-        color: #1e293b;
-    }
-
-    .toggle-item p {
-        font-size: 0.875rem;
-        color: #64748b;
-        margin: 0.25rem 0 0 0;
-    }
-
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 48px;
-        height: 24px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #cbd5e1;
-        transition: .4s;
-        border-radius: 24px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 16px;
-        width: 16px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: #4169E1;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(24px);
-    }
-
-    .two-factor-status {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem;
-        background: #f8fafc;
-        border-radius: 12px;
-        border: 2px solid #e2e8f0;
-    }
-
-    .two-factor-status.enabled {
-        background: #f0fdf4;
-        border-color: #86efac;
-    }
-
-    .two-factor-status span {
-        font-size: 2rem;
-    }
-
-    .two-factor-status.enabled span {
-        color: #16a34a;
-    }
-
-    .two-factor-status.disabled span {
-        color: #94a3b8;
-    }
-
-    .status-label {
-        font-weight: 600;
-        color: #1e293b;
-        margin: 0 0 0.25rem 0;
-    }
-
-    .status-description {
-        font-size: 0.875rem;
-        color: #64748b;
-        margin: 0;
-    }
-
-    .two-factor-status .btn-secondary {
-        margin-left: auto;
-    }
-
-    .connected-accounts {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .account-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem;
-        background: #f8fafc;
-        border-radius: 8px;
-    }
-
-    .account-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .account-info img {
-        width: 24px;
-        height: 24px;
-    }
-
-    .integration-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .integration-card {
-        padding: 1.5rem;
-        background: #f8fafc;
-        border-radius: 12px;
-        text-align: center;
-    }
-
-    .integration-icon {
-        width: 64px;
-        height: 64px;
-        background: white;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 1rem;
-        color: #4169E1;
-    }
-
-    .integration-icon span {
-        font-size: 2rem;
-    }
-
-    .integration-card h3 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin: 0 0 0.5rem 0;
-    }
-
-    .integration-card p {
-        font-size: 0.875rem;
-        color: #64748b;
-        margin: 0 0 1rem 0;
-    }
-
-    .input-group {
-        margin-bottom: 1rem;
-    }
-
-    .input-group label {
-        display: block;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #64748b;
-        margin-bottom: 0.5rem;
-    }
-
-    .input-group select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 1rem;
-        background: white;
-    }
-
-    .storage-info {
-        margin-bottom: 1rem;
-    }
-
-    .storage-bar {
-        width: 100%;
-        height: 8px;
-        background: #e2e8f0;
-        border-radius: 4px;
-        overflow: hidden;
-        margin-bottom: 0.5rem;
-    }
-
-    .storage-used {
-        height: 100%;
-        background: #4169E1;
-    }
-
-    .storage-info p {
-        font-size: 0.875rem;
-        color: #64748b;
-    }
-
-    .panel-footer {
-        padding: 1.5rem 2rem;
-        border-top: 1px solid #e2e8f0;
-        display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        border: none;
-        font-size: 1rem;
-    }
-
-    .btn-primary {
-        background: #4169E1;
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #3058c7;
-    }
-
-    .btn-secondary {
-        background: #f1f5f9;
-        color: #475569;
-        border: 1px solid #e2e8f0;
-    }
-
-    .btn-secondary:hover {
-        background: #e2e8f0;
-    }
-
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-    }
-
-    .modal {
-        background: white;
-        border-radius: 12px;
-        width: 90%;
-        max-width: 500px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-
-    .modal-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid #e2e8f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header h2 {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin: 0;
-    }
-
-    .modal-close {
-        background: transparent;
-        border: none;
-        color: #64748b;
-        cursor: pointer;
-        padding: 0.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        transition: all 0.2s;
-    }
-
-    .modal-close:hover {
-        background: #f1f5f9;
-    }
-
-    .modal-content {
-        padding: 1.5rem;
-    }
-
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-group:last-child {
-        margin-bottom: 0;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #64748b;
-        margin-bottom: 0.5rem;
-    }
-
-    .form-group input {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 1rem;
-    }
-
-    .modal-footer {
-        padding: 1.5rem;
-        border-top: 1px solid #e2e8f0;
-        display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
-    }
-
-    @@media (max-width: 768px) {
-        .settings-content {
-            grid-template-columns: 1fr;
-        }
-
-        .settings-nav {
-            flex-direction: row;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-        }
-
-        .integration-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
 
 @code {
     private string activeTab = "appearance";
@@ -867,10 +326,19 @@
 
     private async Task UpdatePassword()
     {
-        if (newPassword == confirmPassword && !string.IsNullOrEmpty(newPassword))
+        if (string.IsNullOrEmpty(currentPassword) || string.IsNullOrEmpty(newPassword))
         {
-            ClosePasswordModal();
+            await JSRuntime.InvokeVoidAsync("alert", "Please fill in all password fields.");
+            return;
         }
+        if (newPassword != confirmPassword)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "New password and confirmation do not match.");
+            return;
+        }
+        // Password management is handled by the identity provider (Keycloak)
+        await JSRuntime.InvokeVoidAsync("alert", "Password changes are managed through your identity provider. Please use Keycloak to update your password.");
+        ClosePasswordModal();
     }
 
     private void Cancel()
@@ -880,6 +348,9 @@
 
     private async Task SaveSettings()
     {
+        // Theme is already saved via ThemeService.SetThemeAsync when selected.
+        // Notification preferences, language, timezone, and date format are not yet persisted on backend.
+        await ThemeService.SetThemeAsync(theme);
         Navigation.NavigateTo("/");
     }
 }

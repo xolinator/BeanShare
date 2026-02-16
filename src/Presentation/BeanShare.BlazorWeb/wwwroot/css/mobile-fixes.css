@@ -1,0 +1,75 @@
+/* Mobile Sidebar Fixes - Global Stylesheet */
+
+@media (max-width: 768px) {
+    /* Hide sidebar by default on mobile */
+    .sidebar {
+        transform: translateX(-100%) !important;
+        pointer-events: none !important;
+        width: 280px !important;
+        z-index: 50 !important;
+    }
+
+    /* Show sidebar when open */
+    .sidebar.open {
+        transform: translateX(0) !important;
+        pointer-events: auto !important;
+    }
+
+    /* Mobile class variations */
+    .sidebar.mobile {
+        transform: translateX(-100%) !important;
+        pointer-events: none !important;
+    }
+
+    .sidebar.mobile.open {
+        transform: translateX(0) !important;
+        pointer-events: auto !important;
+    }
+
+    /* Collapsed state still hidden on mobile */
+    .sidebar.collapsed:not(.open) {
+        transform: translateX(-100%) !important;
+        pointer-events: none !important;
+    }
+
+    /* Show toggle button on mobile */
+    .sidebar-toggle {
+        display: block !important;
+    }
+
+    /* Ensure header is full width on mobile */
+    .app-header {
+        left: 0 !important;
+    }
+
+    /* Ensure main content is full width on mobile */
+    .main-content {
+        margin-left: 0 !important;
+    }
+
+    /* Keep sidebar text visible when open */
+    .sidebar .sidebar-brand,
+    .sidebar.mobile .sidebar-brand,
+    .sidebar .sidebar-link-text,
+    .sidebar.mobile .sidebar-link-text,
+    .sidebar .sidebar-subsection,
+    .sidebar.mobile .sidebar-subsection,
+    .sidebar .sidebar-subtitle,
+    .sidebar.mobile .sidebar-subtitle {
+        opacity: 1 !important;
+        width: auto !important;
+    }
+
+    /* Backdrop for mobile sidebar */
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 49;
+    }
+
+    .sidebar.mobile.open ~ .sidebar-backdrop {
+        display: block;
+    }
+}

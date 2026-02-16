@@ -100,7 +100,7 @@
         System.Diagnostics.Debug.WriteLine("[Routes] Login success callback triggered");
         await CheckAuthentication();
         await InvokeAsync(StateHasChanged);
-        Navigation.NavigateTo("/spaces", forceLoad: true);
+        Navigation.NavigateTo("/spaces");
     }
 
     public void Dispose()

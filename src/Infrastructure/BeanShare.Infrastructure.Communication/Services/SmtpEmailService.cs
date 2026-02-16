@@ -8,9 +8,8 @@ using MimeKit;
 
 namespace BeanShare.Infrastructure.Communication.Services;
 
-/// <summary>
-/// SMTP email service implementation using MailKit.
-/// </summary>
+// SMTP email service using MailKit
+// TODO: Add retry logic with Polly for transient failures
 public sealed class SmtpEmailService : IEmailService
 {
     private readonly EmailOptions _options;
@@ -22,19 +21,16 @@ public sealed class SmtpEmailService : IEmailService
         _logger = logger;
     }
 
-    /// <inheritdoc />
     public async Task SendEmailAsync(EmailMessage message, CancellationToken cancellationToken = default)
     {
         await SendEmailWithAttachmentsAsync(message, [], cancellationToken);
     }
 
-    /// <inheritdoc />
     public async Task SendEmailWithAttachmentAsync(EmailMessage message, EmailAttachment attachment, CancellationToken cancellationToken = default)
     {
         await SendEmailWithAttachmentsAsync(message, [attachment], cancellationToken);
     }
 
-    /// <inheritdoc />
     public async Task SendEmailWithAttachmentsAsync(EmailMessage message, IEnumerable<EmailAttachment> attachments, CancellationToken cancellationToken = default)
     {
         if (!_options.Enabled)

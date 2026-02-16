@@ -18,6 +18,7 @@ public sealed class SpaceMembership
 
     public static SpaceMembership Create(UserId userId, SpaceRole role, DateTime joinedAt)
     {
+        ArgumentNullException.ThrowIfNull(userId);
         return new SpaceMembership(userId, role, joinedAt);
     }
 

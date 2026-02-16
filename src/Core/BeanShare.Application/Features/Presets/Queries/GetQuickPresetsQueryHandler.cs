@@ -7,7 +7,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Queries;
-
 public sealed class GetQuickPresetsQueryHandler : IRequestHandler<GetQuickPresetsQuery, Result<GetQuickPresetsResult>>
 {
     private readonly IGlobalPresetRepository _globalPresetRepository;

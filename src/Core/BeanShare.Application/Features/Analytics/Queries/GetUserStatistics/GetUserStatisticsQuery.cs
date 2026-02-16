@@ -2,7 +2,6 @@ using BeanShare.Domain.Common;
 using MediatR;
 
 namespace BeanShare.Application.Features.Analytics.Queries.GetUserStatistics;
-
 public record GetUserStatisticsQuery : IRequest<UserStatisticsDto>
 {
     public UserId UserId { get; init; }

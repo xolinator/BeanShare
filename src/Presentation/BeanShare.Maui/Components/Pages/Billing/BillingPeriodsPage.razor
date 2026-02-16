@@ -143,6 +143,10 @@
         {
             billingPeriods = await BillingService.GetSpaceBillingPeriodsAsync(SpaceId);
         }
+        catch (Exception ex)
+        {
+            await AlertService.ShowAlertAsync("Error", $"Failed to load billing periods: {ex.Message}");
+        }
         finally
         {
             isLoading = false;
@@ -162,28 +166,49 @@
 
     private async Task CreatePeriod()
     {
-        var dto = new CreateBillingPeriodDto
+        try
         {
-            Name = newPeriodName,
-            StartDate = newPeriodStart,
-            EndDate = newPeriodEnd
-        };
+            var dto = new CreateBillingPeriodDto
+            {
+                Name = newPeriodName,
+                StartDate = newPeriodStart,
+                EndDate = newPeriodEnd
+            };
 
-        await BillingService.CreateBillingPeriodAsync(SpaceId, dto);
-        await LoadBillingPeriods();
-        CloseCreateModal();
+            await BillingService.CreateBillingPeriodAsync(SpaceId, dto);
+            await LoadBillingPeriods();
+            CloseCreateModal();
+        }
+        catch (Exception ex)
+        {
+            await AlertService.ShowAlertAsync("Error", $"Failed to create billing period: {ex.Message}");
+        }
     }
 
     private async Task OpenPeriod(Guid periodId)
     {
-        await BillingService.OpenBillingPeriodAsync(periodId);
-        await LoadBillingPeriods();
+        try
+        {
+            await BillingService.OpenBillingPeriodAsync(periodId);
+            await LoadBillingPeriods();
+        }
+        catch (Exception ex)
+        {
+            await AlertService.ShowAlertAsync("Error", $"Failed to open billing period: {ex.Message}");
+        }
     }
 
     private async Task ClosePeriod(Guid periodId)
     {
-        await BillingService.CloseBillingPeriodAsync(periodId);
-        await LoadBillingPeriods();
+        try
+        {
+            await BillingService.CloseBillingPeriodAsync(periodId);
+            await LoadBillingPeriods();
+        }
+        catch (Exception ex)
+        {
+            await AlertService.ShowAlertAsync("Error", $"Failed to close billing period: {ex.Message}");
+        }
     }
 
     private async Task GenerateSettlement(Guid periodId)

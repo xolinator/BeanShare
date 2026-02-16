@@ -84,7 +84,7 @@ public sealed class ConsumptionCommandTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "stock.not_found");
+        result.Errors.Should().ContainSingle(e => e.Code == "STOCK_NOT_FOUND");
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public sealed class ConsumptionCommandTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "consumption.invalid_type");
+        result.Errors.Should().ContainSingle(e => e.Code == "INVALID_COFFEE_TYPE");
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public sealed class ConsumptionCommandTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "consumption.invalid_time");
+        result.Errors.Should().ContainSingle(e => e.Code == "INVALID_CONSUMPTION_TIME");
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public sealed class ConsumptionCommandTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "stock.product_not_found");
+        result.Errors.Should().ContainSingle(e => e.Code == "PRODUCT_NOT_FOUND_IN_STOCK");
     }
 
     [Fact]
@@ -189,6 +189,6 @@ public sealed class ConsumptionCommandTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "stock.insufficient");
+        result.Errors.Should().ContainSingle(e => e.Code == "INSUFFICIENT_STOCK");
     }
 }

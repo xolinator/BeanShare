@@ -6,7 +6,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics;
-
 public sealed class GetSpaceAnalyticsQueryHandler : IRequestHandler<GetSpaceAnalyticsQuery, SpaceAnalyticsDto>
 {
     private readonly IConsumptionRepository _consumptionRepository;
@@ -14,6 +13,7 @@ public sealed class GetSpaceAnalyticsQueryHandler : IRequestHandler<GetSpaceAnal
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly ICostCalculationService _costCalculationService;
     private readonly IUserService _userService;
+    private readonly IUserContext _userContext;
     private readonly IClock _clock;
 
     public GetSpaceAnalyticsQueryHandler(
@@ -22,6 +22,7 @@ public sealed class GetSpaceAnalyticsQueryHandler : IRequestHandler<GetSpaceAnal
         ICoffeeStockRepository coffeeStockRepository,
         ICostCalculationService costCalculationService,
         IUserService userService,
+        IUserContext userContext,
         IClock clock)
     {
         _consumptionRepository = consumptionRepository;
@@ -29,6 +30,7 @@ public sealed class GetSpaceAnalyticsQueryHandler : IRequestHandler<GetSpaceAnal
         _coffeeStockRepository = coffeeStockRepository;
         _costCalculationService = costCalculationService;
         _userService = userService;
+        _userContext = userContext;
         _clock = clock;
     }
 
@@ -42,6 +44,16 @@ public sealed class GetSpaceAnalyticsQueryHandler : IRequestHandler<GetSpaceAnal
         var space = await _spaceRepository.GetSingleBySpecAsync(spaceSpec, cancellationToken);
 
         if (space == null)
+        {
+            return new SpaceAnalyticsDto
+            {
+                TotalMembers = 0,
+                TotalConsumptionsThisMonth = 0,
+                TotalConsumptionsAllTime = 0
+            };
+        }
+
+        if (!space.HasMember(_userContext.CurrentUserId))
         {
             return new SpaceAnalyticsDto
             {

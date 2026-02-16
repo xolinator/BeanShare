@@ -1,7 +1,6 @@
 using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics;
-
 public sealed record SpaceAnalyticsDto
 {
     public int TotalMembers { get; init; }

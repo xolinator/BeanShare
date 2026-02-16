@@ -1,0 +1,358 @@
+@page "/admin/users"
+@rendermode InteractiveServer
+@implements IDisposable
+@using MediatR
+@using BeanShare.Application.Features.Admin.Users.Queries
+@using BeanShare.Application.Features.Admin.Users.Commands
+@using BeanShare.Application.Features.Admin.Users.Dtos
+@using BeanShare.Domain.Enums
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>User Management - Admin - BeanShare</PageTitle>
+
+<div class="admin-page">
+    <div class="admin-header">
+        <h1>User Management</h1>
+        <p class="admin-subtitle">Manage system users, roles, and account status</p>
+    </div>
+
+    <div class="admin-filters">
+        <div class="filter-group">
+            <label>Filter by Status</label>
+            <select @bind="statusFilter" @bind:after="LoadUsers">
+                <option value="all">All Users</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Filter by Role</label>
+            <select @bind="roleFilter" @bind:after="LoadUsers">
+                <option value="all">All Roles</option>
+                <option value="admin">System Admins</option>
+                <option value="user">Regular Users</option>
+            </select>
+        </div>
+        <div class="filter-group search-group">
+            <label>Search</label>
+            <div class="search-input-wrapper">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" placeholder="Search by name or email..." @bind="searchTerm" @bind:after="LoadUsers" />
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <span>Loading users...</span>
+        </div>
+    }
+    else if (users == null || !users.Any())
+    {
+        <div class="empty-state">
+            <span class="material-symbols-outlined">person_off</span>
+            <h3>No users found</h3>
+            <p>No users match your current filters.</p>
+        </div>
+    }
+    else
+    {
+        <div class="users-table-wrapper">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>System Role</th>
+                        <th>Status</th>
+                        <th>Spaces</th>
+                        <th>Joined</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in users)
+                    {
+                        <tr class="@(user.IsActive ? "" : "inactive-row")">
+                            <td class="user-cell">
+                                <div class="user-avatar">
+                                    @if (!string.IsNullOrEmpty(user.PictureUrl))
+                                    {
+                                        <img src="@user.PictureUrl" alt="@user.Name" />
+                                    }
+                                    else
+                                    {
+                                        @GetInitials(user.Name)
+                                    }
+                                </div>
+                                <div class="user-info">
+                                    <span class="user-name">@user.Name</span>
+                                    <span class="user-email">@user.Email</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="role-badge @(user.SystemRole == SystemRole.SystemAdmin ? "role-admin" : "role-user")">
+                                    @(user.SystemRole == SystemRole.SystemAdmin ? "Admin" : "User")
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge @(user.IsActive ? "status-active" : "status-inactive")">
+                                    @(user.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>@user.SpaceCount</td>
+                            <td>@user.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td>@user.LastLoginAt.ToString("MMM dd, yyyy")</td>
+                            <td class="actions-cell">
+                                <button class="action-btn" title="View Details" @onclick="() => ViewUserDetails(user.Id)">
+                                    <span class="material-symbols-outlined">visibility</span>
+                                </button>
+                                @if (user.SystemRole != SystemRole.SystemAdmin)
+                                {
+                                    <button class="action-btn promote-btn" title="Promote to Admin" @onclick="() => PromoteUser(user.Id)">
+                                        <span class="material-symbols-outlined">arrow_upward</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="action-btn demote-btn" title="Demote to User" @onclick="() => DemoteUser(user.Id)">
+                                        <span class="material-symbols-outlined">arrow_downward</span>
+                                    </button>
+                                }
+                                @if (user.IsActive)
+                                {
+                                    <button class="action-btn deactivate-btn" title="Deactivate User" @onclick="() => DeactivateUser(user.Id)">
+                                        <span class="material-symbols-outlined">block</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="action-btn reactivate-btn" title="Reactivate User" @onclick="() => ReactivateUser(user.Id)">
+                                        <span class="material-symbols-outlined">check_circle</span>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<Toast IsVisible="@showToast"
+       IsError="@isToastError"
+       Title="@toastTitle"
+       Message="@toastMessage"
+       OnClose="@(() => showToast = false)" />
+
+
+@code {
+    private List<AdminUserDto>? users;
+    private List<AdminUserDto>? allUsers;
+    private bool isLoading = true;
+    private string statusFilter = "all";
+    private string roleFilter = "all";
+    private string searchTerm = "";
+
+    private bool showToast;
+    private bool isToastError;
+    private string toastTitle = "";
+    private string toastMessage = "";
+
+    private CancellationTokenSource? _loadCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        // Cancel previous load operation if still running
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+        var cancellationToken = _loadCts.Token;
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Mediator.Send(new GetAllUsersQuery(), cancellationToken);
+            if (result.IsSuccess && !cancellationToken.IsCancellationRequested)
+            {
+                allUsers = result.Value.Users.ToList();
+                ApplyFilters();
+            }
+            else if (!cancellationToken.IsCancellationRequested)
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to load users");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Operation was cancelled, ignore
+        }
+        catch (Exception ex)
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                ShowToast(true, "Error", $"Failed to load users: {ex.Message}");
+            }
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+    }
+
+    private void ApplyFilters()
+    {
+        if (allUsers == null) return;
+
+        var filtered = allUsers.AsEnumerable();
+
+        if (statusFilter == "active")
+            filtered = filtered.Where(u => u.IsActive);
+        else if (statusFilter == "inactive")
+            filtered = filtered.Where(u => !u.IsActive);
+
+        if (roleFilter == "admin")
+            filtered = filtered.Where(u => u.SystemRole == SystemRole.SystemAdmin);
+        else if (roleFilter == "user")
+            filtered = filtered.Where(u => u.SystemRole == SystemRole.User);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.ToLower();
+            filtered = filtered.Where(u =>
+                u.Name.ToLower().Contains(term) ||
+                u.Email.ToLower().Contains(term));
+        }
+
+        users = filtered.ToList();
+    }
+
+    private void ViewUserDetails(Guid userId)
+    {
+        Navigation.NavigateTo($"/admin/users/{userId}");
+    }
+
+    private async Task PromoteUser(Guid userId)
+    {
+        try
+        {
+            var result = await Mediator.Send(new SetUserRoleCommand(userId, SystemRole.SystemAdmin));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "User promoted to System Admin");
+                await LoadUsers();
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to promote user");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to promote user: {ex.Message}");
+        }
+    }
+
+    private async Task DemoteUser(Guid userId)
+    {
+        try
+        {
+            var result = await Mediator.Send(new SetUserRoleCommand(userId, SystemRole.User));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "User demoted to regular user");
+                await LoadUsers();
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to demote user");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to demote user: {ex.Message}");
+        }
+    }
+
+    private async Task DeactivateUser(Guid userId)
+    {
+        try
+        {
+            var result = await Mediator.Send(new DeactivateUserCommand(userId));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "User deactivated successfully");
+                await LoadUsers();
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to deactivate user");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to deactivate user: {ex.Message}");
+        }
+    }
+
+    private async Task ReactivateUser(Guid userId)
+    {
+        try
+        {
+            var result = await Mediator.Send(new ReactivateUserCommand(userId));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "User reactivated successfully");
+                await LoadUsers();
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to reactivate user");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to reactivate user: {ex.Message}");
+        }
+    }
+
+    private void ShowToast(bool isError, string title, string message)
+    {
+        isToastError = isError;
+        toastTitle = title;
+        toastMessage = message;
+        showToast = true;
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "U";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return name[0].ToString().ToUpper();
+    }
+}

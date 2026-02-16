@@ -1,5 +1,4 @@
 namespace BeanShare.Application.Features.Settlement.Dtos;
-
 public sealed record SettlementDto(
     Guid Id,
     Guid SpaceId,
