@@ -1,5 +1,6 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
+using BeanShare.Application.Services;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Repositories;
@@ -7,21 +8,23 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Queries;
-
 public sealed class GetSpacePresetsQueryHandler : IRequestHandler<GetSpacePresetsQuery, Result<GetSpacePresetsResult>>
 {
     private readonly IPresetRecipeRepository _presetRepository;
     private readonly ISpaceRepository _spaceRepository;
     private readonly IUserContext _userContext;
+    private readonly IUserService _userService;
 
     public GetSpacePresetsQueryHandler(
         IPresetRecipeRepository presetRepository,
         ISpaceRepository spaceRepository,
-        IUserContext userContext)
+        IUserContext userContext,
+        IUserService userService)
     {
         _presetRepository = presetRepository;
         _spaceRepository = spaceRepository;
         _userContext = userContext;
+        _userService = userService;
     }
 
     public async Task<Result<GetSpacePresetsResult>> Handle(GetSpacePresetsQuery request, CancellationToken cancellationToken)
@@ -41,11 +44,9 @@ public sealed class GetSpacePresetsQueryHandler : IRequestHandler<GetSpacePreset
 
         var presets = await _presetRepository.GetBySpaceIdAsync(spaceId, ct: cancellationToken);
 
-        var userNames = new Dictionary<UserId, string>();
-        foreach (var member in space.Members)
-        {
-            userNames[member.UserId] = $"User {member.UserId.Value}";
-        }
+        var memberUserIds = space.Members.Select(m => m.UserId).ToList();
+        var users = await _userService.GetByIdsAsync(memberUserIds, cancellationToken);
+        var userNames = users.ToDictionary(u => u.Id, u => u.Name);
 
         var presetDtos = presets
             .Where(p => p.UserId == _userContext.CurrentUserId || p.IsShared)

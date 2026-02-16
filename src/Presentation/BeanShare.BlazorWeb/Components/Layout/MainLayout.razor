@@ -1,4 +1,5 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @using BeanShare.BlazorWeb.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
@@ -7,8 +8,8 @@
 <AuthorizeView>
     <Authorized>
         <div class="app-container">
-            <Sidebar IsMobile="@isMobile" OnCreateSpace="ShowCreateSpace" OnJoinSpace="ShowJoinSpace" />
-            <div class="sidebar-backdrop" @onclick="CloseMobileSidebar"></div>
+            <Sidebar OnCreateSpace="ShowCreateSpace" OnJoinSpace="ShowJoinSpace" />
+            <div class="sidebar-backdrop"></div>
 
             <div class="main-content @GetMainContentClasses()">
                 <Header OnToggleSidebar="ToggleSidebar" Breadcrumbs="@breadcrumbs" />
@@ -42,59 +43,8 @@
     <button class="dismiss" style="background: transparent; border: none; color: white; cursor: pointer; margin-left: 0.5rem; font-size: 1.25rem;">×</button>
 </div>
 
-<style>
-    .app-container {
-        display: flex;
-        min-height: 100vh;
-        background-color: var(--bs-background-light);
-    }
-
-    .main-content {
-        flex: 1;
-        margin-left: 280px;
-        transition: margin-left 0.3s ease;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .main-content.sidebar-collapsed {
-        margin-left: 72px;
-    }
-
-    .page-content {
-        flex: 1;
-        padding: 2rem;
-        margin-top: 64px;
-        overflow-y: auto;
-    }
-
-    .minimal-layout {
-        min-height: 100vh;
-    }
-
-    @@media (max-width: 768px) {
-        .main-content {
-            margin-left: 0;
-        }
-
-        .main-content.sidebar-collapsed {
-            margin-left: 0;
-        }
-
-        .page-content {
-            padding: 1rem;
-        }
-    }
-
-    @@media (max-width: 480px) {
-        .page-content {
-            padding: 0.75rem;
-        }
-    }
-</style>
 
 @code {
-    private bool isMobile = false;
     private bool isSidebarCollapsed = false;
     private bool showCreateSpaceModal = false;
     private bool showJoinSpaceModal = false;
@@ -105,15 +55,6 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         UpdateBreadcrumbs();
         Navigation.LocationChanged += HandleLocationChanged;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // TODO: Detect mobile device
-            // isMobile = await JSRuntime.InvokeAsync<bool>("isMobileDevice");
-        }
     }
 
     private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
@@ -166,11 +107,6 @@
     private void ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
-    }
-
-    private void CloseMobileSidebar()
-    {
-        // TODO: Close mobile sidebar
     }
 
     private void ShowCreateSpace()

@@ -5,6 +5,7 @@
 @inject ISpacesService SpacesService
 @inject IUserContext UserContext
 @inject NavigationManager Navigation
+@inject IAlertService AlertService
 
 <PageTitle>Settlement Details - BeanShare</PageTitle>
 
@@ -261,8 +262,9 @@
                 isAdmin = space.Members.Any(m => m.UserId == currentUserId && m.Role == "Admin");
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            ShowToast(true, "Error", $"Failed to load space: {ex.Message}");
         }
     }
 

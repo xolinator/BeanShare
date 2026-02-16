@@ -8,7 +8,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Billing.Queries.GetBillingPeriodById;
-
 public sealed class GetBillingPeriodByIdHandler : IRequestHandler<GetBillingPeriodByIdQuery, Result<BillingPeriodDto>>
 {
     private readonly IBillingPeriodRepository _billingPeriodRepository;
@@ -16,19 +15,22 @@ public sealed class GetBillingPeriodByIdHandler : IRequestHandler<GetBillingPeri
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly ISpaceRepository _spaceRepository;
     private readonly ICostingPolicy _costingPolicy;
+    private readonly IUserContext _userContext;
 
     public GetBillingPeriodByIdHandler(
         IBillingPeriodRepository billingPeriodRepository,
         IConsumptionRepository consumptionRepository,
         ICoffeeStockRepository coffeeStockRepository,
         ISpaceRepository spaceRepository,
-        ICostingPolicy costingPolicy)
+        ICostingPolicy costingPolicy,
+        IUserContext userContext)
     {
         _billingPeriodRepository = billingPeriodRepository;
         _consumptionRepository = consumptionRepository;
         _coffeeStockRepository = coffeeStockRepository;
         _spaceRepository = spaceRepository;
         _costingPolicy = costingPolicy;
+        _userContext = userContext;
     }
 
     public async Task<Result<BillingPeriodDto>> Handle(GetBillingPeriodByIdQuery request, CancellationToken cancellationToken)
@@ -53,6 +55,11 @@ public sealed class GetBillingPeriodByIdHandler : IRequestHandler<GetBillingPeri
         if (space is null)
         {
             return Result<BillingPeriodDto>.Failure(Error.SpaceNotFound(billingPeriod.SpaceId.Value));
+        }
+
+        if (!space.HasMember(_userContext.CurrentUserId))
+        {
+            return Result<BillingPeriodDto>.Failure(Error.InsufficientSpacePrivileges("view billing period"));
         }
 
         var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(billingPeriod.SpaceId, cancellationToken);

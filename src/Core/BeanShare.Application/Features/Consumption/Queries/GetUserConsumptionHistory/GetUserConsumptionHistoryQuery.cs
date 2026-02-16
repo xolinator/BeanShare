@@ -3,7 +3,6 @@ using BeanShare.Application.Features.Consumption.Dtos;
 using MediatR;
 
 namespace BeanShare.Application.Features.Consumption.Queries.GetUserConsumptionHistory;
-
 public sealed record GetUserConsumptionHistoryQuery(
     Guid? SpaceId = null,
     DateTime? StartDate = null,

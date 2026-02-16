@@ -6,7 +6,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.CoffeeStock.Queries;
-
 public sealed class GetLowStockAlertsQueryHandler : IRequestHandler<GetLowStockAlertsQuery, Result<IEnumerable<LowStockAlertDto>>>
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;

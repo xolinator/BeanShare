@@ -1,7 +1,9 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
 
 <aside class="@GetSidebarClasses()">
     <div class="sidebar-header">
@@ -42,6 +44,22 @@
                         </div>
                     }
                 </div>
+
+                <AuthorizeView Roles="admin">
+                    <Authorized Context="adminContext">
+                        <div class="sidebar-section sidebar-section-admin">
+                            <div class="sidebar-subtitle">Administration</div>
+                            <NavLink class="sidebar-link sidebar-link-admin" href="/admin/users" Match="NavLinkMatch.Prefix">
+                                <span class="material-symbols-outlined">manage_accounts</span>
+                                <span class="sidebar-link-text">User Management</span>
+                            </NavLink>
+                            <NavLink class="sidebar-link sidebar-link-admin" href="/admin/presets" Match="NavLinkMatch.Prefix">
+                                <span class="material-symbols-outlined">tune</span>
+                                <span class="sidebar-link-text">Global Presets</span>
+                            </NavLink>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
 
                 <div class="sidebar-section sidebar-section-bottom">
                     <div class="sidebar-subtitle">Account</div>
@@ -104,278 +122,12 @@
     }
 </aside>
 
-<style>
-    .sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        height: 100vh;
-        width: 280px;
-        background-color: var(--bs-background);
-        border-right: 1px solid var(--bs-border);
-        display: flex;
-        flex-direction: column;
-        transition: width 0.3s ease, transform 0.3s ease;
-        z-index: 40;
-        overflow: hidden;
-    }
-
-    .sidebar.collapsed {
-        width: 72px;
-    }
-
-    .sidebar.mobile {
-        transform: translateX(-100%);
-    }
-
-    .sidebar.mobile.open {
-        transform: translateX(0);
-    }
-
-    .sidebar-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem;
-        border-bottom: 1px solid var(--bs-border);
-        min-height: 64px;
-    }
-
-    .sidebar-logo {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        cursor: pointer;
-        color: var(--bs-primary);
-        font-weight: 700;
-        font-size: 1.25rem;
-    }
-
-    .sidebar-logo-img {
-        width: 32px;
-        height: 32px;
-        flex-shrink: 0;
-    }
-
-    .sidebar-brand {
-        transition: opacity 0.3s ease;
-    }
-
-    .sidebar.collapsed .sidebar-brand {
-        opacity: 0;
-        width: 0;
-        overflow: hidden;
-    }
-
-    .sidebar-toggle {
-        display: none;
-        background: transparent;
-        border: none;
-        color: var(--bs-text);
-        cursor: pointer;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-        transition: background-color 0.2s;
-    }
-
-    .sidebar-toggle:hover {
-        background-color: var(--bs-gray-100);
-    }
-
-    .sidebar-nav {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .sidebar-section {
-        padding: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .sidebar-section-bottom {
-        margin-top: auto;
-        border-top: 1px solid var(--bs-border);
-        padding-top: 1rem;
-    }
-
-    .sidebar-subtitle {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--bs-text-subtle);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        padding: 0.5rem 1rem;
-        margin: 0.5rem 0 0.25rem 0;
-    }
-
-    .sidebar.collapsed .sidebar-subtitle {
-        display: none;
-    }
-
-    .sidebar-link, .sidebar-sublink {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        color: var(--bs-text);
-        text-decoration: none;
-        border-radius: 0.5rem;
-        transition: all 0.2s;
-        cursor: pointer;
-        border: none;
-        background: transparent;
-        width: 100%;
-        text-align: left;
-        font-size: 0.9375rem;
-    }
-
-    .sidebar-sublink {
-        padding-left: 2.5rem;
-        font-size: 0.875rem;
-    }
-
-    .sidebar.collapsed .sidebar-sublink {
-        display: none;
-    }
-
-    .sidebar-link:hover, .sidebar-sublink:hover {
-        background-color: var(--bs-gray-100);
-        color: var(--bs-primary);
-    }
-
-    .sidebar-link.active, .sidebar-sublink.active {
-        background-color: var(--bs-primary-light);
-        color: var(--bs-primary);
-        font-weight: 600;
-    }
-
-    .sidebar-link-text {
-        transition: opacity 0.3s ease;
-        white-space: nowrap;
-    }
-
-    .sidebar.collapsed .sidebar-link-text {
-        opacity: 0;
-        width: 0;
-        overflow: hidden;
-    }
-
-    .sidebar-subsection {
-        margin-top: 0.5rem;
-    }
-
-    .sidebar.collapsed .sidebar-subsection {
-        display: none;
-    }
-
-    .sidebar-footer {
-        border-top: 1px solid var(--bs-border);
-        padding: 1rem;
-        margin-top: auto;
-    }
-
-    .sidebar-user {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .sidebar-user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: var(--bs-primary);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.875rem;
-        flex-shrink: 0;
-    }
-
-    .sidebar-user-avatar img {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        object-fit: cover;
-    }
-
-    .sidebar-user-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .sidebar-user-name {
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: var(--bs-text);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .sidebar-user-email {
-        font-size: 0.75rem;
-        color: var(--bs-text-subtle);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    @@media (max-width: 768px) {
-        .sidebar {
-            width: 280px;
-        }
-
-        .sidebar.collapsed {
-            width: 280px;
-        }
-
-        .sidebar-toggle {
-            display: block;
-        }
-
-        .sidebar-brand,
-        .sidebar-link-text,
-        .sidebar-subsection,
-        .sidebar-subtitle {
-            opacity: 1 !important;
-            width: auto !important;
-        }
-    }
-
-    @@media (min-width: 769px) {
-        .sidebar-toggle {
-            display: block;
-        }
-    }
-
-    .sidebar-backdrop {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 39;
-    }
-
-    @@media (max-width: 768px) {
-        .sidebar.mobile.open ~ .sidebar-backdrop {
-            display: block;
-        }
-    }
-</style>
 
 @code {
-    [Parameter] public bool IsMobile { get; set; }
     [Parameter] public EventCallback OnCreateSpace { get; set; }
     [Parameter] public EventCallback OnJoinSpace { get; set; }
 
     private bool isCollapsed = false;
-    private bool isMobileMenuOpen = false;
     private List<SpaceInfo> recentSpaces = new();
     private string userName = "";
     private string userEmail = "";
@@ -398,17 +150,16 @@
     private string GetSidebarClasses()
     {
         var classes = "sidebar";
-        if (isCollapsed && !IsMobile) classes += " collapsed";
-        if (IsMobile) classes += " mobile";
-        if (IsMobile && isMobileMenuOpen) classes += " open";
+        if (isCollapsed) classes += " collapsed";
         return classes;
     }
 
-    private void ToggleSidebar()
+    private async Task ToggleSidebar()
     {
-        if (IsMobile)
+        var isMobile = await JSRuntime.InvokeAsync<bool>("beanshare.isMobile");
+        if (isMobile)
         {
-            isMobileMenuOpen = !isMobileMenuOpen;
+            await JSRuntime.InvokeVoidAsync("beanshare.sidebar.close");
         }
         else
         {

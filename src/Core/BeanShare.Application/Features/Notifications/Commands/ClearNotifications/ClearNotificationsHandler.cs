@@ -4,7 +4,6 @@ using BeanShare.Application.Services;
 using MediatR;
 
 namespace BeanShare.Application.Features.Notifications.Commands.ClearNotifications;
-
 public sealed class ClearNotificationsHandler : IRequestHandler<ClearNotificationsCommand, Result<int>>
 {
     private readonly INotificationRepository _notificationRepository;

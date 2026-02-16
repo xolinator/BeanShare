@@ -7,19 +7,21 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Commands;
-
 public sealed class CreatePresetCommandHandler : IRequestHandler<CreatePresetCommand, Result<CreatePresetResult>>
 {
     private readonly IPresetRecipeRepository _presetRepository;
+    private readonly ISpaceRepository _spaceRepository;
     private readonly IUserContext _userContext;
     private readonly IClock _clock;
 
     public CreatePresetCommandHandler(
         IPresetRecipeRepository presetRepository,
+        ISpaceRepository spaceRepository,
         IUserContext userContext,
         IClock clock)
     {
         _presetRepository = presetRepository;
+        _spaceRepository = spaceRepository;
         _userContext = userContext;
         _clock = clock;
     }
@@ -50,6 +52,17 @@ public sealed class CreatePresetCommandHandler : IRequestHandler<CreatePresetCom
         {
             var defaultGrams = Weight.FromGrams(request.DefaultGrams);
             var spaceId = new SpaceId(request.SpaceId);
+
+            var space = await _spaceRepository.GetByIdAsync(spaceId, cancellationToken);
+            if (space is null)
+            {
+                return Result<CreatePresetResult>.Failure(Error.NotFound("Space", "Space not found"));
+            }
+
+            if (!space.HasMember(_userContext.CurrentUserId))
+            {
+                return Result<CreatePresetResult>.Failure(Error.Forbidden("Space", "You are not a member of this space"));
+            }
 
             var preset = PresetRecipe.Create(
                 _userContext.CurrentUserId,

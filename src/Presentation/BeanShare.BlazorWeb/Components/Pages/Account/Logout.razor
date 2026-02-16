@@ -22,54 +22,6 @@
 <form id="logoutForm" method="post" action="/account/logout" style="display:none;">
 </form>
 
-<style>
-    .logout-container {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    .logout-card {
-        background: white;
-        border-radius: 16px;
-        padding: 3rem 2rem;
-        text-align: center;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        min-width: 400px;
-    }
-
-    .logout-spinner {
-        margin-bottom: 1.5rem;
-    }
-
-    .logout-spinner span {
-        font-size: 48px;
-        color: #4169E1;
-    }
-
-    .spinning {
-        animation: spin 1s linear infinite;
-    }
-
-    @@keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-
-    h2 {
-        font-size: 1.75rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin: 0 0 0.5rem 0;
-    }
-
-    p {
-        color: #64748b;
-        margin: 0;
-    }
-</style>
 
 @code {
     private bool _submitted = false;
@@ -89,7 +41,9 @@
 
             try
             {
-                await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('logoutForm').submit();");
+                var form = await JSRuntime.InvokeAsync<IJSObjectReference>("document.getElementById", "logoutForm");
+                await form.InvokeVoidAsync("submit");
+                await form.DisposeAsync();
             }
             catch
             {

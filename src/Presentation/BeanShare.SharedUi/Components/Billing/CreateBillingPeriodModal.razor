@@ -74,7 +74,7 @@
         if (IsVisible && string.IsNullOrEmpty(model.Name))
         {
             var now = DateTime.UtcNow;
-            model.StartDate = new DateTime(now.Year, now.Month, 1);
+            model.StartDate = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             model.EndDate = model.StartDate.AddMonths(1).AddDays(-1);
             model.Name = model.StartDate.ToString("MMMM yyyy");
         }
@@ -83,9 +83,15 @@
     private async Task HandleSubmit()
     {
         isSubmitting = true;
-        await OnSubmit.InvokeAsync(model);
-        isSubmitting = false;
-        model = new CreateBillingPeriodModel();
+        try
+        {
+            await OnSubmit.InvokeAsync(model);
+            model = new CreateBillingPeriodModel();
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 
     private async Task Cancel()

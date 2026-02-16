@@ -2,12 +2,15 @@
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using BeanShare.Application.Features.CoffeeStock.Dtos
 @using BeanShare.Application.Features.Presets.Queries
+@using BeanShare.Application.Abstractions
+@using BeanShare.Maui.Services
 @inject ISpacesService SpacesService
 @inject IConsumptionService ConsumptionService
 @inject IStockService StockService
 @inject IPresetService PresetService
+@inject IUserContext UserContext
 @inject NavigationManager Navigation
-@inject HttpClient Http
+@inject IAlertService AlertService
 
 <PageTitle>Consumption - @spaceName - BeanShare</PageTitle>
 
@@ -35,7 +38,7 @@ else
                     <span class="bs-text-subtle" style="font-size: 0.75rem; font-weight: 600;">INVITE CODE</span>
                     <div class="bs-flex bs-items-center bs-gap-2">
                         <span style="font-family: monospace; font-size: 0.875rem; font-weight: 700;">@space.InviteCode</span>
-                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code">
+                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code" @onclick="CopyInviteCode">
                             <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
                         </button>
                     </div>
@@ -53,12 +56,15 @@ else
         <div class="bs-flex bs-flex-col bs-gap-6">
             <ConsumptionKpis MyCupsToday="@myCupsToday"
                             MyTotalCost="@myTotalCost"
-                            RemainingStockGrams="@remainingStock" />
+                            RemainingStockGrams="@remainingStock"
+                            CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
             <ConsumptionForm OnSubmit="HandleLogConsumption"
                            StockProducts="@stockProducts"
                            PresetData="@presetData"
-                           QuickPresets="@quickPresets" />
+                           QuickPresets="@quickPresets"
+                           SpaceMembers="@space?.Members?.ToList()"
+                           CurrentUserId="@UserContext.CurrentUserId.Value" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -124,10 +130,23 @@ else
             {
                 try
                 {
-                    var response = await Http.GetAsync($"/api/presets/{presetGuid}");
-                    if (response.IsSuccessStatusCode)
+                    var contractsPreset = await PresetService.GetPresetByIdAsync(presetGuid);
+                    if (contractsPreset != null)
                     {
-                        presetData = await response.Content.ReadFromJsonAsync<PresetDto>();
+                        presetData = new PresetDto(
+                            contractsPreset.Id,
+                            contractsPreset.UserId,
+                            contractsPreset.UserName,
+                            contractsPreset.Name,
+                            contractsPreset.CoffeeType,
+                            contractsPreset.Preparation,
+                            contractsPreset.DefaultGrams,
+                            contractsPreset.Notes,
+                            contractsPreset.IsShared,
+                            contractsPreset.IsOwner,
+                            contractsPreset.CreatedAt,
+                            contractsPreset.LastUsedAt,
+                            contractsPreset.UsageCount);
                     }
                 }
                 catch (Exception ex)
@@ -252,19 +271,38 @@ else
         {
             var consumedAtUtc = model.ConsumedAt.ToUniversalTime();
 
-            var success = await ConsumptionService.RecordConsumptionAsync(
-                spaceGuid,
-                model.ProductName ?? "Coffee",
-                model.ProductBrand ?? "Generic",
-                model.ProductType ?? "Ground",
-                model.Grams,
-                consumedAtUtc,
-                model.PresetName
-            );
-
-            if (success)
+            var targetUserIds = new List<Guid?>();
+            if (model.ForUserIds != null && model.ForUserIds.Count > 0)
             {
-                ShowToast(false, "Success", "Consumption logged successfully!");
+                targetUserIds.AddRange(model.ForUserIds.Select(id => (Guid?)id));
+            }
+            else
+            {
+                targetUserIds.Add(null); // null = myself
+            }
+
+            var successCount = 0;
+            foreach (var targetUserId in targetUserIds)
+            {
+                var success = await ConsumptionService.RecordConsumptionAsync(
+                    spaceGuid,
+                    model.ProductName ?? "Coffee",
+                    model.ProductBrand ?? "Generic",
+                    model.ProductType ?? "Ground",
+                    model.Grams,
+                    consumedAtUtc,
+                    model.PresetName,
+                    targetUserId
+                );
+                if (success) successCount++;
+            }
+
+            if (successCount > 0)
+            {
+                var msg = successCount == 1
+                    ? "Consumption logged successfully!"
+                    : $"Logged consumption for {successCount} members!";
+                ShowToast(false, "Success", msg);
                 await LoadConsumption();
                 await LoadStock();
             }
@@ -276,6 +314,15 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to log consumption: {ex.Message}");
+        }
+    }
+
+    private async Task CopyInviteCode()
+    {
+        if (space?.InviteCode != null)
+        {
+            await Clipboard.Default.SetTextAsync(space.InviteCode);
+            await AlertService.ShowAlertAsync("Copied", "Invite code copied to clipboard!");
         }
     }
 

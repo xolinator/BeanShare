@@ -32,8 +32,8 @@ public sealed class CreateBillingPeriodEndpoint : Endpoint<CreateBillingPeriodRe
         var command = new CreateBillingPeriodCommand(
             req.SpaceId,
             req.Name,
-            req.StartDate,
-            req.EndDate
+            DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc),
+            DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc)
         );
 
         var result = await _mediator.Send(command, ct);

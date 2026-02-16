@@ -126,6 +126,7 @@ body {
 .bs-mt-2 { margin-top: 0.5rem; }
 .bs-mt-4 { margin-top: 1rem; }
 .bs-mb-4 { margin-bottom: 1rem; }
+.bs-mb-6 { margin-bottom: 1.5rem; }
 
 /* Buttons */
 .bs-btn {
@@ -260,7 +261,8 @@ body {
 }
 
 /* Modals */
-.bs-modal-backdrop {
+.bs-modal-backdrop,
+.bs-modal-overlay {
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.5);
@@ -752,8 +754,9 @@ body {
     }
 
     .bs-modal {
-        margin: 1rem;
-        padding: 1.25rem;
+        margin: 0.5rem;
+        padding: 1rem;
+        max-width: calc(100vw - 1rem);
     }
 
     .bs-modal-footer {
@@ -771,6 +774,22 @@ body {
 
     .bs-login-card {
         padding: 2rem 1.5rem;
+    }
+
+    /* Card mobile padding reduction */
+    .bs-card {
+        padding: 1rem;
+    }
+
+    /* Flex wrap on mobile for items that overflow */
+    .bs-flex.bs-items-center.bs-justify-between {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Settlement details mobile */
+    .bs-flex.bs-gap-4 {
+        flex-direction: column;
     }
 }
 

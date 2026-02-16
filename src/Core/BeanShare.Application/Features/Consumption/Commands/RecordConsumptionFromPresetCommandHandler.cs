@@ -9,7 +9,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
-
 public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<RecordConsumptionFromPresetCommand, Result<ConsumptionEntryDto>>
 {
     private readonly IPresetRecipeRepository _presetRepository;
@@ -35,7 +34,9 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
     public async Task<Result<ConsumptionEntryDto>> Handle(RecordConsumptionFromPresetCommand request, CancellationToken cancellationToken)
     {
         var spaceId = new SpaceId(request.SpaceId);
-        var userId = _userContext.CurrentUserId;
+        var userId = request.ForUserId.HasValue
+            ? new UserId(request.ForUserId.Value)
+            : _userContext.CurrentUserId;
         var presetId = new PresetRecipeId(request.PresetId);
 
         var preset = await _presetRepository.GetByIdAsync(presetId, cancellationToken);
@@ -64,7 +65,7 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
         var quantity = Weight.FromGrams(quantityGrams);
         var consumedAt = request.ConsumedAt ?? _clock.UtcNow;
 
-        if (consumedAt > _clock.UtcNow)
+        if (consumedAt > _clock.UtcNow.AddMinutes(5))
         {
             return Result<ConsumptionEntryDto>.Failure(Error.InvalidConsumptionTime());
         }

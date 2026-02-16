@@ -7,6 +7,7 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject IPresetService PresetService
+@inject IAlertService AlertService
 
 <div class="mobile-page">
     <MobileHeader Title="Coffee Presets" />
@@ -214,9 +215,9 @@
                 presets = result?.Presets?.ToList();
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Failed to load presets
+            await AlertService.ShowAlertAsync("Error", $"Failed to load presets: {ex.Message}");
         }
         finally
         {
@@ -276,9 +277,9 @@
                 await LoadPresets();
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Failed to create preset
+            await AlertService.ShowAlertAsync("Error", $"Failed to create preset: {ex.Message}");
         }
         finally
         {
@@ -296,9 +297,9 @@
                 await LoadPresets();
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Failed to delete preset
+            await AlertService.ShowAlertAsync("Error", $"Failed to delete preset: {ex.Message}");
         }
     }
 
@@ -322,8 +323,9 @@
             isLoadingGlobalPresets = true;
             globalPresets = await PresetService.GetSpaceGlobalPresetsAsync(spaceGuid);
         }
-        catch
+        catch (Exception ex)
         {
+            await AlertService.ShowAlertAsync("Error", $"Failed to load global presets: {ex.Message}");
             globalPresets = new List<SpaceGlobalPresetDto>();
         }
         finally
@@ -363,8 +365,9 @@
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            await AlertService.ShowAlertAsync("Error", $"Failed to toggle preset: {ex.Message}");
         }
         finally
         {
@@ -373,341 +376,3 @@
         }
     }
 }
-
-<style>
-    .mobile-page {
-        min-height: 100vh;
-        background: var(--bs-background);
-    }
-
-    .content {
-        padding: 1rem;
-        padding-bottom: 80px;
-    }
-
-    .loading-container {
-        text-align: center;
-        padding: 2rem;
-    }
-
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid var(--bs-border);
-        border-top-color: var(--bs-primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-    }
-
-    .empty-state h3 {
-        margin: 1rem 0 0.5rem;
-    }
-
-    .empty-state p {
-        color: var(--bs-text-subtle);
-        margin-bottom: 1.5rem;
-    }
-
-    .presets-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .preset-card {
-        background: white;
-        border-radius: 8px;
-        padding: 1rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .preset-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .preset-header h4 {
-        margin: 0;
-        font-size: 1.1rem;
-    }
-
-    .badge {
-        background: var(--bs-primary-light);
-        color: var(--bs-primary);
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .preset-details {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .detail {
-        padding: 0.25rem 0.5rem;
-        background: var(--bs-gray-100);
-        border-radius: 4px;
-        font-size: 0.875rem;
-    }
-
-    .preset-notes {
-        color: var(--bs-text-subtle);
-        font-size: 0.875rem;
-        margin: 0.5rem 0;
-    }
-
-    .preset-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-
-    .btn {
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-
-    .btn-primary {
-        background: var(--bs-primary);
-        color: white;
-    }
-
-    .btn-secondary {
-        background: var(--bs-gray-200);
-        color: var(--bs-text);
-    }
-
-    .btn-sm {
-        padding: 0.375rem 0.75rem;
-        font-size: 0.875rem;
-    }
-
-    .fab {
-        position: fixed;
-        bottom: 90px;
-        right: 1rem;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: var(--bs-primary);
-        color: white;
-        border: none;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-    }
-
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        padding: 1rem;
-    }
-
-    .modal-content {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        max-width: 400px;
-        width: 100%;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-
-    .modal-content h3 {
-        margin: 0 0 1rem;
-    }
-
-    .form-group {
-        margin-bottom: 1rem;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 0.875rem;
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-    }
-
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid var(--bs-border);
-        border-radius: 6px;
-        font-size: 1rem;
-        background: white;
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 0.5rem;
-        justify-content: flex-end;
-        margin-top: 1.5rem;
-    }
-
-    /* Global Presets Section */
-    .global-presets-section {
-        background: white;
-        margin: 1rem;
-        margin-bottom: 0;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-
-    .global-presets-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem;
-        cursor: pointer;
-        background: var(--bs-gray-50, #f9fafb);
-    }
-
-    .global-presets-title {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 500;
-    }
-
-    .global-presets-title .material-symbols-outlined {
-        font-size: 1.25rem;
-        color: var(--bs-primary);
-    }
-
-    .badge-count {
-        background: var(--bs-primary-light, #e0f2fe);
-        color: var(--bs-primary);
-        padding: 0.125rem 0.5rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .global-presets-content {
-        padding: 0 1rem 1rem;
-    }
-
-    .global-presets-desc {
-        color: var(--bs-text-subtle);
-        font-size: 0.875rem;
-        margin: 0 0 1rem;
-    }
-
-    .global-presets-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .global-preset-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem;
-        background: var(--bs-gray-50, #f9fafb);
-        border-radius: 6px;
-    }
-
-    .global-preset-item.disabled {
-        opacity: 0.6;
-    }
-
-    .global-preset-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.125rem;
-    }
-
-    .global-preset-name {
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-
-    .global-preset-detail {
-        font-size: 0.75rem;
-        color: var(--bs-text-subtle);
-    }
-
-    /* Toggle Switch */
-    .toggle-switch {
-        position: relative;
-        display: inline-block;
-        width: 48px;
-        height: 26px;
-    }
-
-    .toggle-switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .toggle-slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: var(--bs-gray-300, #d1d5db);
-        transition: 0.3s;
-        border-radius: 26px;
-    }
-
-    .toggle-slider:before {
-        position: absolute;
-        content: "";
-        height: 20px;
-        width: 20px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: 0.3s;
-        border-radius: 50%;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-
-    .toggle-switch input:checked + .toggle-slider {
-        background-color: var(--bs-primary);
-    }
-
-    .toggle-switch input:checked + .toggle-slider:before {
-        transform: translateX(22px);
-    }
-
-    .toggle-switch input:disabled + .toggle-slider {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-</style>

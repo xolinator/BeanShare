@@ -1,32 +1,41 @@
-using System.Net.Http.Json;
-using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace BeanShare.Maui.Services;
 
+/// <summary>
+/// Orchestrates Keycloak OIDC authentication using PKCE flow for the MAUI app.
+/// Delegates token operations to <see cref="OidcTokenHandler"/> and cryptographic
+/// utilities to <see cref="PkceHelper"/>.
+/// </summary>
 public class AuthenticationService : IAuthenticationService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<AuthenticationService> _logger;
+    private readonly OidcTokenHandler _tokenHandler;
+    private readonly string _keycloakClientId;
+    private readonly string _callbackUrl;
+    private readonly string _authorizationEndpoint;
+    private readonly string _endSessionEndpoint;
+    private readonly bool _useKeycloak;
     private UserInfo? _currentUser;
 
-    private const string KeycloakAuthority = "http://localhost:8080/realms/beanshare";
-    private const string KeycloakClientId = "beanshare-mobile";
-    private const string CallbackScheme = "beanshare";
-    private const string CallbackUrl = "beanshare://callback";
-
-    private static readonly string AuthorizationEndpoint = $"{KeycloakAuthority}/protocol/openid-connect/auth";
-    private static readonly string TokenEndpoint = $"{KeycloakAuthority}/protocol/openid-connect/token";
-    private static readonly string EndSessionEndpoint = $"{KeycloakAuthority}/protocol/openid-connect/logout";
-
-    public AuthenticationService(HttpClient httpClient, ILogger<AuthenticationService> logger)
+    public AuthenticationService(HttpClient httpClient, ILogger<AuthenticationService> logger, IConfiguration configuration)
     {
         _httpClient = httpClient;
         _logger = logger;
+
+        var keycloakAuthority = configuration.GetValue<string>("Keycloak:Authority") ?? "http://localhost:8080/realms/beanshare";
+        _keycloakClientId = configuration.GetValue<string>("Keycloak:ClientId") ?? "beanshare-mobile";
+        _callbackUrl = configuration.GetValue<string>("Keycloak:RedirectUri") ?? "beanshare://callback";
+        _useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+
+        _authorizationEndpoint = $"{keycloakAuthority}/protocol/openid-connect/auth";
+        var tokenEndpoint = $"{keycloakAuthority}/protocol/openid-connect/token";
+        _endSessionEndpoint = $"{keycloakAuthority}/protocol/openid-connect/logout";
+
+        _tokenHandler = new OidcTokenHandler(httpClient, logger, _keycloakClientId, _callbackUrl, tokenEndpoint);
     }
 
     public Task<AuthResult> LoginAsync(string email, string password)
@@ -49,32 +58,28 @@ public class AuthenticationService : IAuthenticationService
         return LoginWithKeycloakAsync("facebook");
     }
 
+    /// <summary>
+    /// Initiates Keycloak PKCE authentication, optionally hinting at an identity provider.
+    /// Falls back to development bypass when UseKeycloak is false in configuration.
+    /// </summary>
     public async Task<AuthResult> LoginWithKeycloakAsync(string? identityProviderHint = null)
     {
+        if (!_useKeycloak)
+        {
+            _logger.LogInformation("UseKeycloak=false - using development authentication bypass (API mock auth)");
+            return await LoginWithDevBypassAsync();
+        }
+
         try
         {
             _logger.LogInformation("Starting Keycloak PKCE authentication flow. IDP hint: {IdpHint}", identityProviderHint ?? "none");
 
-            var codeVerifier = GenerateCodeVerifier();
-            var codeChallenge = GenerateCodeChallenge(codeVerifier);
-            var state = GenerateRandomString(32);
+            var codeVerifier = PkceHelper.GenerateCodeVerifier();
+            var codeChallenge = PkceHelper.GenerateCodeChallenge(codeVerifier);
+            var state = PkceHelper.GenerateRandomString(32);
 
-            var authUrlBuilder = new StringBuilder(AuthorizationEndpoint);
-            authUrlBuilder.Append($"?client_id={Uri.EscapeDataString(KeycloakClientId)}");
-            authUrlBuilder.Append($"&redirect_uri={Uri.EscapeDataString(CallbackUrl)}");
-            authUrlBuilder.Append("&response_type=code");
-            authUrlBuilder.Append("&scope=openid%20profile%20email");
-            authUrlBuilder.Append($"&code_challenge={Uri.EscapeDataString(codeChallenge)}");
-            authUrlBuilder.Append("&code_challenge_method=S256");
-            authUrlBuilder.Append($"&state={Uri.EscapeDataString(state)}");
-
-            if (!string.IsNullOrEmpty(identityProviderHint))
-            {
-                authUrlBuilder.Append($"&kc_idp_hint={Uri.EscapeDataString(identityProviderHint)}");
-            }
-
-            var authUrl = new Uri(authUrlBuilder.ToString());
-            var callbackUri = new Uri(CallbackUrl);
+            var authUrl = BuildAuthorizationUrl(codeChallenge, state, identityProviderHint);
+            var callbackUri = new Uri(_callbackUrl);
 
             _logger.LogDebug("Authorization URL: {AuthUrl}", authUrl);
 
@@ -101,7 +106,13 @@ public class AuthenticationService : IAuthenticationService
                 return new AuthResult(false, null, "Authentication failed. State mismatch.");
             }
 
-            return await ExchangeCodeForTokensAsync(code, codeVerifier);
+            var authResult = await _tokenHandler.ExchangeCodeForTokensAsync(code, codeVerifier);
+            if (authResult.Success)
+            {
+                _currentUser = authResult.User;
+            }
+
+            return authResult;
         }
         catch (TaskCanceledException)
         {
@@ -115,231 +126,42 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    private async Task<AuthResult> ExchangeCodeForTokensAsync(string code, string codeVerifier)
+    /// <summary>
+    /// Development-only bypass used when UseKeycloak is false in configuration.
+    /// The API uses MockAuthenticationHandler (Sarah Johnson) when UseKeycloak=false.
+    /// </summary>
+    private async Task<AuthResult> LoginWithDevBypassAsync()
     {
-        try
-        {
-            _logger.LogInformation("Exchanging authorization code for tokens");
+        var userId = "22222222-2222-2222-2222-222222222222";
+        var email = "sarah.johnson@beanshare.com";
+        var name = "Sarah Johnson";
 
-            var tokenRequest = new Dictionary<string, string>
-            {
-                ["grant_type"] = "authorization_code",
-                ["client_id"] = KeycloakClientId,
-                ["code"] = code,
-                ["redirect_uri"] = CallbackUrl,
-                ["code_verifier"] = codeVerifier
-            };
-
-            using var httpClient = new HttpClient();
-            var response = await httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(tokenRequest));
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Token exchange failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
-                return new AuthResult(false, null, "Failed to exchange authorization code for tokens.");
-            }
-
-            var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>();
-            if (tokenResponse == null)
-            {
-                _logger.LogError("Failed to parse token response");
-                return new AuthResult(false, null, "Failed to parse token response.");
-            }
-
-            _logger.LogInformation("Token exchange successful. Access token received.");
-
-            await StoreTokensAsync(tokenResponse);
-
-            var userInfo = await ExtractUserInfoFromTokenAsync(tokenResponse.IdToken ?? tokenResponse.AccessToken);
-            if (userInfo == null)
-            {
-                _logger.LogError("Failed to extract user info from token");
-                return new AuthResult(false, null, "Failed to extract user information.");
-            }
-
-            _currentUser = userInfo;
-
-            await SyncUserWithApiAsync(tokenResponse.AccessToken);
-
-            _httpClient.DefaultRequestHeaders.Remove("Authorization");
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
-
-            return new AuthResult(true, userInfo, null);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Token exchange failed");
-            return new AuthResult(false, null, $"Token exchange failed: {ex.Message}");
-        }
-    }
-
-    private async Task SyncUserWithApiAsync(string accessToken)
-    {
-        try
-        {
-            using var httpClient = new HttpClient();
-            httpClient.BaseAddress = _httpClient.BaseAddress;
-            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
-
-            var response = await httpClient.PostAsync("/api/users/sync", null);
-            if (response.IsSuccessStatusCode)
-            {
-                _logger.LogInformation("User synced with API successfully");
-            }
-            else
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("Failed to sync user with API: {StatusCode} - {Error}", response.StatusCode, error);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to sync user with API (non-fatal)");
-        }
-    }
-
-    public async Task<bool> TryRefreshTokensAsync()
-    {
-        try
-        {
-            string? refreshToken = null;
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                refreshToken = await SecureStorage.Default.GetAsync("refresh_token");
-            });
-
-            if (string.IsNullOrEmpty(refreshToken))
-            {
-                _logger.LogDebug("No refresh token available");
-                return false;
-            }
-
-            _logger.LogInformation("Attempting to refresh tokens");
-
-            var tokenRequest = new Dictionary<string, string>
-            {
-                ["grant_type"] = "refresh_token",
-                ["client_id"] = KeycloakClientId,
-                ["refresh_token"] = refreshToken
-            };
-
-            using var httpClient = new HttpClient();
-            var response = await httpClient.PostAsync(TokenEndpoint, new FormUrlEncodedContent(tokenRequest));
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Token refresh failed: {StatusCode}", response.StatusCode);
-                return false;
-            }
-
-            var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>();
-            if (tokenResponse == null)
-            {
-                return false;
-            }
-
-            await StoreTokensAsync(tokenResponse);
-
-            _httpClient.DefaultRequestHeaders.Remove("Authorization");
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
-
-            _logger.LogInformation("Tokens refreshed successfully");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Token refresh failed");
-            return false;
-        }
-    }
-
-    private async Task StoreTokensAsync(KeycloakTokenResponse tokenResponse)
-    {
         var tcs = new TaskCompletionSource<bool>();
-
         MainThread.BeginInvokeOnMainThread(async () =>
         {
             try
             {
-                await SecureStorage.Default.SetAsync("access_token", tokenResponse.AccessToken);
-                await SecureStorage.Default.SetAsync("auth_token", tokenResponse.AccessToken);
-
-                if (!string.IsNullOrEmpty(tokenResponse.RefreshToken))
-                {
-                    await SecureStorage.Default.SetAsync("refresh_token", tokenResponse.RefreshToken);
-                }
-
-                if (!string.IsNullOrEmpty(tokenResponse.IdToken))
-                {
-                    await SecureStorage.Default.SetAsync("id_token", tokenResponse.IdToken);
-                }
-
-                var expiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
-                await SecureStorage.Default.SetAsync("token_expires_at", expiresAt.ToString("O"));
-
-                _logger.LogInformation("Tokens stored securely. Expires at: {ExpiresAt}", expiresAt);
+                await SecureStorage.Default.SetAsync("access_token", "dev-windows-token");
+                await SecureStorage.Default.SetAsync("user_id", userId);
+                await SecureStorage.Default.SetAsync("user_email", email);
+                await SecureStorage.Default.SetAsync("user_name", name);
+                await SecureStorage.Default.SetAsync("token_expires_at", DateTime.UtcNow.AddHours(24).ToString("O"));
                 tcs.SetResult(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to store tokens");
                 tcs.SetException(ex);
             }
         });
 
         await tcs.Task;
-    }
 
-    private async Task<UserInfo?> ExtractUserInfoFromTokenAsync(string token)
-    {
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
+        var user = new UserInfo(Guid.Parse(userId), email, name, null);
+        _currentUser = user;
+        UserContextStub.SetUser(user.Id, user.Email);
 
-            var sub = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-            var email = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-            var name = jwtToken.Claims.FirstOrDefault(c => c.Type == "name")?.Value
-                    ?? jwtToken.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value;
-            var picture = jwtToken.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
-
-            if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var userId))
-            {
-                _logger.LogError("Failed to parse user ID from token. Sub claim: {Sub}", sub);
-                return null;
-            }
-
-            var tcs = new TaskCompletionSource<bool>();
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                try
-                {
-                    await SecureStorage.Default.SetAsync("user_id", userId.ToString());
-                    await SecureStorage.Default.SetAsync("user_email", email ?? "");
-                    await SecureStorage.Default.SetAsync("user_name", name ?? "");
-                    if (!string.IsNullOrEmpty(picture))
-                    {
-                        await SecureStorage.Default.SetAsync("user_picture", picture);
-                    }
-                    tcs.SetResult(true);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            });
-            await tcs.Task;
-
-            UserContextStub.SetUser(userId, email ?? "");
-
-            return new UserInfo(userId, email ?? "", name ?? "", picture);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to extract user info from token");
-            return null;
-        }
+        _logger.LogInformation("Development bypass login successful as {Name} ({Email})", name, email);
+        return new AuthResult(true, user, null);
     }
 
     public async Task LogoutAsync()
@@ -386,7 +208,7 @@ public class AuthenticationService : IAuthenticationService
         {
             try
             {
-                var logoutUrl = $"{EndSessionEndpoint}?id_token_hint={Uri.EscapeDataString(idToken)}&post_logout_redirect_uri={Uri.EscapeDataString(CallbackUrl)}";
+                var logoutUrl = $"{_endSessionEndpoint}?id_token_hint={Uri.EscapeDataString(idToken)}&post_logout_redirect_uri={Uri.EscapeDataString(_callbackUrl)}";
                 await Browser.Default.OpenAsync(new Uri(logoutUrl), BrowserLaunchMode.SystemPreferred);
             }
             catch (Exception ex)
@@ -416,8 +238,7 @@ public class AuthenticationService : IAuthenticationService
         {
             if (expiresAt < DateTime.UtcNow.AddMinutes(1))
             {
-                var refreshed = await TryRefreshTokensAsync();
-                return refreshed;
+                return await _tokenHandler.TryRefreshTokensAsync();
             }
         }
 
@@ -461,55 +282,22 @@ public class AuthenticationService : IAuthenticationService
         return null;
     }
 
-    private static string GenerateCodeVerifier()
+    private Uri BuildAuthorizationUrl(string codeChallenge, string state, string? identityProviderHint)
     {
-        var bytes = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(bytes);
-        return Base64UrlEncode(bytes);
-    }
+        var urlBuilder = new StringBuilder(_authorizationEndpoint);
+        urlBuilder.Append($"?client_id={Uri.EscapeDataString(_keycloakClientId)}");
+        urlBuilder.Append($"&redirect_uri={Uri.EscapeDataString(_callbackUrl)}");
+        urlBuilder.Append("&response_type=code");
+        urlBuilder.Append("&scope=openid%20profile%20email");
+        urlBuilder.Append($"&code_challenge={Uri.EscapeDataString(codeChallenge)}");
+        urlBuilder.Append("&code_challenge_method=S256");
+        urlBuilder.Append($"&state={Uri.EscapeDataString(state)}");
 
-    private static string GenerateCodeChallenge(string codeVerifier)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = sha256.ComputeHash(Encoding.ASCII.GetBytes(codeVerifier));
-        return Base64UrlEncode(bytes);
-    }
+        if (!string.IsNullOrEmpty(identityProviderHint))
+        {
+            urlBuilder.Append($"&kc_idp_hint={Uri.EscapeDataString(identityProviderHint)}");
+        }
 
-    private static string GenerateRandomString(int length)
-    {
-        var bytes = new byte[length];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(bytes);
-        return Base64UrlEncode(bytes);
-    }
-
-    private static string Base64UrlEncode(byte[] bytes)
-    {
-        return Convert.ToBase64String(bytes)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
-    }
-
-    private class KeycloakTokenResponse
-    {
-        [JsonPropertyName("access_token")]
-        public string AccessToken { get; set; } = string.Empty;
-
-        [JsonPropertyName("refresh_token")]
-        public string? RefreshToken { get; set; }
-
-        [JsonPropertyName("id_token")]
-        public string? IdToken { get; set; }
-
-        [JsonPropertyName("expires_in")]
-        public int ExpiresIn { get; set; }
-
-        [JsonPropertyName("refresh_expires_in")]
-        public int RefreshExpiresIn { get; set; }
-
-        [JsonPropertyName("token_type")]
-        public string TokenType { get; set; } = string.Empty;
+        return new Uri(urlBuilder.ToString());
     }
 }

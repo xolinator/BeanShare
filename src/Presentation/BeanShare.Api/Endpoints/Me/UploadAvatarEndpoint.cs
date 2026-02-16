@@ -85,9 +85,9 @@ public sealed class UploadAvatarEndpoint : EndpointWithoutRequest<UploadAvatarRe
             var avatarUrl = $"/uploads/avatars/{fileName}";
             await SendOkAsync(new UploadAvatarResponse(true, avatarUrl, null), ct);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            await SendAsync(new UploadAvatarResponse(false, null, $"Failed to upload avatar: {ex.Message}"), 500, ct);
+            await SendAsync(new UploadAvatarResponse(false, null, "Failed to upload avatar. Please try again."), 500, ct);
         }
     }
 }

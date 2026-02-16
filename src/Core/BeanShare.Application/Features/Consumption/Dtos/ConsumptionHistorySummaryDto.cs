@@ -1,5 +1,4 @@
 namespace BeanShare.Application.Features.Consumption.Dtos;
-
 public sealed record ConsumptionHistorySummaryDto(
     decimal TotalGrams,
     int TotalEntries,

@@ -8,7 +8,6 @@ using MapsterMapper;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Queries;
-
 public sealed class GetSpaceByIdQueryHandler : IRequestHandler<GetSpaceByIdQuery, Result<SpaceDto>>
 {
     private readonly ISpaceRepository _spaceRepository;
@@ -54,6 +53,13 @@ public sealed class GetSpaceByIdQueryHandler : IRequestHandler<GetSpaceByIdQuery
             if (userLookup.TryGetValue(m.UserId, out var user))
             {
                 return m with { Email = user.Email, UserName = user.Name };
+            }
+            // Fallback: use the current user's email if this is the current user
+            if (m.UserId == _userContext.CurrentUserId.Value)
+            {
+                var email = _userContext.Email;
+                var userName = email.Contains('@') ? email.Split('@')[0] : email;
+                return m with { Email = email, UserName = userName };
             }
             return m;
         }).ToList();

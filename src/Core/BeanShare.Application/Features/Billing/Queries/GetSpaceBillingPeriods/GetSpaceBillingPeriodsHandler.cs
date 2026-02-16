@@ -7,7 +7,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Billing.Queries.GetSpaceBillingPeriods;
-
 public sealed class GetSpaceBillingPeriodsHandler : IRequestHandler<GetSpaceBillingPeriodsQuery, Result<List<BillingPeriodSummaryDto>>>
 {
     private readonly IBillingPeriodRepository _billingPeriodRepository;

@@ -1,5 +1,4 @@
 namespace BeanShare.Application.Features.CoffeeStock.Dtos;
-
 public sealed class CoffeeStockDto
 {
     public required Guid Id { get; init; }

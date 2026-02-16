@@ -59,7 +59,6 @@ public sealed class PresetConsumptionTests
         _clock.UtcNow.Returns(now);
 
         var coffeeStock = CoffeeStock.Create(spaceId, _clock);
-        var product = CoffeeProduct.Create("Espresso Shot", "Lavazza", Domain.ValueObjects.CoffeeType.Espresso);
         var product = CoffeeProduct.Create("Espresso Shot", "Espresso Shot", Domain.ValueObjects.CoffeeType.Espresso);
         coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(10, "USD"), "Test Vendor", userId, now.AddDays(-1), _clock);
         _presetRepository.GetByIdAsync(presetId, default).Returns(preset);
@@ -103,7 +102,7 @@ public sealed class PresetConsumptionTests
         _clock.UtcNow.Returns(now);
 
         var coffeeStock = CoffeeStock.Create(spaceId, _clock);
-        var product = CoffeeProduct.Create("Single Espresso", "Brand", Domain.ValueObjects.CoffeeType.Espresso);
+        var product = CoffeeProduct.Create("Single Espresso", "Single Espresso", Domain.ValueObjects.CoffeeType.Espresso);
         coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(10, "USD"), "Test Vendor", userId, now.AddDays(-1), _clock);
         _presetRepository.GetByIdAsync(presetId, default).Returns(preset);
         _coffeeStockRepository.GetBySpaceIdAsync(spaceId, default).Returns(coffeeStock);

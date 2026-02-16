@@ -134,7 +134,7 @@ public sealed class Settlement : AggregateRoot
         }
 
         // Auto-confirm zero-amount lines (members who owe nothing)
-        foreach (var line in _lines.Where(l => l.AmountDue.Amount == 0 && !l.IsConfirmed))
+        foreach (var line in _lines.Where(l => l.AmountDue.Amount == 0 && !l.IsConfirmed).ToList())
         {
             line.ConfirmPayment(line.UserId, clock);
         }

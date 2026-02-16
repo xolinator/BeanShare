@@ -8,7 +8,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Billing.Commands.CreateBillingPeriod;
-
 public sealed class CreateBillingPeriodHandler : IRequestHandler<CreateBillingPeriodCommand, Result<BillingPeriodDto>>
 {
     private readonly IBillingPeriodRepository _billingPeriodRepository;
