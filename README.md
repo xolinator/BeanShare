@@ -103,6 +103,32 @@ For quick testing without setting up PostgreSQL:
 
 Add these to `appsettings.Development.json` and run the application.
 
+### Nix / NixOS
+
+Development with Nix:
+
+```bash
+nix develop          # enter dev shell (.NET 10, git)
+nix run .#updateDeps # refresh NuGet lockfile (nix/deps.json)
+nix run .#blazorwebModuleTestContainer # build/load/run NixOS module test container in Docker
+```
+
+Test the `services.beanshare-blazorweb` NixOS module in a Docker-based NixOS container:
+
+```bash
+# default (builds x86_64-linux image)
+nix run .#blazorwebModuleTestContainer
+
+# Apple Silicon / ARM Linux target
+TARGET_SYSTEM=aarch64-linux nix run .#blazorwebModuleTestContainer
+```
+
+This command:
+- builds a NixOS container image via `dockerTools` (no project Dockerfile)
+- enables `services.beanshare-blazorweb` inside the container
+- loads and starts it under Docker with systemd
+- opens SSH (`nixos@localhost -p 2222`, password: `nixos`) for interactive testing
+
 ## Documentation
 
 - **[Deployment Guide](DEPLOYMENT.md)** - Full deployment guide with infrastructure setup

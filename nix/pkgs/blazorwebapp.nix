@@ -1,7 +1,9 @@
 { ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { pkgs
+    , ...
+    }:
     let
       blazorwebapp = pkgs.buildDotnetModule {
         pname = "beanshare-blazorwebapp";
