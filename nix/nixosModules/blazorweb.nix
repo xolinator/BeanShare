@@ -1,5 +1,6 @@
 # NixOS module for deploying BeanShare Blazor web app.
 # Use: self.nixosModules.blazorweb and set services.beanshare-blazorweb.package (e.g. self.packages.${system}.blazorwebapp).
+# Database and OIDC (Keycloak-compatible) config are passed as environment variables matching appsettings.
 
 { moduleWithSystem, ... }:
 {
@@ -7,6 +8,24 @@
     perSystem @ { inputs', ... }: nixos @ { pkgs, config, lib, system, ... }:
     let
       cfg = config.services.beanshare-blazorweb;
+      # Build connection string from structured options (PostgreSQL-style; app expects this format).
+      dbConnectionString = if cfg.database.connectionString != null
+        then cfg.database.connectionString
+        else "Host=${cfg.database.host};Port=${toString cfg.database.port};Database=${cfg.database.name};Username=${cfg.database.user};Password=${cfg.database.password}";
+      baseEnv = {
+        ASPNETCORE_ENVIRONMENT = cfg.environment;
+        ASPNETCORE_URLS = "http://${cfg.listenAddress}:${toString cfg.port}";
+      };
+      dbEnv = lib.optionalAttrs cfg.database.enable {
+        ConnectionStrings__DefaultConnection = dbConnectionString;
+      };
+      oidcEnv = lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.authority != "") {
+        UseKeycloak = "true";
+        Keycloak__Authority = cfg.oidc.authority;
+        Keycloak__ClientId = cfg.oidc.clientId;
+        Keycloak__ClientSecret = cfg.oidc.clientSecret;
+      };
+      serviceEnvironment = baseEnv // dbEnv // oidcEnv;
     in
     with lib;
     {
@@ -42,6 +61,85 @@
           type = types.str;
           default = "Production";
           description = "ASPNETCORE_ENVIRONMENT value.";
+        };
+
+        database = {
+          enable = mkOption {
+            type = types.bool;
+            default = false;
+            description = "Pass database connection to the app (ConnectionStrings:DefaultConnection).";
+          };
+
+          connectionString = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "Full connection string. If set, overrides host/port/name/user/password.";
+            example = "Host=localhost;Database=beanshare;Username=beanshare;Password=secret";
+          };
+
+          host = mkOption {
+            type = types.str;
+            default = "localhost";
+            description = "Database host.";
+          };
+
+          port = mkOption {
+            type = types.port;
+            default = 5432;
+            description = "Database port (e.g. 5432 for PostgreSQL).";
+          };
+
+          name = mkOption {
+            type = types.str;
+            default = "beanshare";
+            description = "Database name.";
+          };
+
+          user = mkOption {
+            type = types.str;
+            default = "beanshare";
+            description = "Database user.";
+          };
+
+          password = mkOption {
+            type = types.str;
+            default = "";
+            description = "Database password. Prefer environmentFile for secrets to avoid storing in Nix.";
+          };
+        };
+
+        oidc = {
+          enable = mkOption {
+            type = types.bool;
+            default = false;
+            description = "Enable OIDC authentication (Keycloak-compatible). Sets UseKeycloak and Keycloak:* config.";
+          };
+
+          authority = mkOption {
+            type = types.str;
+            default = "";
+            description = "OIDC authority URL (e.g. https://auth.example.com/realms/beanshare).";
+            example = "https://keycloak.example.com/realms/beanshare";
+          };
+
+          clientId = mkOption {
+            type = types.str;
+            default = "beanshare-web";
+            description = "OIDC client ID.";
+          };
+
+          clientSecret = mkOption {
+            type = types.str;
+            default = "";
+            description = "OIDC client secret. Prefer environmentFile for secrets to avoid storing in Nix.";
+          };
+        };
+
+        environmentFile = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Path to a file loaded as systemd EnvironmentFile (e.g. for ConnectionStrings and OIDC client secret). Overrides env vars set from database/oidc options.";
+          example = "/run/secrets/beanshare-blazorweb.env";
         };
 
         nginx = {
@@ -84,12 +182,11 @@
               RuntimeDirectory = "beanshare-blazorweb";
               Restart = "on-failure";
               RestartSec = "10s";
+            } // lib.optionalAttrs (cfg.environmentFile != null) {
+              EnvironmentFile = cfg.environmentFile;
             };
 
-            environment = {
-              ASPNETCORE_ENVIRONMENT = cfg.environment;
-              ASPNETCORE_URLS = "http://${cfg.listenAddress}:${toString cfg.port}";
-            };
+            environment = serviceEnvironment;
 
             script = ''
               exec ${cfg.package}/bin/BeanShare.BlazorWeb
