@@ -17,13 +17,32 @@
     in
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       imports =
-        [ inputs.treefmt-nix.flakeModule ]
-        ++ lib.collect builtins.isPath (h.load {
+        [
+          inputs.treefmt-nix.flakeModule
+        ]
+        ++ (lib.collect builtins.isPath (h.load {
           src = ./nix;
           loader = h.loaders.path;
-        });
+        }));
 
-      systems = [ "x86_64-linux" "aarch64-darwin" ];
+      systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+
+      # Example nixosConfiguration:
+      #   nixosConfigurations.myhost = nixosSystem {
+      #     system = "x86_64-linux";
+      #     modules = [
+      #       self.nixosModules.blazorweb
+      #       ({ config, ... }: {
+      #         services.beanshare-blazorweb = {
+      #           enable = true;
+      #           package = self.packages.${config.nixpkgs.system}.blazorwebapp;
+      #           nginx.enable = true;
+      #           nginx.domain = "beanshare.example.com";
+      #           nginx.enableACME = true;
+      #         };
+      #       })
+      #     ];
+      #   };
 
       perSystem =
         { system, ... }:
