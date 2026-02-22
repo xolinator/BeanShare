@@ -8,15 +8,19 @@
     perSystem @ { inputs', ... }: nixos @ { pkgs, config, lib, system, ... }:
     let
       cfg = config.services.beanshare-blazorweb;
+      # When using local PostgreSQL, use its port and localhost; otherwise use database.* options.
+      dbHost = if cfg.database.postgresql.enable then "localhost" else cfg.database.host;
+      dbPort = if cfg.database.postgresql.enable then config.services.postgresql.settings.port else cfg.database.port;
       # Build connection string from structured options (PostgreSQL-style; app expects this format).
       dbConnectionString = if cfg.database.connectionString != null
         then cfg.database.connectionString
-        else "Host=${cfg.database.host};Port=${toString cfg.database.port};Database=${cfg.database.name};Username=${cfg.database.user};Password=${cfg.database.password}";
+        else "Host=${dbHost};Port=${toString dbPort};Database=${cfg.database.name};Username=${cfg.database.user};Password=${cfg.database.password}";
+      useDatabase = cfg.database.enable || cfg.database.postgresql.enable;
       baseEnv = {
         ASPNETCORE_ENVIRONMENT = cfg.environment;
         ASPNETCORE_URLS = "http://${cfg.listenAddress}:${toString cfg.port}";
       };
-      dbEnv = lib.optionalAttrs cfg.database.enable {
+      dbEnv = lib.optionalAttrs useDatabase {
         ConnectionStrings__DefaultConnection = dbConnectionString;
       };
       oidcEnv = lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.authority != "") {
@@ -67,7 +71,15 @@
           enable = mkOption {
             type = types.bool;
             default = false;
-            description = "Pass database connection to the app (ConnectionStrings:DefaultConnection).";
+            description = "Pass database connection to the app (ConnectionStrings:DefaultConnection). Set to true when using an external DB; when database.postgresql.enable is true this is implied.";
+          };
+
+          postgresql = {
+            enable = mkOption {
+              type = types.bool;
+              default = true;
+              description = "Enable and use the NixOS PostgreSQL service. Ensures database and user exist; app uses this instance by default.";
+            };
           };
 
           connectionString = mkOption {
@@ -104,7 +116,7 @@
           password = mkOption {
             type = types.str;
             default = "";
-            description = "Database password. Prefer environmentFile for secrets to avoid storing in Nix.";
+            description = "Database password. Empty is valid (e.g. for local/dev). Prefer environmentFile for secrets to avoid storing in Nix.";
           };
         };
 
@@ -171,11 +183,22 @@
       };
 
       config = mkIf cfg.enable (mkMerge [
+        (mkIf cfg.database.postgresql.enable (let
+          # Escape single quotes for PostgreSQL string literal.
+          sqlEsc = s: builtins.replaceStrings [ "'" ] [ "''" ] s;
+        in {
+          services.postgresql.enable = true;
+          # Create DB and user with password on first PostgreSQL init. If PostgreSQL was already enabled elsewhere, create database/user manually and set database.password or use environmentFile.
+          services.postgresql.initialScript = pkgs.writeText "beanshare-pg-init.sql" ''
+            CREATE USER "${cfg.database.user}" WITH PASSWORD '${sqlEsc cfg.database.password}';
+            CREATE DATABASE "${cfg.database.name}" OWNER "${cfg.database.user}";
+          '';
+        }))
         {
           systemd.services.beanshare-blazorweb = {
             description = "BeanShare Blazor web application";
-            after = [ "network-online.target" ];
-            wants = [ "network-online.target" ];
+            after = [ "network-online.target" ] ++ (lib.optionals cfg.database.postgresql.enable [ "postgresql.service" ]);
+            wants = [ "network-online.target" ] ++ (lib.optionals cfg.database.postgresql.enable [ "postgresql.service" ]);
 
             serviceConfig = {
               DynamicUser = true;
