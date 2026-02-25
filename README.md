@@ -45,86 +45,61 @@ BeanShare/
 
 ### Prerequisites
 
-- .NET 10.0 SDK
-- PostgreSQL 14+
-- (Optional) Keycloak for OIDC authentication
-- (Optional) OpenExchangeRates API key for currency conversion
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-### Local Development Setup
+### Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd BeanShare
-   ```
+```bash
+# 1. Start PostgreSQL + Keycloak
+docker compose up -d
 
-2. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your local configuration
-   ```
+# 2. Run the API (auto-creates database and seeds demo data)
+cd src/Presentation/BeanShare.Api
+dotnet run
 
-3. **Set up the database**
-   ```bash
-   # Create PostgreSQL database
-   createdb beanshare
-
-   # Update connection string in .env
-   ConnectionStrings__DefaultConnection="Host=localhost;Database=beanshare;Username=postgres;Password=yourpassword"
-   ```
-
-4. **Run the API**
-   ```bash
-   cd src/Presentation/BeanShare.Api
-   dotnet run
-   ```
-
-5. **Run the Web Application**
-   ```bash
-   cd src/Presentation/BeanShare.BlazorWeb
-   dotnet run
-   ```
-
-6. **Access the application**
-   - Web App: http://localhost:5126
-   - API: http://localhost:5247
-   - Swagger: http://localhost:5247/swagger
-
-### Using Mock Services (No Database Required)
-
-For quick testing without setting up PostgreSQL:
-
-```json
-{
-  "UseMockServices": true,
-  "UseMockAuthentication": true
-}
+# 3. In another terminal, run the web app
+cd src/Presentation/BeanShare.BlazorWeb
+dotnet run
 ```
 
-Add these to `appsettings.Development.json` and run the application.
+### Access
+
+- **Web App**: http://localhost:5126
+- **API / Swagger**: http://localhost:5247/swagger
+- **Keycloak Admin**: http://localhost:8080 (admin / admin)
+
+Login with any demo user (password: `password123`):
+- `john.smith@beanshare.dev` (Admin)
+- `sarah.johnson@beanshare.com` (Member)
+- `test@beanshare.com` (Member)
+
+See [PRODUCTION-DEPLOYMENT.md](../PRODUCTION-DEPLOYMENT.md) for production deployment and [TEST.md](TEST.md) for local setup.
 
 ## Documentation
 
-- **[Deployment Guide](DEPLOYMENT.md)** - Full deployment guide with infrastructure setup
-- **[Configuration Guide](CONFIGURATION.md)** - Complete guide to all configuration options
-- **[Production Deployment Checklist](PRODUCTION_DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment checklist
-- **[CSS Architecture](CSS_ARCHITECTURE.md)** - UI styling and theming guide
+- **[Local Testing Guide](TEST.md)** - Development setup & local testing
+- **[Production Deployment](../PRODUCTION-DEPLOYMENT.md)** - Production deployment guide
+- **[Configuration Guide](CONFIGURATION.md)** - All configuration options
 - **[Architecture](ARCHITECTURE.md)** - System architecture and design decisions
+- **[API Documentation](API_DOCUMENTATION.md)** - REST API reference
+- **[User Guide](USER_GUIDE.md)** - End-user documentation
+- **[CSS Architecture](CSS_ARCHITECTURE.md)** - UI styling and theming
 
 ## Configuration
 
-BeanShare uses environment variables for sensitive configuration. See [CONFIGURATION.md](CONFIGURATION.md) for detailed information.
+See [CONFIGURATION.md](CONFIGURATION.md) for all options and [PRODUCTION-DEPLOYMENT.md](../PRODUCTION-DEPLOYMENT.md) for production setup.
 
-### Required Configuration
+### Required for Production
 
-- `ConnectionStrings__DefaultConnection` - PostgreSQL connection string
-- `Jwt__Secret` - JWT signing secret (minimum 32 characters)
-- `OpenExchangeRates__AppId` - API key from openexchangerates.org
+- PostgreSQL connection string
+- Keycloak realm URL and client secrets
+- JWT signing secret (minimum 32 characters)
 
-### Optional Configuration
+### Optional
 
-- Keycloak OIDC settings
-- Email (SMTP) settings
+- [OpenExchangeRates](https://openexchangerates.org/signup/free) API key (currency conversion)
+- SMTP credentials (email notifications)
 - OAuth providers (Google, Facebook)
 
 ## Authentication Options
@@ -132,7 +107,7 @@ BeanShare uses environment variables for sensitive configuration. See [CONFIGURA
 BeanShare supports multiple authentication methods:
 
 1. **Keycloak OIDC** (Recommended for production)
-   - Enterprise-grade authentication
+   - OAuth 2.0 / OpenID Connect
    - Single sign-on support
    - User federation
 
@@ -206,7 +181,7 @@ dotnet publish -f net10.0-windows10.0.19041.0 -c Release
 dotnet publish -f net10.0-android -c Release
 ```
 
-See [PRODUCTION_DEPLOYMENT_CHECKLIST.md](PRODUCTION_DEPLOYMENT_CHECKLIST.md) for complete deployment guide.
+See [TEST.md](TEST.md) for local setup and [PRODUCTION-DEPLOYMENT.md](../PRODUCTION-DEPLOYMENT.md) for production deployment.
 
 ## Project Structure
 
@@ -277,14 +252,7 @@ See [PRODUCTION_DEPLOYMENT_CHECKLIST.md](PRODUCTION_DEPLOYMENT_CHECKLIST.md) for
 
 ## License
 
-[Your License]
-
-## Support
-
-For issues and questions:
-- Create an issue in the repository
-- Check documentation in `/docs`
-- Review configuration guide
+This project is part of a diploma thesis at Brno University of Technology (VUT FIT).
 
 ## Roadmap
 
@@ -292,7 +260,5 @@ For issues and questions:
 - [ ] Mobile push notifications
 - [ ] Recurring billing periods
 - [ ] Integration with payment providers
-- [ ] Advanced analytics and reporting
 - [ ] Multi-language support
-- [ ] Docker containerization
 - [ ] Kubernetes deployment

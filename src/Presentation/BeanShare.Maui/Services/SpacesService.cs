@@ -19,7 +19,14 @@ public class SpacesService : ISpacesService
     {
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<SpacesResponse>("/api/spaces");
+            var httpResponse = await _httpClient.GetAsync("/api/spaces");
+            var rawJson = await httpResponse.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"[SpacesService] GET /api/spaces status: {(int)httpResponse.StatusCode}");
+            System.Diagnostics.Debug.WriteLine($"[SpacesService] Response body: {rawJson[..Math.Min(rawJson.Length, 500)]}");
+
+            httpResponse.EnsureSuccessStatusCode();
+            var response = System.Text.Json.JsonSerializer.Deserialize<SpacesResponse>(rawJson);
+            System.Diagnostics.Debug.WriteLine($"[SpacesService] Deserialized {response?.Spaces?.Count ?? 0} spaces");
             return response?.Spaces?.ToList() ?? new List<SpaceSummaryDto>();
         }
         catch (HttpRequestException ex)
@@ -30,6 +37,7 @@ public class SpacesService : ISpacesService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching user spaces");
+            System.Diagnostics.Debug.WriteLine($"[SpacesService] ERROR: {ex.GetType().Name}: {ex.Message}");
             return new List<SpaceSummaryDto>();
         }
     }

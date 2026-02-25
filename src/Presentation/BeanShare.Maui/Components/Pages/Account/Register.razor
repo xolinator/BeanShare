@@ -2,9 +2,11 @@
 @using System.ComponentModel.DataAnnotations
 @using BeanShare.Maui.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Configuration
 @inject NavigationManager Navigation
 @inject IAuthenticationService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IConfiguration Configuration
 
 <PageTitle>Create Account - BeanShare</PageTitle>
 
@@ -22,34 +24,9 @@
             </div>
         }
 
-        <EditForm Model="@_model" OnValidSubmit="@HandleRegister">
-            <DataAnnotationsValidator />
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="name">Full Name</label>
-                <InputText id="name" @bind-Value="_model.Name" class="bs-input" placeholder="John Doe" />
-                <ValidationMessage For="@(() => _model.Name)" class="bs-validation-message" />
-            </div>
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="email">Email</label>
-                <InputText id="email" @bind-Value="_model.Email" class="bs-input" placeholder="you@example.com" />
-                <ValidationMessage For="@(() => _model.Email)" class="bs-validation-message" />
-            </div>
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="password">Password</label>
-                <InputText id="password" type="password" @bind-Value="_model.Password" class="bs-input" placeholder="At least 8 characters" />
-                <ValidationMessage For="@(() => _model.Password)" class="bs-validation-message" />
-            </div>
-
-            <div class="bs-form-group">
-                <label class="bs-label" for="confirmPassword">Confirm Password</label>
-                <InputText id="confirmPassword" type="password" @bind-Value="_model.ConfirmPassword" class="bs-input" placeholder="Re-enter your password" />
-                <ValidationMessage For="@(() => _model.ConfirmPassword)" class="bs-validation-message" />
-            </div>
-
-            <button type="submit" class="bs-btn bs-btn-primary bs-w-full" disabled="@_isLoading">
+        @if (_useKeycloak)
+        {
+            <button type="button" class="bs-btn bs-btn-primary bs-w-full" disabled="@_isLoading" @onclick="HandleKeycloakRegister">
                 @if (_isLoading)
                 {
                     <span>Creating account...</span>
@@ -59,7 +36,48 @@
                     <span>Create Account</span>
                 }
             </button>
-        </EditForm>
+        }
+        else
+        {
+            <EditForm Model="@_model" OnValidSubmit="@HandleRegister">
+                <DataAnnotationsValidator />
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="name">Full Name</label>
+                    <InputText id="name" @bind-Value="_model.Name" class="bs-input" placeholder="John Doe" />
+                    <ValidationMessage For="@(() => _model.Name)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="email">Email</label>
+                    <InputText id="email" @bind-Value="_model.Email" class="bs-input" placeholder="you@example.com" />
+                    <ValidationMessage For="@(() => _model.Email)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="password">Password</label>
+                    <InputText id="password" type="password" @bind-Value="_model.Password" class="bs-input" placeholder="At least 8 characters" />
+                    <ValidationMessage For="@(() => _model.Password)" class="bs-validation-message" />
+                </div>
+
+                <div class="bs-form-group">
+                    <label class="bs-label" for="confirmPassword">Confirm Password</label>
+                    <InputText id="confirmPassword" type="password" @bind-Value="_model.ConfirmPassword" class="bs-input" placeholder="Re-enter your password" />
+                    <ValidationMessage For="@(() => _model.ConfirmPassword)" class="bs-validation-message" />
+                </div>
+
+                <button type="submit" class="bs-btn bs-btn-primary bs-w-full" disabled="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span>Creating account...</span>
+                    }
+                    else
+                    {
+                        <span>Create Account</span>
+                    }
+                </button>
+            </EditForm>
+        }
 
         <div class="bs-login-footer">
             <p class="bs-login-register">
@@ -76,6 +94,45 @@
     private RegisterModel _model = new();
     private bool _isLoading;
     private string? _errorMessage;
+    private bool _useKeycloak;
+
+    protected override void OnInitialized()
+    {
+        _useKeycloak = Configuration.GetValue<bool>("UseKeycloak", false);
+    }
+
+    private async Task HandleKeycloakRegister()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync("", "", "");
+
+            if (result.Success && result.User != null)
+            {
+                if (AuthStateProvider is MauiAuthenticationStateProvider mauiAuthStateProvider)
+                {
+                    mauiAuthStateProvider.NotifyAuthenticationStateChanged();
+                }
+
+                Navigation.NavigateTo("/spaces");
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Registration failed";
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred during registration. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
 
     private async Task HandleRegister()
     {

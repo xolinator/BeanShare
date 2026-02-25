@@ -229,18 +229,14 @@ if (app.Environment.IsDevelopment() && !useKeycloak)
 }
 
 app.UseAuthorization();
-
-if (app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var context = scope.ServiceProvider.GetRequiredService<BeanShare.Infrastructure.Persistence.BeanShareDbContext>();
-        await context.Database.EnsureCreatedAsync();
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<BeanShare.Infrastructure.Persistence.BeanShareDbContext>();
+    await context.Database.EnsureCreatedAsync();
 
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
-        var seeder = new DatabaseSeeder(context, logger);
-        await seeder.SeedAsync();
-    }
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
+    var seeder = new DatabaseSeeder(context, logger);
+    await seeder.SeedAsync(includeDemoData: app.Environment.IsDevelopment());
 }
 
 app.UseAntiforgery();

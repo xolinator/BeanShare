@@ -17,6 +17,7 @@ public class AuthenticationService : IAuthenticationService
     private readonly string _keycloakClientId;
     private readonly string _callbackUrl;
     private readonly string _authorizationEndpoint;
+    private readonly string _registrationEndpoint;
     private readonly string _endSessionEndpoint;
     private readonly bool _useKeycloak;
     private UserInfo? _currentUser;
@@ -31,7 +32,17 @@ public class AuthenticationService : IAuthenticationService
         _callbackUrl = configuration.GetValue<string>("Keycloak:RedirectUri") ?? "beanshare://callback";
         _useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
 
+        // Android emulator uses 10.0.2.2 to reach the host machine's localhost
+#if ANDROID
+        if (keycloakAuthority.Contains("localhost") || keycloakAuthority.Contains("127.0.0.1"))
+        {
+            keycloakAuthority = keycloakAuthority.Replace("localhost", "10.0.2.2").Replace("127.0.0.1", "10.0.2.2");
+            logger.LogInformation("Android emulator detected - Keycloak authority remapped to: {Authority}", keycloakAuthority);
+        }
+#endif
+
         _authorizationEndpoint = $"{keycloakAuthority}/protocol/openid-connect/auth";
+        _registrationEndpoint = $"{keycloakAuthority}/protocol/openid-connect/registrations";
         var tokenEndpoint = $"{keycloakAuthority}/protocol/openid-connect/token";
         _endSessionEndpoint = $"{keycloakAuthority}/protocol/openid-connect/logout";
 
@@ -45,7 +56,75 @@ public class AuthenticationService : IAuthenticationService
 
     public Task<AuthResult> RegisterAsync(string email, string name, string password)
     {
-        return LoginWithKeycloakAsync();
+        return RegisterWithKeycloakAsync();
+    }
+
+    /// <summary>
+    /// Opens Keycloak's self-registration page using PKCE flow.
+    /// Uses the /registrations endpoint instead of /auth to show the registration form.
+    /// </summary>
+    public async Task<AuthResult> RegisterWithKeycloakAsync()
+    {
+        if (!_useKeycloak)
+        {
+            _logger.LogInformation("UseKeycloak=false - using development authentication bypass for registration");
+            return await LoginWithDevBypassAsync();
+        }
+
+        try
+        {
+            _logger.LogInformation("Starting Keycloak PKCE registration flow");
+
+            var codeVerifier = PkceHelper.GenerateCodeVerifier();
+            var codeChallenge = PkceHelper.GenerateCodeChallenge(codeVerifier);
+            var state = PkceHelper.GenerateRandomString(32);
+
+            var registrationUrl = BuildRegistrationUrl(codeChallenge, state);
+            var callbackUri = new Uri(_callbackUrl);
+
+            _logger.LogDebug("Registration URL: {RegUrl}", registrationUrl);
+
+            var result = await WebAuthenticator.Default.AuthenticateAsync(
+                new WebAuthenticatorOptions
+                {
+                    Url = registrationUrl,
+                    CallbackUrl = callbackUri,
+                    PrefersEphemeralWebBrowserSession = false
+                });
+
+            var code = result?.Properties.GetValueOrDefault("code");
+            var returnedState = result?.Properties.GetValueOrDefault("state");
+
+            if (string.IsNullOrEmpty(code))
+            {
+                _logger.LogWarning("Keycloak registration returned no authorization code");
+                return new AuthResult(false, null, "Registration failed. No authorization code received.");
+            }
+
+            if (returnedState != state)
+            {
+                _logger.LogWarning("State mismatch in registration callback");
+                return new AuthResult(false, null, "Registration failed. State mismatch.");
+            }
+
+            var authResult = await _tokenHandler.ExchangeCodeForTokensAsync(code, codeVerifier);
+            if (authResult.Success)
+            {
+                _currentUser = authResult.User;
+            }
+
+            return authResult;
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogInformation("Keycloak registration was cancelled by user");
+            return new AuthResult(false, null, "Registration was cancelled.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Keycloak registration failed");
+            return new AuthResult(false, null, $"Registration failed: {ex.Message}");
+        }
     }
 
     public Task<AuthResult> LoginWithGoogleAsync()
@@ -218,6 +297,11 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
+    public async Task<bool> RefreshTokenAsync()
+    {
+        return await _tokenHandler.TryRefreshTokensAsync();
+    }
+
     public async Task<bool> IsAuthenticatedAsync()
     {
         string? accessToken = null;
@@ -297,6 +381,20 @@ public class AuthenticationService : IAuthenticationService
         {
             urlBuilder.Append($"&kc_idp_hint={Uri.EscapeDataString(identityProviderHint)}");
         }
+
+        return new Uri(urlBuilder.ToString());
+    }
+
+    private Uri BuildRegistrationUrl(string codeChallenge, string state)
+    {
+        var urlBuilder = new StringBuilder(_registrationEndpoint);
+        urlBuilder.Append($"?client_id={Uri.EscapeDataString(_keycloakClientId)}");
+        urlBuilder.Append($"&redirect_uri={Uri.EscapeDataString(_callbackUrl)}");
+        urlBuilder.Append("&response_type=code");
+        urlBuilder.Append("&scope=openid%20profile%20email");
+        urlBuilder.Append($"&code_challenge={Uri.EscapeDataString(codeChallenge)}");
+        urlBuilder.Append("&code_challenge_method=S256");
+        urlBuilder.Append($"&state={Uri.EscapeDataString(state)}");
 
         return new Uri(urlBuilder.ToString());
     }

@@ -72,7 +72,7 @@ else
         builder.Services.AddSingleton<IJwtTokenService, MockJwtTokenService>();
         builder.Services.AddHttpClient();
     }
-    else
+    else if (!useKeycloak)
     {
         builder.Services.AddIdentityInfrastructure(builder.Configuration);
     }
@@ -116,13 +116,54 @@ else if (useKeycloak)
             options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidIssuer = keycloakAuthority,
-                ValidateAudience = true,
-                ValidAudience = keycloakAudience,
+                ValidIssuers = new[]
+                {
+                    keycloakAuthority,
+                    // Android emulator uses 10.0.2.2 to reach host, so tokens have a different issuer
+                    keycloakAuthority.Replace("localhost", "10.0.2.2"),
+                },
+                // Keycloak public clients (beanshare-mobile) don't include an audience claim by default.
+                // Issuer validation is sufficient since all clients are in the same realm.
+                ValidateAudience = false,
                 ValidateLifetime = true,
                 NameClaimType = "preferred_username",
-                RoleClaimType = "realm_access",
                 ClockSkew = TimeSpan.FromMinutes(AuthenticationSettings.TokenClockSkewMinutes)
+            };
+
+            // Keycloak puts roles in realm_access as JSON: {"roles":["admin","user"]}
+            // ASP.NET Core can't parse nested JSON as role claims, so we extract them manually.
+            options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+            {
+                OnTokenValidated = context =>
+                {
+                    var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+                    var realmAccessClaim = identity?.FindFirst("realm_access")?.Value;
+                    if (!string.IsNullOrEmpty(realmAccessClaim))
+                    {
+                        try
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(realmAccessClaim);
+                            if (doc.RootElement.TryGetProperty("roles", out var rolesElement) &&
+                                rolesElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            {
+                                foreach (var role in rolesElement.EnumerateArray())
+                                {
+                                    var roleName = role.GetString();
+                                    if (!string.IsNullOrWhiteSpace(roleName))
+                                    {
+                                        identity!.AddClaim(new System.Security.Claims.Claim(
+                                            System.Security.Claims.ClaimTypes.Role, roleName));
+                                    }
+                                }
+                            }
+                        }
+                        catch (System.Text.Json.JsonException)
+                        {
+                            // Malformed realm_access claim — skip role extraction
+                        }
+                    }
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -194,7 +235,9 @@ app.UseFastEndpoints(c =>
     c.Serializer.Options.PropertyNamingPolicy = null;
 });
 
-if (app.Environment.IsDevelopment() && !useMockServices)
+// Seed database: essential data (global presets) in all environments,
+// demo data (users, spaces, consumption, etc.) only in development.
+if (!useMockServices)
 {
     using (var scope = app.Services.CreateScope())
     {
@@ -203,7 +246,7 @@ if (app.Environment.IsDevelopment() && !useMockServices)
 
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder>>();
         var seeder = new BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder(context, logger);
-        await seeder.SeedAsync();
+        await seeder.SeedAsync(includeDemoData: app.Environment.IsDevelopment());
     }
 }
 

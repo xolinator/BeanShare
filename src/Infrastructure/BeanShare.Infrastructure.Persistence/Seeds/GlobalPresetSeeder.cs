@@ -7,6 +7,7 @@ namespace BeanShare.Infrastructure.Persistence.Seeds;
 public class GlobalPresetSeeder : IDataSeeder
 {
     public int Order => 0;
+    public bool IsEssential => true;
 
     public async Task SeedAsync(BeanShareDbContext context, CancellationToken cancellationToken = default)
     {

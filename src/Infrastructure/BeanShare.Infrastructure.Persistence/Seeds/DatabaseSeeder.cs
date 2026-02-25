@@ -27,15 +27,23 @@ public class DatabaseSeeder
         };
     }
 
-    public async Task SeedAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Seeds the database. In production mode (includeDemoData=false), only essential seeders
+    /// run (e.g. global presets). In development (includeDemoData=true), all seeders run
+    /// including demo users, spaces, consumption data, etc.
+    /// </summary>
+    public async Task SeedAsync(bool includeDemoData = false, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Starting database seeding...");
+            var mode = includeDemoData ? "development (all data)" : "production (essential only)";
+            _logger.LogInformation("Starting database seeding in {Mode} mode...", mode);
 
-            var orderedSeeders = _seeders.OrderBy(s => s.Order);
+            var seedersToRun = _seeders
+                .Where(s => includeDemoData || s.IsEssential)
+                .OrderBy(s => s.Order);
 
-            foreach (var seeder in orderedSeeders)
+            foreach (var seeder in seedersToRun)
             {
                 var seederName = seeder.GetType().Name;
                 _logger.LogInformation("Running seeder: {SeederName}", seederName);
