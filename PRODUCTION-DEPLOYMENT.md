@@ -2,8 +2,6 @@
 
 ## Deployment Architecture
 
-### Required Services
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         PRODUCTION                               │
@@ -33,160 +31,175 @@
 
 ---
 
-## Step-by-Step Deployment
+## Prerequisites
 
-### 1. Prerequisites
-
-```bash
-# Required software
 - Docker & Docker Compose
 - .NET 10 SDK (or use containerized build)
 - PostgreSQL 15+ (or Docker container)
 - Keycloak 23+ (or Docker container)
 - Reverse proxy (NGINX, Traefik, or cloud load balancer)
 - SSL certificates (Let's Encrypt or commercial)
+
+---
+
+## Step-by-Step Deployment
+
+### 1. Database Setup
+
+Use a managed PostgreSQL service (e.g., AWS RDS, Azure Database) or run it in Docker.
+
+```sql
+CREATE DATABASE beanshare;
+CREATE USER beanshare WITH PASSWORD '<STRONG_PASSWORD>';
+GRANT ALL PRIVILEGES ON DATABASE beanshare TO beanshare;
 ```
 
-### 2. Environment Configuration
+The application automatically creates the database schema on first startup via `EnsureCreatedAsync()`. Ensure the database user has CREATE TABLE permissions.
 
-Create production environment files:
+### 2. Keycloak Setup
+
+Deploy Keycloak with a persistent database backend (not the dev H2 mode):
 
 ```bash
-# keycloak/.env.production
-KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=<STRONG_PASSWORD>
-KC_DB=postgres
-KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
-KC_DB_USERNAME=keycloak
-KC_DB_PASSWORD=<STRONG_PASSWORD>
-KC_HOSTNAME=auth.yourdomain.com
-KC_PROXY=edge
+docker run -d \
+  --name keycloak \
+  -e KC_DB=postgres \
+  -e KC_DB_URL=jdbc:postgresql://DB_HOST:5432/keycloak \
+  -e KC_DB_USERNAME=keycloak \
+  -e KC_DB_PASSWORD=<KC_DB_PASSWORD> \
+  -e KC_HOSTNAME=auth.yourdomain.com \
+  -e KEYCLOAK_ADMIN=admin \
+  -e KEYCLOAK_ADMIN_PASSWORD=<ADMIN_PASSWORD> \
+  -p 8080:8080 \
+  quay.io/keycloak/keycloak:23.0 start
+```
 
-# BeanShare appsettings.Production.json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=postgres;Database=beanshare;Username=beanshare;Password=<STRONG_PASSWORD>"
-  },
-  "Keycloak": {
-    "Authority": "https://auth.yourdomain.com/realms/beanshare",
-    "ClientId": "beanshare-web",
-    "ClientSecret": "<PRODUCTION_SECRET>"
-  }
+**Important**: Production Keycloak uses `start` (not `start-dev`), requires HTTPS, and uses a real database.
+
+After Keycloak starts, configure the realm:
+
+1. Open the Keycloak Admin Console at `https://auth.yourdomain.com/admin`
+2. Create a new realm named `beanshare`
+3. Import `scripts/keycloak-realm.json` via Realm Settings > Partial Import
+4. Update the client redirect URIs to match your production domain:
+   - `beanshare-web`: `https://yourdomain.com/*`
+   - `beanshare-api`: `https://api.yourdomain.com/*`
+   - `beanshare-mobile`: `beanshare://callback`
+5. Change client secrets for `beanshare-web` and `beanshare-api`
+6. Delete the demo users imported from the realm JSON (they are for development only)
+7. Create a real admin user and assign the `admin` realm role
+8. Enable user self-registration if desired (Realm Settings > Login > User registration)
+
+### 3. Build and Deploy the API
+
+```bash
+cd src/Presentation/BeanShare.Api
+dotnet publish -c Release -o ./publish
+```
+
+Configure via environment variables:
+
+```bash
+export ASPNETCORE_ENVIRONMENT=Production
+export ConnectionStrings__DefaultConnection="Host=DB_HOST;Port=5432;Database=beanshare;Username=beanshare;Password=<DB_PASSWORD>"
+export UseKeycloak=true
+export Keycloak__Authority="https://auth.yourdomain.com/realms/beanshare"
+export Keycloak__ClientSecret="<API_CLIENT_SECRET>"
+export Jwt__Secret="<RANDOM_SECRET_MIN_32_CHARS>"
+
+# Optional — without this, constant fallback exchange rates are used
+export OpenExchangeRates__AppId="<API_KEY>"
+
+# Optional — email notifications
+export Email__Enabled=true
+export Email__SmtpUsername="<SMTP_USER>"
+export Email__SmtpPassword="<SMTP_PASSWORD>"
+```
+
+Run:
+
+```bash
+cd publish && dotnet BeanShare.Api.dll
+```
+
+The API starts on port 5247 by default. Use a reverse proxy for HTTPS.
+
+### 4. Build and Deploy the Blazor Web App
+
+```bash
+cd src/Presentation/BeanShare.BlazorWeb
+dotnet publish -c Release -o ./publish
+```
+
+Configure via environment variables:
+
+```bash
+export ASPNETCORE_ENVIRONMENT=Production
+export ConnectionStrings__DefaultConnection="Host=DB_HOST;Port=5432;Database=beanshare;Username=beanshare;Password=<DB_PASSWORD>"
+export UseKeycloak=true
+export Keycloak__Authority="https://auth.yourdomain.com/realms/beanshare"
+export Keycloak__ClientId="beanshare-web"
+export Keycloak__ClientSecret="<WEB_CLIENT_SECRET>"
+```
+
+Run:
+
+```bash
+cd publish && dotnet BeanShare.BlazorWeb.dll
+```
+
+The web app starts on port 5126. Use a reverse proxy for HTTPS.
+
+### 5. Reverse Proxy (Nginx Example)
+
+Blazor Server uses WebSockets — the `Upgrade` and `Connection` headers are required.
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:5126;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name api.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:5247;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
-### 3. Database Setup
+---
 
-```bash
-# Create production database
-docker exec -it postgres psql -U postgres -c "CREATE DATABASE beanshare;"
-docker exec -it postgres psql -U postgres -c "CREATE USER beanshare WITH PASSWORD '<PASSWORD>';"
-docker exec -it postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE beanshare TO beanshare;"
-```
+## Database Seeding
 
-The application automatically creates the database schema on first startup via `EnsureCreatedAsync()`.
+On first startup, the application seeds **only essential data** in production:
 
-### Database Seeding
+- **12 global coffee presets** (Espresso, Cappuccino, Pour Over, AeroPress, etc.)
 
-The application uses an environment-aware seeding system. Each seeder implements `IDataSeeder` with an `IsEssential` flag that controls whether it runs in production or only in development.
+No demo users, spaces, or fake consumption data are created. Demo seeders only run in the Development environment (see [TEST.md](BeanShare/TEST.md) for local testing).
 
-| Seeder | Essential | Description |
-|--------|-----------|-------------|
-| `GlobalPresetSeeder` | Yes | 12 coffee recipe presets (Espresso, Cappuccino, Pour Over, etc.) |
-| `UserSeeder` | No | 8 demo users with hardcoded passwords |
-| `SpaceSeeder` | No | 5 demo spaces (Engineering Team, Marketing Office, etc.) |
-| `CoffeeStockSeeder` | No | Demo coffee stock purchases |
-| `ConsumptionSeeder` | No | Demo consumption entries |
-| `BillingPeriodSeeder` | No | Demo billing periods |
-
-**Production** — Only essential seeders run. The 12 global coffee presets are seeded automatically on first startup. No demo users or fake data are created.
-
-**Development** — All seeders run, populating the database with demo users, spaces, stock, consumption entries, and billing periods for local testing.
-
-The admin user in production is managed through Keycloak. When a user with the `admin` realm role logs in for the first time, their profile is automatically synchronized to the database by `UserSynchronizationService`.
-
-### 4. Keycloak Configuration
-
-```bash
-# Import the realm configuration
-# 1. Access Keycloak admin console: https://auth.yourdomain.com/admin
-# 2. Create realm "beanshare" or import keycloak/realm-export.json
-# 3. Update client secrets for production
-# 4. Configure SSL/HTTPS redirect URIs
-# 5. Optionally add external identity providers (see SSO section below)
-```
-
-### 5. Build and Deploy Blazor App
-
-```bash
-# Build for production
-cd BeanShare/src/Presentation/BeanShare.BlazorWeb
-dotnet publish -c Release -o ./publish
-
-# Or build Docker image
-docker build -t beanshare-web:latest .
-docker run -d -p 5000:80 -e ASPNETCORE_ENVIRONMENT=Production beanshare-web:latest
-```
-
-### 6. Docker Compose Production
-
-```yaml
-# docker-compose.production.yml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: beanshare
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: beanshare
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: always
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-      KC_HOSTNAME: auth.yourdomain.com
-      KC_PROXY: edge
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
-    command: start
-    depends_on:
-      - postgres
-    restart: always
-
-  beanshare-web:
-    image: beanshare-web:latest
-    environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: Host=postgres;Database=beanshare;Username=beanshare;Password=${DB_PASSWORD}
-    depends_on:
-      - postgres
-      - keycloak
-    restart: always
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./certs:/etc/nginx/certs
-    depends_on:
-      - beanshare-web
-      - keycloak
-    restart: always
-
-volumes:
-  postgres_data:
-```
+The admin user is managed through Keycloak. When a user with the `admin` realm role logs in for the first time, `UserSynchronizationService` automatically creates their profile in the database.
 
 ---
 
@@ -216,31 +229,19 @@ Refer to the [Keycloak Identity Broker documentation](https://www.keycloak.org/d
 
 ## Security Checklist
 
-- [ ] Change all default passwords
-- [ ] Enable HTTPS everywhere
-- [ ] Configure proper CORS origins
-- [ ] Enable Keycloak brute force protection (already configured)
+- [ ] Change all default passwords (Keycloak admin, database, client secrets)
+- [ ] Generate a cryptographically random JWT secret (min 32 characters)
+- [ ] Enable HTTPS on all services
+- [ ] Restrict `AllowedHosts` in appsettings to your actual domain
+- [ ] Update Keycloak client redirect URIs to production URLs
+- [ ] Delete demo users from Keycloak
+- [ ] Store all secrets in environment variables, not config files
 - [ ] Set up database backups
-- [ ] Configure rate limiting on reverse proxy
-- [ ] Review and restrict redirect URIs
-- [ ] Enable audit logging
-- [ ] Set up monitoring and alerting
+- [ ] Configure firewall rules (only expose ports 443 publicly)
 
 ---
 
-## Production URLs
-
-After deployment, your services will be available at:
-
-| Service | URL |
-|---------|-----|
-| BeanShare Web | https://yourdomain.com |
-| Keycloak Admin | https://auth.yourdomain.com/admin |
-| Keycloak Auth | https://auth.yourdomain.com/realms/beanshare |
-
----
-
-## Support and Maintenance
+## Maintenance
 
 ### Health Checks
 
@@ -255,7 +256,7 @@ curl -s https://auth.yourdomain.com/health | jq
 curl -s https://yourdomain.com/health
 ```
 
-### Backup Commands
+### Backups
 
 ```bash
 # Database backup
@@ -265,41 +266,24 @@ docker exec postgres pg_dump -U beanshare beanshare > backup_$(date +%Y%m%d).sql
 docker exec keycloak /opt/keycloak/bin/kc.sh export --dir /tmp/export --realm beanshare
 ```
 
----
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"OIDC callback error"**: Check redirect URIs in Keycloak client configuration
-2. **"Database connection failed"**: Verify connection string and PostgreSQL is running
-3. **"SSL certificate error"**: Ensure certificates are valid and properly mounted
-4. **"User not synced"**: Check `OnTokenValidated` event in Program.cs
-
 ### Logs
 
 ```bash
-# View BeanShare logs
 docker logs -f beanshare-web
-
-# View Keycloak logs
 docker logs -f keycloak
-
-# View PostgreSQL logs
 docker logs -f postgres
 ```
 
 ---
 
-## Version Information
+## Troubleshooting
 
-- **BeanShare**: v1.0.0 (Diploma Thesis)
-- **.NET**: 10.0 Preview
-- **Keycloak**: 23.0
-- **PostgreSQL**: 15
-- **Blazor**: Server-side rendering
+1. **"OIDC callback error"** — Check redirect URIs in Keycloak client configuration
+2. **"Database connection failed"** — Verify connection string and PostgreSQL is running
+3. **"SSL certificate error"** — Ensure certificates are valid and properly mounted
+4. **"User not synced"** — Check `OnTokenValidated` event in Program.cs
 
 ---
 
-*Last Updated: February 24, 2026*
+*Last Updated: February 25, 2026*
 *Author: Oliver Golec*
