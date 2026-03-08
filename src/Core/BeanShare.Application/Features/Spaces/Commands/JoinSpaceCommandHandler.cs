@@ -35,7 +35,7 @@ public sealed class JoinSpaceCommandHandler : IRequestHandler<JoinSpaceCommand, 
 
         if (space.HasMember(_userContext.CurrentUserId))
         {
-            return Result<JoinSpaceResult>.Success(new JoinSpaceResult(space.Id.Value, space.Name));
+            return Result<JoinSpaceResult>.Failure(Error.AlreadySpaceMember(space.Id.Value, _userContext.CurrentUserId));
         }
 
         space.Join(_userContext.CurrentUserId, _clock);

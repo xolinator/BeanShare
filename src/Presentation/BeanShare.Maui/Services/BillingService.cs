@@ -27,14 +27,12 @@ public class BillingService : IBillingService
 
     public async Task<BillingPeriodDto?> GetBillingPeriodByIdAsync(Guid billingPeriodId)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<BillingPeriodDto>($"/api/billing-periods/{billingPeriodId}");
-        }
-        catch
+        var response = await _httpClient.GetAsync($"/api/billing-periods/{billingPeriodId}");
+        if (!response.IsSuccessStatusCode)
         {
             return null;
         }
+        return await response.Content.ReadFromJsonAsync<BillingPeriodDto>();
     }
 
     public async Task<BillingPeriodDto?> CreateBillingPeriodAsync(Guid spaceId, CreateBillingPeriodDto dto)

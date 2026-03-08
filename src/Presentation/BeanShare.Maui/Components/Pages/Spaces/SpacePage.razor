@@ -60,9 +60,11 @@ else
             <SpaceMembers Members="@space.Members"
                          IsLoading="@isLoadingMembers"
                          IsAdmin="@isAdmin"
+                         CurrentUserId="@UserContext.CurrentUserId.Value"
                          OnPromoteMember="HandlePromoteMember"
                          OnDemoteMember="HandleDemoteMember"
-                         OnRemoveMember="HandleRemoveMember" />
+                         OnRemoveMember="HandleRemoveMember"
+                         OnLeaveSpace="HandleLeaveSpace" />
         }
         else if (activeTab == "stock")
         {
@@ -259,6 +261,7 @@ else
         }
 
         isLoadingConsumption = true;
+        StateHasChanged();
         try
         {
             var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(spaceGuid);
@@ -285,6 +288,7 @@ else
         finally
         {
             isLoadingConsumption = false;
+            StateHasChanged();
         }
     }
 
@@ -413,6 +417,33 @@ else
         }
     }
 
+    private async Task HandleLeaveSpace()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid space ID");
+            return;
+        }
+
+        try
+        {
+            var success = await SpacesService.LeaveSpaceAsync(spaceGuid);
+            if (success)
+            {
+                Navigation.NavigateTo("/spaces");
+                return;
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to leave space. You may have unpaid settlements or be the last admin.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to leave space: {ex.Message}");
+        }
+    }
+
     private async Task HandleAddPurchase(AddPurchaseModal.AddPurchaseModel model)
     {
         if (!Guid.TryParse(SpaceId, out var spaceGuid))
@@ -492,6 +523,7 @@ else
                     : $"Logged consumption for {successCount} members!";
                 ShowToast(false, "Success", msg);
                 await LoadConsumption();
+                StateHasChanged();
             }
             else
             {

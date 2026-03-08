@@ -47,6 +47,12 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
             return Result<StockPurchaseDto>.Failure(Error.InsufficientSpacePrivileges("manage coffee stock"));
         }
 
+        if (!string.Equals(space.Currency.Code, command.CostCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            return Result<StockPurchaseDto>.Failure(
+                Error.CurrencyConflict(space.Currency.Code, command.CostCurrency));
+        }
+
         try
         {
             var product = CoffeeProduct.Create(

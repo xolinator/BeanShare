@@ -187,6 +187,27 @@ public class SpacesService : ISpacesService
         }
     }
 
+    public async Task<bool> LeaveSpaceAsync(Guid spaceId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"/api/spaces/{spaceId}/leave",
+                new { SpaceId = spaceId });
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to leave space {SpaceId} - network error", spaceId);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while leaving space {SpaceId}", spaceId);
+            return false;
+        }
+    }
+
     private record CreateSpaceResponse(Guid SpaceId);
     private record SpacesResponse(IReadOnlyList<SpaceSummaryDto> Spaces);
 

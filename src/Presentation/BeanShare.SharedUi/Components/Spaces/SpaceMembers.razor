@@ -38,7 +38,28 @@ else
                       OnRemove="HandleRemove" />
         }
     </div>
+
+    @if (CanLeave)
+    {
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--bs-border);">
+            <button class="bs-btn bs-btn-error"
+                    style="width: 100%;"
+                    @onclick="ShowLeaveConfirmation">
+                <span class="material-symbols-outlined" style="font-size: 1.25rem; vertical-align: middle; margin-right: 0.5rem;">logout</span>
+                Leave Space
+            </button>
+        </div>
+    }
 }
+
+<ConfirmDialog IsVisible="@showLeaveDialog"
+               Title="Leave Space"
+               Message="Are you sure you want to leave this space? You will lose access to all space data, consumption history, and settlements. You can rejoin later with an invite code."
+               ConfirmText="Leave Space"
+               IsDestructive="true"
+               IsProcessing="@isLeaving"
+               OnConfirm="HandleLeaveConfirmed"
+               OnCancel="@(() => showLeaveDialog = false)" />
 
 @code {
     [Parameter]
@@ -51,6 +72,9 @@ else
     public bool IsAdmin { get; set; }
 
     [Parameter]
+    public Guid CurrentUserId { get; set; }
+
+    [Parameter]
     public EventCallback<string> OnPromoteMember { get; set; }
 
     [Parameter]
@@ -59,9 +83,44 @@ else
     [Parameter]
     public EventCallback<string> OnRemoveMember { get; set; }
 
+    [Parameter]
+    public EventCallback OnLeaveSpace { get; set; }
+
     private int AdminCount => Members?.Count(m => m.Role == "Admin") ?? 0;
+
+    private bool CanLeave
+    {
+        get
+        {
+            if (CurrentUserId == Guid.Empty || Members == null) return false;
+            var currentMember = Members.FirstOrDefault(m => m.UserId == CurrentUserId);
+            return currentMember != null && currentMember.Role != "Admin";
+        }
+    }
+
+    private bool showLeaveDialog;
+    private bool isLeaving;
 
     private Task HandlePromote(string userId) => OnPromoteMember.InvokeAsync(userId);
     private Task HandleDemote(string userId) => OnDemoteMember.InvokeAsync(userId);
     private Task HandleRemove(string userId) => OnRemoveMember.InvokeAsync(userId);
+
+    private void ShowLeaveConfirmation()
+    {
+        showLeaveDialog = true;
+    }
+
+    private async Task HandleLeaveConfirmed()
+    {
+        isLeaving = true;
+        try
+        {
+            await OnLeaveSpace.InvokeAsync();
+        }
+        finally
+        {
+            isLeaving = false;
+            showLeaveDialog = false;
+        }
+    }
 }

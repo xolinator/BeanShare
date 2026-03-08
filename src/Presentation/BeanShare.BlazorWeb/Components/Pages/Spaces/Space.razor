@@ -64,9 +64,11 @@ else
             <SpaceMembers Members="@space.Members"
                          IsLoading="@isLoadingMembers"
                          IsAdmin="@isAdmin"
+                         CurrentUserId="@UserContext.CurrentUserId.Value"
                          OnPromoteMember="HandlePromoteMember"
                          OnDemoteMember="HandleDemoteMember"
-                         OnRemoveMember="HandleRemoveMember" />
+                         OnRemoveMember="HandleRemoveMember"
+                         OnLeaveSpace="HandleLeaveSpace" />
         }
         else if (activeTab == "stock")
         {
@@ -373,6 +375,33 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to remove member: {ex.Message}");
+        }
+    }
+
+    private async Task HandleLeaveSpace()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid space ID");
+            return;
+        }
+
+        try
+        {
+            var result = await Mediator.Send(new LeaveSpaceCommand(spaceGuid));
+            if (result.IsSuccess)
+            {
+                Navigation.NavigateTo("/spaces");
+                return;
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to leave space: {ex.Message}");
         }
     }
 

@@ -16,18 +16,13 @@ public sealed class WeightedAverageCostingPolicy : ICostingPolicy
         ArgumentNullException.ThrowIfNull(totalConsumed);
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);
 
-        var purchasesList = purchases.ToList();
+        var purchasesList = purchases
+            .Where(p => p.Cost.Currency.Code == currency)
+            .ToList();
 
         if (!purchasesList.Any())
         {
             return Money.Create(0, currency);
-        }
-
-        var mismatchedCurrency = purchasesList.FirstOrDefault(p => p.Cost.Currency.Code != currency);
-        if (mismatchedCurrency != null)
-        {
-            throw new InvalidOperationException(
-                $"Purchase currency mismatch: expected '{currency}' but found '{mismatchedCurrency.Cost.Currency.Code}'");
         }
 
         if (totalConsumed.IsZero)

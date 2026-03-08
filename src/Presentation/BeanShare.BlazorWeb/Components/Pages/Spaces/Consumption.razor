@@ -270,36 +270,27 @@ else
 
             foreach (var targetUserId in targetUserIds)
             {
-                Result<ConsumptionEntryDto> result;
-
-                if (model.PresetId.HasValue)
-                {
-                    result = await Mediator.Send(new RecordConsumptionFromPresetCommand(
-                        spaceGuid,
-                        model.PresetId.Value,
-                        model.Grams,
-                        consumedAtUtc,
-                        targetUserId
-                    ));
-                }
-                else
-                {
-                    result = await Mediator.Send(new RecordConsumptionCommand(
-                        spaceGuid,
-                        model.ProductName,
-                        model.ProductBrand,
-                        model.ProductType,
-                        model.Grams,
-                        consumedAtUtc,
-                        model.PresetName,
-                        targetUserId
-                    ));
-                }
+                var result = await Mediator.Send(new RecordConsumptionCommand(
+                    spaceGuid,
+                    model.ProductName,
+                    model.ProductBrand,
+                    model.ProductType,
+                    model.Grams,
+                    consumedAtUtc,
+                    model.PresetName,
+                    targetUserId
+                ));
 
                 if (result.IsSuccess)
                     successCount++;
                 else
                     errors.AddRange(result.Errors.Select(e => e.Message));
+            }
+
+            // Track preset usage if a custom preset was used
+            if (successCount > 0 && model.PresetId.HasValue)
+            {
+                await Mediator.Send(new RecordPresetUsageCommand(model.PresetId.Value));
             }
 
             if (successCount > 0)

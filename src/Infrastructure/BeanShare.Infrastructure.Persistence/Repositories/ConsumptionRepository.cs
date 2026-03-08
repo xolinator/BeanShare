@@ -25,6 +25,7 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
     {
         var specification = new ConsumptionBySpaceSpecification(spaceId);
         return await _context.Consumptions
+            .AsNoTracking()
             .Where(specification.Criteria)
             .OrderByDescending(c => c.ConsumedAt)
             .ToListAsync(cancellationToken);
@@ -35,6 +36,7 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
         ArgumentNullException.ThrowIfNull(specification);
 
         return await _context.Consumptions
+            .AsNoTracking()
             .Where(specification.Criteria)
             .OrderByDescending(c => c.ConsumedAt)
             .ToListAsync(cancellationToken);

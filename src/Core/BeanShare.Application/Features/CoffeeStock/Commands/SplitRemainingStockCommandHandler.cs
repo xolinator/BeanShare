@@ -67,7 +67,7 @@ public sealed class SplitRemainingStockCommandHandler : IRequestHandler<SplitRem
             return Result<SplitRemainingStockResult>.Failure(Error.NoRemainingStock());
         }
 
-        var product = stockLevel.Product;
+        var product = CoffeeProduct.Create(stockLevel.Product.Name, stockLevel.Product.Brand, stockLevel.Product.Type);
 
         var allConsumptions = await _consumptionRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
         var productConsumptions = allConsumptions
@@ -121,11 +121,13 @@ public sealed class SplitRemainingStockCommandHandler : IRequestHandler<SplitRem
         var now = _clock.UtcNow;
         foreach (var allocation in allocations.Where(a => a.AllocatedGrams > 0))
         {
+            // Each ConsumptionEntry needs its own CoffeeProduct instance for EF owned-type tracking
+            var entryProduct = CoffeeProduct.Create(product.Name, product.Brand, product.Type);
             var quantity = Weight.FromGrams(allocation.AllocatedGrams);
             var consumptionEntry = ConsumptionEntry.Create(
                 spaceId,
                 new UserId(allocation.UserId),
-                product,
+                entryProduct,
                 quantity,
                 now,
                 _clock,

@@ -11,4 +11,5 @@ public interface ISpacesService
     Task<bool> PromoteMemberAsync(Guid spaceId, Guid userId);
     Task<bool> DemoteMemberAsync(Guid spaceId, Guid userId);
     Task<bool> RemoveMemberAsync(Guid spaceId, Guid userId);
+    Task<bool> LeaveSpaceAsync(Guid spaceId);
 }

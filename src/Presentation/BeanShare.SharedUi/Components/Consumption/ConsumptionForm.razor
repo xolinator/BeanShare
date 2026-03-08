@@ -216,10 +216,9 @@
     {
         if (PresetData != null)
         {
-            model.ProductName = PresetData.Name;
-            model.ProductType = PresetData.CoffeeType;
             model.Grams = (int)PresetData.DefaultGrams;
             model.PresetId = PresetData.Id;
+            model.PresetName = PresetData.Name;
 
             isCustomMode = true;
             selectedPresetOption = null;

@@ -57,11 +57,10 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
 
         if (!Enum.TryParse<Domain.ValueObjects.CoffeeType>(preset.CoffeeType, true, out var coffeeType))
         {
-            return Result<ConsumptionEntryDto>.Failure(Error.InvalidCoffeeTypeInPreset());
+            coffeeType = Domain.ValueObjects.CoffeeType.Specialty;
         }
 
         var quantityGrams = request.CustomQuantityGrams ?? preset.DefaultGrams.Grams;
-        var product = CoffeeProduct.Create(preset.Name, preset.Name, coffeeType);
         var quantity = Weight.FromGrams(quantityGrams);
         var consumedAt = request.ConsumedAt ?? _clock.UtcNow;
 
@@ -75,6 +74,15 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
         {
             return Result<ConsumptionEntryDto>.Failure(Error.StockNotFound(request.SpaceId));
         }
+
+        var stockProduct = coffeeStock.StockLevels
+            .Where(sl => sl.CurrentStock.Grams > 0)
+            .OrderByDescending(sl => sl.Product.Type == coffeeType)
+            .ThenByDescending(sl => sl.CurrentStock.Grams)
+            .Select(sl => sl.Product)
+            .FirstOrDefault();
+
+        var product = stockProduct ?? CoffeeProduct.Create(preset.Name, preset.Name, coffeeType);
 
         try
         {

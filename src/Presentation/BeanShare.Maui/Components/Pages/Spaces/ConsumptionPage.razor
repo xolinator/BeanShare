@@ -305,6 +305,7 @@ else
                 ShowToast(false, "Success", msg);
                 await LoadConsumption();
                 await LoadStock();
+                StateHasChanged();
             }
             else
             {
