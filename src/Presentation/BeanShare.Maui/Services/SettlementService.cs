@@ -25,29 +25,31 @@ public class SettlementService : ISettlementService
         }
     }
 
-    public async Task<SettlementDto?> GetSettlementByIdAsync(Guid settlementId)
+    public async Task<SettlementDto> GetSettlementByIdAsync(Guid settlementId)
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<SettlementDto>($"/api/settlements/{settlementId}");
+            var result = await _httpClient.GetFromJsonAsync<SettlementDto>($"/api/settlements/{settlementId}");
+            return result!;
         }
         catch
         {
-            return null;
+            return null!;
         }
     }
 
-    public async Task<SettlementDto?> GenerateSettlementAsync(Guid billingPeriodId)
+    public async Task<SettlementDto> GenerateSettlementAsync(Guid billingPeriodId)
     {
         try
         {
             var response = await _httpClient.PostAsync($"/api/billing-periods/{billingPeriodId}/settlement", null);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<SettlementDto>();
+            var result = await response.Content.ReadFromJsonAsync<SettlementDto>();
+            return result!;
         }
         catch
         {
-            return null;
+            return null!;
         }
     }
 

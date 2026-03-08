@@ -6,7 +6,6 @@ namespace BeanShare.Maui.Services;
 public interface IPresetService
 {
     Task<List<PresetOption>> GetQuickPresetsAsync(Guid spaceId);
-    Task<PresetDto?> GetPresetByIdAsync(Guid presetId);
     Task<bool> TogglePresetFavoriteAsync(Guid spaceId, Guid? globalPresetId, Guid? spacePresetId, bool isFavorite);
     Task<List<SpaceGlobalPresetDto>> GetSpaceGlobalPresetsAsync(Guid spaceId);
     Task<bool> ToggleGlobalPresetAsync(Guid spaceId, Guid globalPresetId, bool isEnabled);

@@ -2,17 +2,13 @@
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using BeanShare.SharedUi.Components.Analytics
 @using BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics
-@using BeanShare.Application.Features.CoffeeStock.Dtos
 @using BeanShare.Application.Abstractions
-@using BeanShare.Maui.Services
 @inject ISpacesService SpacesService
 @inject IStockService StockService
 @inject IConsumptionService ConsumptionService
 @inject IAnalyticsService AnalyticsService
-@inject IPresetService PresetService
 @inject NavigationManager Navigation
 @inject IUserContext UserContext
-@inject IAlertService AlertService
 
 <PageTitle>@spaceName - BeanShare</PageTitle>
 
@@ -40,7 +36,7 @@ else
                     <span class="bs-text-subtle" style="font-size: 0.75rem; font-weight: 600;">INVITE CODE</span>
                     <div class="bs-flex bs-items-center bs-gap-2">
                         <span style="font-family: monospace; font-size: 0.875rem; font-weight: 700;">@space.InviteCode</span>
-                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code" @onclick="CopyInviteCode">
+                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code">
                             <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
                         </button>
                     </div>
@@ -68,8 +64,7 @@ else
         {
             <div>
                 <StockPurchases Purchases="@purchases"
-                               IsLoading="@isLoadingStock"
-                               CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                               IsLoading="@isLoadingStock" />
 
                 @if (isAdmin)
                 {
@@ -87,14 +82,9 @@ else
             <div class="bs-flex bs-flex-col bs-gap-6">
                 <ConsumptionKpis MyCupsToday="@myCupsToday"
                                 MyTotalCost="@myTotalCost"
-                                RemainingStockGrams="@remainingStock"
-                                CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                                RemainingStockGrams="@remainingStock" />
 
-                <ConsumptionForm OnSubmit="HandleLogConsumption"
-                                 StockProducts="@stockProducts"
-                                 QuickPresets="@quickPresets"
-                                 SpaceMembers="@space?.Members?.ToList()"
-                                 CurrentUserId="@UserContext.CurrentUserId.Value" />
+                <ConsumptionForm OnSubmit="HandleLogConsumption" />
 
                 <RecentConsumptionList RecentLogs="@recentConsumptions"
                                       IsLoading="@isLoadingConsumption" />
@@ -137,8 +127,7 @@ else
 
 <AddPurchaseModal IsVisible="@showAddPurchaseModal"
                  OnSubmit="HandleAddPurchase"
-                 OnCancel="@(() => showAddPurchaseModal = false)"
-                 CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                 OnCancel="@(() => showAddPurchaseModal = false)" />
 
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
@@ -162,8 +151,6 @@ else
     private bool isLoadingAnalytics;
 
     private List<StockPurchaseDto> purchases = new();
-    private List<StockLevelDto> stockProducts = new();
-    private List<PresetOption> quickPresets = new();
     private List<ConsumptionEntryDto> recentConsumptions = new();
     private int myCupsToday = 0;
     private decimal myTotalCost = 0m;
@@ -269,14 +256,6 @@ else
                 myTotalCost = consumptionData.MyTotalCost;
                 remainingStock = consumptionData.RemainingStockGrams;
             }
-
-            var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
-            if (stockData?.StockLevels != null)
-            {
-                stockProducts = stockData.StockLevels.ToList();
-            }
-
-            quickPresets = await PresetService.GetQuickPresetsAsync(spaceGuid);
         }
         catch (Exception ex)
         {
@@ -318,9 +297,6 @@ else
     private async Task HandleTabChange(string newTab)
     {
         activeTab = newTab;
-        isLoadingStock = (newTab == "stock");
-        isLoadingConsumption = (newTab == "consumption");
-        isLoadingAnalytics = (newTab == "analytics");
         StateHasChanged();
         await LoadTabData();
         StateHasChanged();
@@ -459,38 +435,15 @@ else
 
         try
         {
-            var targetUserIds = new List<Guid?>();
-            if (model.ForUserIds != null && model.ForUserIds.Count > 0)
-            {
-                targetUserIds.AddRange(model.ForUserIds.Select(id => (Guid?)id));
-            }
-            else
-            {
-                targetUserIds.Add(null);
-            }
+            var success = await ConsumptionService.RecordConsumptionAsync(
+                spaceGuid,
+                model.Grams,
+                model.ConsumedAt
+            );
 
-            var successCount = 0;
-            foreach (var targetUserId in targetUserIds)
+            if (success)
             {
-                var success = await ConsumptionService.RecordConsumptionAsync(
-                    spaceGuid,
-                    model.ProductName ?? "Coffee",
-                    model.ProductBrand ?? "Generic",
-                    model.ProductType ?? "Ground",
-                    model.Grams,
-                    model.ConsumedAt.ToUniversalTime(),
-                    model.PresetName,
-                    targetUserId
-                );
-                if (success) successCount++;
-            }
-
-            if (successCount > 0)
-            {
-                var msg = successCount == 1
-                    ? "Consumption logged successfully!"
-                    : $"Logged consumption for {successCount} members!";
-                ShowToast(false, "Success", msg);
+                ShowToast(false, "Success", "Consumption logged successfully!");
                 await LoadConsumption();
             }
             else
@@ -501,15 +454,6 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to log consumption: {ex.Message}");
-        }
-    }
-
-    private async Task CopyInviteCode()
-    {
-        if (space?.InviteCode != null)
-        {
-            await Clipboard.Default.SetTextAsync(space.InviteCode);
-            await AlertService.ShowAlertAsync("Copied", "Invite code copied to clipboard!");
         }
     }
 

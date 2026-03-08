@@ -1,6 +1,5 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Domain.Aggregates.Space;
-using BeanShare.Domain.Common;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +32,6 @@ public sealed class SpaceRepository : ISpaceRepository
 
     public async Task<IReadOnlyList<Space>> GetBySpecAsync(ISpec<Space> specification, CancellationToken cancellationToken = default)
     {
-        // TODO: Add pagination support when space count gets large (>100)
         return await _context.Spaces
             .Include(s => s.Members)
             .Where(specification.Criteria)
@@ -49,11 +47,5 @@ public sealed class SpaceRepository : ISpaceRepository
     {
         _context.Spaces.Update(space);
         return Task.CompletedTask;
-    }
-
-    public async Task<int> GetUserSpaceCountAsync(UserId userId, CancellationToken cancellationToken = default)
-    {
-        return await _context.Spaces
-            .CountAsync(s => s.Members.Any(m => m.UserId == userId), cancellationToken);
     }
 }

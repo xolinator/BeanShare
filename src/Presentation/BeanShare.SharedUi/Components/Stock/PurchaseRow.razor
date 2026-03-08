@@ -7,7 +7,7 @@
             </p>
         </div>
         <div style="text-align: right;">
-            <p class="bs-font-bold" style="margin: 0;">@FormatCurrency(TotalCost)</p>
+            <p class="bs-font-bold" style="margin: 0;">@TotalCost.ToString("C")</p>
             <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">
                 @QuantityGrams g
             </p>
@@ -31,9 +31,6 @@
     public decimal TotalCost { get; set; }
 
     [Parameter]
-    public string CurrencyCode { get; set; } = "USD";
-
-    [Parameter]
     public int QuantityGrams { get; set; }
 
     [Parameter]
@@ -54,19 +51,6 @@
             if (parts.Length >= 2)
                 return $"{parts[0][0]}{parts[1][0]}".ToUpper();
             return PurchasedByName.Length >= 2 ? PurchasedByName.Substring(0, 2).ToUpper() : PurchasedByName.ToUpper();
-        }
-    }
-
-    private string FormatCurrency(decimal amount)
-    {
-        try
-        {
-            var currency = BeanShare.Domain.ValueObjects.Currency.Create(CurrencyCode);
-            return currency.FormatAmount(amount);
-        }
-        catch
-        {
-            return $"{amount:N2}";
         }
     }
 }

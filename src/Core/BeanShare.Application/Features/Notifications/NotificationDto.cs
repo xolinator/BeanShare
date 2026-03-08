@@ -1,4 +1,5 @@
 namespace BeanShare.Application.Features.Notifications;
+
 public sealed record NotificationDto(
     Guid Id,
     string Type,

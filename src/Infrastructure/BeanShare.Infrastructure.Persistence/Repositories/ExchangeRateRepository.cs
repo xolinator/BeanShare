@@ -53,21 +53,9 @@ public sealed class ExchangeRateRepository : IExchangeRateRepository
 
     public async Task UpsertRatesAsync(IEnumerable<ExchangeRate> rates, CancellationToken ct = default)
     {
-        var existingRates = await _context.ExchangeRates.ToListAsync(ct);
-        var existingLookup = existingRates.ToDictionary(
-            r => (r.BaseCurrencyCode, r.TargetCurrencyCode));
-
         foreach (var rate in rates)
         {
-            var key = (rate.BaseCurrencyCode.ToUpperInvariant(), rate.TargetCurrencyCode.ToUpperInvariant());
-            if (existingLookup.TryGetValue(key, out var existing))
-            {
-                existing.UpdateRate(rate.Rate, rate.FetchedAt);
-            }
-            else
-            {
-                await _context.ExchangeRates.AddAsync(rate, ct);
-            }
+            await UpsertRateAsync(rate, ct);
         }
     }
 }

@@ -1,6 +1,7 @@
 using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Application.Features.Analytics.Queries.GetUserStatistics;
+
 public sealed record CurrencyBreakdownDto
 {
     public string CurrencyCode { get; init; } = string.Empty;

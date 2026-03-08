@@ -1,10 +1,10 @@
-namespace BeanShare.Tests.Unit;
+﻿namespace BeanShare.Tests.Unit;
 
 public class UnitTest1
 {
     [Fact]
-    public void PlaceholderTest_ShouldPass()
+    public void Test1()
     {
-        true.Should().BeTrue();
+
     }
 }

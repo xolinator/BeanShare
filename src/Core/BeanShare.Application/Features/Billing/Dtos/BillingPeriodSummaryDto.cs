@@ -1,4 +1,5 @@
 namespace BeanShare.Application.Features.Billing.Dtos;
+
 public sealed record BillingPeriodSummaryDto(
     Guid Id,
     string Name,

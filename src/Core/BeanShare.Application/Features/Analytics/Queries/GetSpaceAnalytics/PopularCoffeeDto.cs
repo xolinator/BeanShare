@@ -1,4 +1,5 @@
 namespace BeanShare.Application.Features.Analytics.Queries.GetSpaceAnalytics;
+
 public sealed record PopularCoffeeDto
 {
     public string CoffeeName { get; init; } = string.Empty;

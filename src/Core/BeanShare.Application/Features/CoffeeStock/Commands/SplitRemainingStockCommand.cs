@@ -3,6 +3,7 @@ using BeanShare.Application.Common;
 using BeanShare.Application.Common.Authorization;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;
+
 [RequireSpaceAdmin("SpaceId")]
 public sealed record SplitRemainingStockCommand(
     Guid SpaceId,

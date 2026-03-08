@@ -3,9 +3,6 @@ using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Domain.Services;
 
-/// <summary>
-/// Strategy for calculating the cost of coffee consumption based on purchase history.
-/// </summary>
 public interface ICostingPolicy
 {
     Money CalculateCost(

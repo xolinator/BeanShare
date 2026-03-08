@@ -514,18 +514,10 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("DeactivatedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
 
                     b.Property<DateTime>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
@@ -554,22 +546,11 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<int>("SystemRole")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("IX_Users_Email");
-
-                    b.HasIndex("IsActive")
-                        .HasDatabaseName("IX_Users_IsActive");
-
-                    b.HasIndex("SystemRole")
-                        .HasDatabaseName("IX_Users_SystemRole");
 
                     b.HasIndex("Provider", "ProviderUserId")
                         .IsUnique()

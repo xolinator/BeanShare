@@ -12,7 +12,54 @@
     </div>
 </div>
 
+<style>
+    .logout-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, var(--bs-primary-light) 0%, var(--bs-background-light) 100%);
+    }
+
+    .logout-content {
+        text-align: center;
+        padding: 2rem;
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        width: 100%;
+    }
+
+    .logout-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--bs-border);
+        border-top-color: var(--bs-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1.5rem;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .logout-content h2 {
+        margin: 0 0 0.5rem;
+        color: var(--bs-text);
+        font-size: 1.5rem;
+    }
+
+    .logout-content p {
+        margin: 0;
+        color: var(--bs-text-subtle);
+    }
+</style>
+
 @code {
+    private System.Threading.Timer? timer;
+
     protected override async Task OnInitializedAsync()
     {
         await PerformLogout();
@@ -53,17 +100,17 @@
             await Task.Delay(500);
 
             System.Diagnostics.Debug.WriteLine("[Logout] Navigating to login");
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("/login", forceLoad: true);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Logout] Error during logout: {ex.Message}");
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("/login", forceLoad: true);
         }
     }
 
     public void Dispose()
     {
-        // Nothing to dispose
+        timer?.Dispose();
     }
 }

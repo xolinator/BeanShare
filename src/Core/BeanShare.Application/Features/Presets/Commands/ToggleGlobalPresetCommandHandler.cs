@@ -8,6 +8,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Commands;
+
 public sealed class ToggleGlobalPresetCommandHandler : IRequestHandler<ToggleGlobalPresetCommand, Result>
 {
     private readonly ISpaceGlobalPresetConfigRepository _configRepository;

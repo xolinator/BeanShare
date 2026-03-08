@@ -9,5 +9,4 @@ public sealed class QuickConsumptionRequest
     public string ProductType { get; set; } = "";
     public string? PresetName { get; set; }
     public DateTime ConsumedAt { get; set; } = DateTime.Now;
-    public List<Guid>? ForUserIds { get; set; }
 }

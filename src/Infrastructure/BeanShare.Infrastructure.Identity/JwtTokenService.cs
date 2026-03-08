@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BeanShare.Application.Constants;
 using BeanShare.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -28,9 +27,7 @@ public sealed class JwtTokenService : IJwtTokenService
         _secret = configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
         _issuer = configuration["Jwt:Issuer"] ?? "BeanShare";
         _audience = configuration["Jwt:Audience"] ?? "BeanShare";
-        _expirationMinutes = int.TryParse(configuration["Jwt:ExpirationMinutes"], out var minutes)
-            ? minutes
-            : AuthenticationSettings.RefreshTokenExpirationMinutes;
+        _expirationMinutes = int.TryParse(configuration["Jwt:ExpirationMinutes"], out var minutes) ? minutes : 1440;
     }
 
     public string GenerateToken(User user)
@@ -80,7 +77,7 @@ public sealed class JwtTokenService : IJwtTokenService
                 ValidateAudience = true,
                 ValidAudience = _audience,
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromMinutes(AuthenticationSettings.TokenClockSkewMinutes)
+                ClockSkew = TimeSpan.FromMinutes(5)
             };
 
             var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);

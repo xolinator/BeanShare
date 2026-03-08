@@ -19,7 +19,6 @@ public sealed class CoffeeStockQueryTests
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly ISpaceRepository _spaceRepository;
-    private readonly IUserRepository _userRepository;
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
     private readonly IClock _clock;
@@ -30,7 +29,6 @@ public sealed class CoffeeStockQueryTests
     {
         _coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
         _spaceRepository = Substitute.For<ISpaceRepository>();
-        _userRepository = Substitute.For<IUserRepository>();
         _userContext = Substitute.For<IUserContext>();
         _mapper = Substitute.For<IMapper>();
         _clock = TestClock.Instance;
@@ -44,7 +42,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithValidSpaceAndStock_ShouldReturnStockData()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userContext, _mapper);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         var space = CreateMockSpace();
@@ -68,7 +66,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithNoStockForSpace_ShouldReturnEmptyStock()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userContext, _mapper);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         var space = CreateMockSpace();
@@ -90,7 +88,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithInvalidSpace_ShouldReturnError()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userContext, _mapper);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         _spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
@@ -105,7 +103,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithNonMember_ShouldReturnError()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userContext, _mapper);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         // Create space with different user so current user is not a member

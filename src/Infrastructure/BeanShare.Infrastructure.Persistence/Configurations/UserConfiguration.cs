@@ -55,24 +55,6 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(3)
             .IsRequired(false);
 
-        builder.Property(u => u.SystemRole)
-            .HasConversion<int>()
-            .HasDefaultValue(SystemRole.User)
-            .IsRequired();
-
-        builder.Property(u => u.IsActive)
-            .HasDefaultValue(true)
-            .IsRequired();
-
-        builder.Property(u => u.DeactivatedAt)
-            .IsRequired(false);
-
-        builder.HasIndex(u => u.SystemRole)
-            .HasDatabaseName("IX_Users_SystemRole");
-
-        builder.HasIndex(u => u.IsActive)
-            .HasDatabaseName("IX_Users_IsActive");
-
         builder.HasIndex(u => new { u.Provider, u.ProviderUserId })
             .IsUnique()
             .HasDatabaseName("IX_Users_Provider_ProviderUserId");

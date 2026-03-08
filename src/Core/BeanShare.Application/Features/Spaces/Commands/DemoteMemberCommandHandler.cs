@@ -9,6 +9,7 @@ using Mapster;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Commands;
+
 public sealed class DemoteMemberCommandHandler : IRequestHandler<DemoteMemberCommand, Result<MembershipDto>>
 {
     private readonly ISpaceRepository _spaceRepository;

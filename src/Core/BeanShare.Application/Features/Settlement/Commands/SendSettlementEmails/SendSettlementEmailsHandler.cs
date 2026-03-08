@@ -6,26 +6,26 @@ using BeanShare.Application.Services;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Specifications;
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BeanShare.Application.Features.Settlement.Commands.SendSettlementEmails;
+
+/// <summary>
+/// Handler for SendSettlementEmailsCommand.
+/// </summary>
 public sealed class SendSettlementEmailsHandler : IRequestHandler<SendSettlementEmailsCommand, Result<int>>
 {
     private readonly IMediator _mediator;
     private readonly IEmailService _emailService;
     private readonly ISettlementEmailTemplateService _templateService;
-    private readonly ILogger<SendSettlementEmailsHandler> _logger;
 
     public SendSettlementEmailsHandler(
         IMediator mediator,
         IEmailService emailService,
-        ISettlementEmailTemplateService templateService,
-        ILogger<SendSettlementEmailsHandler> logger)
+        ISettlementEmailTemplateService templateService)
     {
         _mediator = mediator;
         _emailService = emailService;
         _templateService = templateService;
-        _logger = logger;
     }
 
     public async Task<Result<int>> Handle(SendSettlementEmailsCommand command, CancellationToken cancellationToken)
@@ -43,8 +43,6 @@ public sealed class SendSettlementEmailsHandler : IRequestHandler<SendSettlement
         byte[]? pdfBytes = null;
         if (command.AttachPdf)
         {
-            // TODO: PDF attachment not yet implemented - requires ISettlementReportGenerator abstraction in Application layer
-            _logger.LogWarning("PDF attachment requested but not yet implemented for settlement emails");
         }
 
         foreach (var line in reportData.Lines)
@@ -88,9 +86,8 @@ public sealed class SendSettlementEmailsHandler : IRequestHandler<SendSettlement
 
                 emailsSent++;
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Failed to send settlement email to {Email}", line.UserEmail);
             }
         }
 

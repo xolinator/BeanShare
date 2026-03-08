@@ -1,6 +1,7 @@
 using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Application.Features.Analytics.Queries.GetUserStatistics;
+
 public sealed record UserStatisticsDto
 {
     public int TotalCups { get; init; }

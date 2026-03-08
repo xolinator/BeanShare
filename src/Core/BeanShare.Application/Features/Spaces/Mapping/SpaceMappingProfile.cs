@@ -13,7 +13,7 @@ public sealed class SpaceMappingProfile : IRegister
             .Map(dest => dest.Name, src => src.Name)
             .Map(dest => dest.CurrencyCode, src => src.Currency.Code)
             .Map(dest => dest.InviteCode, src => src.InviteCode.Value)
-            .Map(dest => dest.CreatedBy, src => (src.Members.FirstOrDefault(m => m.Role == Domain.Enums.SpaceRole.Admin) ?? src.Members.First()).UserId.Value)
+            .Map(dest => dest.CreatedBy, src => src.Members.First(m => m.Role == Domain.Enums.SpaceRole.Admin).UserId.Value)
             .Map(dest => dest.CreatedAt, src => src.CreatedAt)
             .Map(dest => dest.MemberCount, src => src.Members.Count)
             .Map(dest => dest.Members, src => src.Members);

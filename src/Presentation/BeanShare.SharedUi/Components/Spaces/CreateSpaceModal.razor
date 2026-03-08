@@ -71,15 +71,9 @@
     private async Task HandleSubmit()
     {
         isSubmitting = true;
-        try
-        {
-            await OnSubmit.InvokeAsync((model.Name, model.CurrencyCode));
-            model = new CreateSpaceModel();
-        }
-        finally
-        {
-            isSubmitting = false;
-        }
+        await OnSubmit.InvokeAsync((model.Name, model.CurrencyCode));
+        isSubmitting = false;
+        model = new CreateSpaceModel();
     }
 
     private async Task Cancel()

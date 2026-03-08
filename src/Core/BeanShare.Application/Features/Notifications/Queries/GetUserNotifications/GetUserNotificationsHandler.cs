@@ -3,6 +3,7 @@ using BeanShare.Application.Common;
 using MediatR;
 
 namespace BeanShare.Application.Features.Notifications.Queries.GetUserNotifications;
+
 public sealed class GetUserNotificationsHandler : IRequestHandler<GetUserNotificationsQuery, Result<NotificationListDto>>
 {
     private readonly INotificationRepository _notificationRepository;

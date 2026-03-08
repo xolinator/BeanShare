@@ -9,26 +9,24 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Settlement.Queries.GetSettlementById;
+
 public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementByIdQuery, Result<SettlementDto>>
 {
     private readonly ISettlementRepository _settlementRepository;
     private readonly IBillingPeriodRepository _billingPeriodRepository;
     private readonly ISpaceRepository _spaceRepository;
     private readonly IUserService _userService;
-    private readonly IUserContext _userContext;
 
     public GetSettlementByIdHandler(
         ISettlementRepository settlementRepository,
         IBillingPeriodRepository billingPeriodRepository,
         ISpaceRepository spaceRepository,
-        IUserService userService,
-        IUserContext userContext)
+        IUserService userService)
     {
         _settlementRepository = settlementRepository;
         _billingPeriodRepository = billingPeriodRepository;
         _spaceRepository = spaceRepository;
         _userService = userService;
-        _userContext = userContext;
     }
 
     public async Task<Result<SettlementDto>> Handle(GetSettlementByIdQuery request, CancellationToken cancellationToken)
@@ -49,11 +47,6 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
         var space = await _spaceRepository.GetSingleBySpecAsync(
             new SpaceByIdSpec(settlement.SpaceId),
             cancellationToken);
-
-        if (space is null || !space.HasMember(_userContext.CurrentUserId))
-        {
-            return Result<SettlementDto>.Failure(Error.InsufficientSpacePrivileges("view settlement"));
-        }
 
         var userIds = settlement.Lines.Select(l => l.UserId).Distinct().ToList();
         var users = await _userService.GetByIdsAsync(userIds, cancellationToken);

@@ -3,6 +3,7 @@ using BeanShare.Application.Features.Billing.Dtos;
 using MediatR;
 
 namespace BeanShare.Application.Features.Billing.Commands.CreateBillingPeriod;
+
 public sealed record CreateBillingPeriodCommand(
     Guid SpaceId,
     string Name,

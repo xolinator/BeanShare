@@ -23,13 +23,6 @@ public sealed class WeightedAverageCostingPolicy : ICostingPolicy
             return Money.Create(0, currency);
         }
 
-        var mismatchedCurrency = purchasesList.FirstOrDefault(p => p.Cost.Currency.Code != currency);
-        if (mismatchedCurrency != null)
-        {
-            throw new InvalidOperationException(
-                $"Purchase currency mismatch: expected '{currency}' but found '{mismatchedCurrency.Cost.Currency.Code}'");
-        }
-
         if (totalConsumed.IsZero)
         {
             return Money.Create(0, currency);

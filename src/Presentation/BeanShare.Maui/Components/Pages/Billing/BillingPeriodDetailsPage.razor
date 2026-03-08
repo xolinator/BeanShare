@@ -1,8 +1,12 @@
 @page "/spaces/{SpaceId}/billing/{PeriodId}"
-@using BeanShare.Contracts.Billing
-@using BeanShare.Maui.Services
-@inject IBillingService BillingService
-@inject ISettlementService SettlementService
+@using MediatR
+@using BeanShare.Application.Features.Billing.Queries.GetBillingPeriodById
+@using BeanShare.Application.Features.Billing.Commands.OpenBillingPeriod
+@using BeanShare.Application.Features.Billing.Commands.CloseBillingPeriod
+@using BeanShare.Application.Features.Settlement.Commands.GenerateSettlement
+@using BeanShare.Application.Features.Billing.Dtos
+@using BeanShare.Domain.ValueObjects
+@inject IMediator Mediator
 @inject NavigationManager Navigation
 
 <PageTitle>@(period?.Name ?? "Billing Period") - BeanShare</PageTitle>
@@ -205,11 +209,16 @@
         isLoading = true;
         try
         {
-            period = await BillingService.GetBillingPeriodByIdAsync(Guid.Parse(PeriodId));
+            var query = new GetBillingPeriodByIdQuery(new BillingPeriodId(Guid.Parse(PeriodId)));
+            var result = await Mediator.Send(query);
 
-            if (period == null)
+            if (result.IsSuccess)
             {
-                ShowToast(true, "Error", "Billing period not found.");
+                period = result.Value;
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
             }
         }
         catch (Exception ex)
@@ -227,9 +236,18 @@
         isProcessing = true;
         try
         {
-            await BillingService.OpenBillingPeriodAsync(Guid.Parse(PeriodId));
-            ShowToast(false, "Success", "Billing period opened successfully!");
-            await LoadPeriod();
+            var command = new OpenBillingPeriodCommand(Guid.Parse(PeriodId));
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Billing period opened successfully!");
+                await LoadPeriod();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
         }
         catch (Exception ex)
         {
@@ -246,9 +264,18 @@
         isProcessing = true;
         try
         {
-            await BillingService.CloseBillingPeriodAsync(Guid.Parse(PeriodId));
-            ShowToast(false, "Success", "Billing period closed successfully!");
-            await LoadPeriod();
+            var command = new CloseBillingPeriodCommand(Guid.Parse(PeriodId));
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Billing period closed successfully!");
+                await LoadPeriod();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
         }
         catch (Exception ex)
         {
@@ -265,18 +292,19 @@
         isProcessing = true;
         try
         {
-            var settlement = await SettlementService.GenerateSettlementAsync(Guid.Parse(PeriodId));
+            var command = new GenerateSettlementCommand(Guid.Parse(PeriodId));
+            var result = await Mediator.Send(command);
 
-            if (settlement != null)
+            if (result.IsSuccess)
             {
                 ShowToast(false, "Success", "Settlement generated successfully!");
                 await LoadPeriod();
                 await Task.Delay(1500);
-                Navigation.NavigateTo($"/spaces/{SpaceId}/settlements/{settlement.Id}");
+                Navigation.NavigateTo($"/spaces/{SpaceId}/settlements/{result.Value.Id}");
             }
             else
             {
-                ShowToast(true, "Error", "Failed to generate settlement.");
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
             }
         }
         catch (Exception ex)

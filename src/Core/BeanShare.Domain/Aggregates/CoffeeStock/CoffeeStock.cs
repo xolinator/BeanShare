@@ -133,21 +133,17 @@ public sealed class CoffeeStock : AggregateRoot
         if (!productPurchases.Any())
             return Money.Zero(Currency.USD);
 
-        var currency = productPurchases.First().Cost.Currency;
+        var totalCost = productPurchases.First().Cost.Currency;
         var totalAmount = 0m;
         var totalWeight = 0m;
 
         foreach (var purchase in productPurchases)
         {
-            // Only sum amounts in the same currency to avoid mixing currencies
-            if (purchase.Cost.Currency == currency)
-            {
-                totalAmount += purchase.Cost.Amount;
-                totalWeight += purchase.Quantity.Grams;
-            }
+            totalAmount += purchase.Cost.Amount;
+            totalWeight += purchase.Quantity.Grams;
         }
 
-        return totalWeight == 0 ? Money.Zero(currency) : Money.Create(totalAmount / totalWeight, currency);
+        return totalWeight == 0 ? Money.Zero(totalCost) : Money.Create(totalAmount / totalWeight, totalCost);
     }
 
     public IEnumerable<StockLevel> GetLowStockProducts(Weight threshold)

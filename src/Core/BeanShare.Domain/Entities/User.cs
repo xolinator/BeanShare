@@ -4,6 +4,9 @@ using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Domain.Entities;
 
+/// <summary>
+/// Represents an authenticated user in the system
+/// </summary>
 public sealed class User
 {
     public UserId Id { get; private set; }
@@ -16,16 +19,11 @@ public sealed class User
     public DateTime CreatedAt { get; private set; }
     public DateTime LastLoginAt { get; private set; }
     public string? PreferredCurrencyCode { get; private set; }
-    public SystemRole SystemRole { get; private set; }
-    public bool IsActive { get; private set; }
-    public DateTime? DeactivatedAt { get; private set; }
 
     private User()
     {
         Email = string.Empty;
         Name = string.Empty;
-        SystemRole = SystemRole.User;
-        IsActive = true;
     }
 
     private User(UserId id, string email, string name, AuthenticationProvider provider, DateTime createdAt, string? providerUserId = null, string? passwordHash = null, string? pictureUrl = null)
@@ -39,8 +37,6 @@ public sealed class User
         PictureUrl = pictureUrl;
         CreatedAt = createdAt;
         LastLoginAt = createdAt;
-        SystemRole = SystemRole.User;
-        IsActive = true;
     }
 
     public static User CreateWithPassword(string email, string name, string passwordHash, DateTime createdAt)
@@ -104,39 +100,4 @@ public sealed class User
         }
         PreferredCurrencyCode = currencyCode?.ToUpperInvariant();
     }
-
-    public void PromoteToSystemAdmin()
-    {
-        SystemRole = SystemRole.SystemAdmin;
-    }
-
-    public void DemoteToUser()
-    {
-        SystemRole = SystemRole.User;
-    }
-
-    public void SetSystemRole(SystemRole role)
-    {
-        SystemRole = role;
-    }
-
-    public void Deactivate(DateTime deactivatedAt)
-    {
-        if (!IsActive)
-            return;
-
-        IsActive = false;
-        DeactivatedAt = deactivatedAt;
-    }
-
-    public void Reactivate()
-    {
-        if (IsActive)
-            return;
-
-        IsActive = true;
-        DeactivatedAt = null;
-    }
-
-    public bool IsSystemAdmin => SystemRole == SystemRole.SystemAdmin;
 }

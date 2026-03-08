@@ -32,12 +32,6 @@ public sealed class SettlementLine : Entity
         ArgumentNullException.ThrowIfNull(amountDue);
         ArgumentNullException.ThrowIfNull(clock);
 
-        if (totalCoffeeGrams < 0)
-            throw new ArgumentOutOfRangeException(nameof(totalCoffeeGrams), "Total coffee grams cannot be negative");
-
-        if (totalMilkMl is < 0)
-            throw new ArgumentOutOfRangeException(nameof(totalMilkMl), "Total milk ml cannot be negative");
-
         return new SettlementLine
         {
             Id = Guid.NewGuid(),

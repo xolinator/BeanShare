@@ -8,6 +8,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Commands;
+
 public sealed class TogglePresetFavoriteCommandHandler : IRequestHandler<TogglePresetFavoriteCommand, Result>
 {
     private readonly IUserPresetFavoriteRepository _favoriteRepository;
@@ -120,15 +121,10 @@ public sealed class TogglePresetFavoriteCommandHandler : IRequestHandler<ToggleP
     {
         var spacePresetId = new PresetRecipeId(spacePresetIdValue);
 
-        var preset = await _presetRecipeRepository.GetByIdAsync(spacePresetId, cancellationToken);
-        if (preset is null)
+        var presetExists = await _presetRecipeRepository.ExistsAsync(spacePresetId, cancellationToken);
+        if (!presetExists)
         {
             return Result.Failure(Error.NotFound("SpacePreset", "Space preset not found"));
-        }
-
-        if (preset.SpaceId != spaceId)
-        {
-            return Result.Failure(Error.Forbidden("SpacePreset", "Preset does not belong to this space"));
         }
 
         var existingFavorite = await _favoriteRepository.GetByUserSpaceAndSpacePresetAsync(userId, spaceId, spacePresetId, cancellationToken);

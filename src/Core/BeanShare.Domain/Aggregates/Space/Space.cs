@@ -177,8 +177,7 @@ public sealed class Space : AggregateRoot
     }
 
     public void RegenerateInviteCode(InviteCode newInviteCode)
-    {
-        ArgumentNullException.ThrowIfNull(newInviteCode);
+    { 
         InviteCode = newInviteCode;
     }
 }

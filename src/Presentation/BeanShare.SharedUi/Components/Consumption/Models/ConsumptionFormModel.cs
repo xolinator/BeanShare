@@ -4,7 +4,7 @@ namespace BeanShare.SharedUi.Components.Consumption.Models;
 
 public sealed class ConsumptionFormModel
 {
-    [Range(1, 500, ErrorMessage = "Grams must be between 1 and 500")]
+    [Range(1, 100, ErrorMessage = "Grams must be between 1 and 100")]
     public int Grams { get; set; }
 
     public string? PresetName { get; set; }
@@ -28,6 +28,4 @@ public sealed class ConsumptionFormModel
     public string ProductType { get; set; } = "";
 
     public Guid? ForUserId { get; set; }
-
-    public List<Guid>? ForUserIds { get; set; }
 }

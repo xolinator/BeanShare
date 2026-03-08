@@ -5,6 +5,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Users.Commands.UpdatePreferredCurrency;
+
 public sealed class UpdatePreferredCurrencyHandler : IRequestHandler<UpdatePreferredCurrencyCommand, Result>
 {
     private readonly IUserService _userService;

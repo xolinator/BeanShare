@@ -1,4 +1,5 @@
 namespace BeanShare.Application.Features.Consumption.Dtos;
+
 public sealed class ConsumptionEntryDto
 {
     public required Guid Id { get; init; }

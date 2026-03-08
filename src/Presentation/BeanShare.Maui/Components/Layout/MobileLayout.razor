@@ -6,10 +6,8 @@
 @using BeanShare.Application.Features.CoffeeStock.Dtos
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.Extensions.Logging
-@using BeanShare.Application.Abstractions
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IUserContext UserContext
 @inject ISpacesService SpacesService
 @inject IStockService StockService
 @inject IConsumptionService ConsumptionService
@@ -66,12 +64,115 @@
     DefaultSpaceId="@currentSpaceId"
     StockProducts="@quickConsumptionStock"
     Presets="@quickConsumptionPresets"
-    SpaceMembers="@quickConsumptionMembers"
     IsLoadingStock="@isLoadingQuickConsumptionData"
     OnSpaceSelected="HandleQuickConsumptionSpaceSelected"
     OnSubmit="HandleQuickConsumptionSubmit"
-    OnCancel="CloseConsumptionModal"
-    CurrentUserId="@UserContext.CurrentUserId.Value" />
+    OnCancel="CloseConsumptionModal" />
+
+<style>
+    .mobile-app-container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--bs-background-light);
+    }
+
+    .mobile-content {
+        flex: 1;
+        padding-top: 56px;
+        padding-bottom: 56px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .pull-to-refresh {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        right: 0;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bs-background);
+        border-bottom: 1px solid var(--bs-border);
+        transform: translateY(-100%);
+        transition: transform 0.3s ease;
+        z-index: 25;
+    }
+
+    .pull-to-refresh.visible {
+        transform: translateY(0);
+    }
+
+    .pull-to-refresh-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--bs-gray-300);
+        border-top-color: var(--bs-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @@supports (padding-top: env(safe-area-inset-top)) {
+        .mobile-content {
+            padding-top: calc(56px + env(safe-area-inset-top));
+            padding-bottom: calc(56px + env(safe-area-inset-bottom));
+        }
+
+        .pull-to-refresh {
+            top: calc(56px + env(safe-area-inset-top));
+        }
+    }
+
+    @@media (min-width: 768px) {
+        .mobile-content {
+            padding-top: 64px;
+            max-width: 768px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .mobile-app-container {
+            background-color: var(--bs-gray-100);
+        }
+
+        .mobile-content {
+            background-color: var(--bs-background);
+        }
+    }
+
+    .loading-overlay {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+
+    .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--bs-gray-300);
+        border-top-color: var(--bs-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+</style>
 
 @code {
     [Parameter]
@@ -84,6 +185,7 @@
     private bool showCreateSpaceModal = false;
     private bool showJoinSpaceModal = false;
     private bool showConsumptionModal = false;
+    private bool showAddStockModal = false;
     private bool isRefreshing = false;
     private EventCallback<bool> RefreshCallback;
 
@@ -91,7 +193,6 @@
     private List<SpaceSummaryDto>? userSpaces;
     private List<StockLevelDto>? quickConsumptionStock;
     private List<PresetOption>? quickConsumptionPresets;
-    private List<MembershipDto>? quickConsumptionMembers;
     private bool isLoadingQuickConsumptionData;
 
     protected override async Task OnInitializedAsync()
@@ -171,7 +272,7 @@
 
     private async Task HandleSearch(string query)
     {
-        Navigation.NavigateTo($"/spaces?q={Uri.EscapeDataString(query)}");
+        Navigation.NavigateTo($"/search?q={Uri.EscapeDataString(query)}");
     }
 
     private void HandleBack()
@@ -280,7 +381,6 @@
         showConsumptionModal = false;
         quickConsumptionStock = null;
         quickConsumptionPresets = null;
-        quickConsumptionMembers = null;
     }
 
     private async Task HandleQuickConsumptionSpaceSelected(Guid spaceId)
@@ -288,14 +388,12 @@
         isLoadingQuickConsumptionData = true;
         quickConsumptionStock = null;
         quickConsumptionPresets = null;
-        quickConsumptionMembers = null;
         StateHasChanged();
 
         try
         {
             var stockResult = await StockService.GetSpaceStockAsync(spaceId);
             var presetsResult = await PresetService.GetQuickPresetsAsync(spaceId);
-            var spaceResult = await SpacesService.GetSpaceByIdAsync(spaceId);
 
             if (stockResult?.StockLevels != null)
             {
@@ -303,11 +401,6 @@
             }
 
             quickConsumptionPresets = presetsResult;
-
-            if (spaceResult?.Members != null)
-            {
-                quickConsumptionMembers = spaceResult.Members.ToList();
-            }
         }
         catch (Exception ex)
         {
@@ -325,39 +418,20 @@
     {
         try
         {
-            var targetUserIds = new List<Guid?>();
-            if (request.ForUserIds != null && request.ForUserIds.Count > 0)
-            {
-                targetUserIds.AddRange(request.ForUserIds.Select(id => (Guid?)id));
-            }
-            else
-            {
-                targetUserIds.Add(null); // null = myself
-            }
+            var success = await ConsumptionService.RecordConsumptionAsync(
+                request.SpaceId,
+                request.ProductName,
+                request.ProductBrand,
+                request.ProductType,
+                request.Grams,
+                request.ConsumedAt,
+                request.PresetName
+            );
 
-            var successCount = 0;
-            foreach (var targetUserId in targetUserIds)
-            {
-                var success = await ConsumptionService.RecordConsumptionAsync(
-                    request.SpaceId,
-                    request.ProductName,
-                    request.ProductBrand,
-                    request.ProductType,
-                    request.Grams,
-                    request.ConsumedAt,
-                    request.PresetName,
-                    targetUserId
-                );
-                if (success) successCount++;
-            }
-
-            if (successCount > 0)
+            if (success)
             {
                 showConsumptionModal = false;
-                var msg = successCount == 1
-                    ? $"Logged {request.Grams}g of coffee!"
-                    : $"Logged {request.Grams}g of coffee for {successCount} members!";
-                await AlertService.ShowAlertAsync("Success", msg);
+                await AlertService.ShowAlertAsync("Success", $"Logged {request.Grams}g of coffee!");
             }
             else
             {

@@ -6,12 +6,9 @@
 @using BeanShare.Application.Features.CoffeeStock.Commands
 @using BeanShare.Application.Features.CoffeeStock.Dtos
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
-@using BeanShare.Application.Abstractions
+@*@attribute [Authorize]*@
 @inject IMediator Mediator
 @inject NavigationManager Navigation
-@inject IJSRuntime JSRuntime
-@inject IUserContext UserContext
 
 <PageTitle>Stock - @spaceName - BeanShare</PageTitle>
 
@@ -39,7 +36,7 @@ else
                     <span class="bs-text-subtle" style="font-size: 0.75rem; font-weight: 600;">INVITE CODE</span>
                     <div class="bs-flex bs-items-center bs-gap-2">
                         <span style="font-family: monospace; font-size: 0.875rem; font-weight: 700;">@space.InviteCode</span>
-                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code" @onclick="CopyInviteCode">
+                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code">
                             <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
                         </button>
                     </div>
@@ -95,8 +92,7 @@ else
             }
 
             <StockPurchases Purchases="@purchases"
-                           IsLoading="@isLoadingStock"
-                           CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                           IsLoading="@isLoadingStock" />
 
             @if (isAdmin)
             {
@@ -113,8 +109,7 @@ else
 
 <AddPurchaseModal IsVisible="@showAddPurchaseModal"
                  OnSubmit="HandleAddPurchase"
-                 OnCancel="@(() => showAddPurchaseModal = false)"
-                 CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                 OnCancel="@(() => showAddPurchaseModal = false)" />
 
 @if (showSplitModal && selectedStockLevel != null)
 {
@@ -190,20 +185,13 @@ else
     private bool isToastError;
     private string toastTitle = "";
     private string toastMessage = "";
-    private bool _isLoading;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_isLoading || string.IsNullOrEmpty(SpaceId)) return;
-        _isLoading = true;
-        try
+        if (!string.IsNullOrEmpty(SpaceId))
         {
             await LoadSpace();
             await LoadStock();
-        }
-        finally
-        {
-            _isLoading = false;
         }
     }
 
@@ -215,8 +203,8 @@ else
             if (result.IsSuccess)
             {
                 space = result.Value;
-                var currentUserId = UserContext.CurrentUserId.Value;
-                isAdmin = space.Members.Any(m => m.UserId == currentUserId && m.Role == "Admin");
+                // Check admin role based on first member for dev purposes
+                isAdmin = space.Members.Any(m => m.Role == "Admin");
             }
         }
         catch (Exception ex)
@@ -228,6 +216,7 @@ else
     private async Task LoadStock()
     {
         isLoadingStock = true;
+        StateHasChanged();
 
         try
         {
@@ -245,6 +234,7 @@ else
         finally
         {
             isLoadingStock = false;
+            StateHasChanged();
         }
     }
 
@@ -267,7 +257,7 @@ else
             var result = await Mediator.Send(new AddStockPurchaseCommand(
                 Guid.Parse(SpaceId),
                 model.ProductName,
-                model.ProductBrand,
+                "Generic",
                 model.CoffeeType,
                 model.QuantityGrams,
                 model.TotalCost,
@@ -290,15 +280,6 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to add purchase: {ex.Message}");
-        }
-    }
-
-    private async Task CopyInviteCode()
-    {
-        if (space?.InviteCode != null)
-        {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", space.InviteCode);
-            ShowToast(false, "Copied!", "Invite code copied to clipboard");
         }
     }
 

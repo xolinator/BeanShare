@@ -63,10 +63,4 @@ public sealed class MockSpaceRepository : ISpaceRepository
         }
         return Task.CompletedTask;
     }
-
-    public Task<int> GetUserSpaceCountAsync(UserId userId, CancellationToken ct = default)
-    {
-        var count = _spaces.Count(s => s.Members.Any(m => m.UserId == userId));
-        return Task.FromResult(count);
-    }
 }

@@ -7,6 +7,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Settlements.Commands.ConfirmPayment;
+
 public sealed class ConfirmPaymentHandler : IRequestHandler<ConfirmPaymentCommand, Result>
 {
     private readonly ISettlementRepository _settlementRepository;

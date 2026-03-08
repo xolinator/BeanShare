@@ -12,5 +12,4 @@ public interface ISpaceRepository
     Task<IReadOnlyList<Space>> GetBySpecAsync(ISpec<Space> specification, CancellationToken cancellationToken = default);
     Task AddAsync(Space space, CancellationToken cancellationToken = default);
     Task UpdateAsync(Space space, CancellationToken cancellationToken = default);
-    Task<int> GetUserSpaceCountAsync(UserId userId, CancellationToken cancellationToken = default);
 }

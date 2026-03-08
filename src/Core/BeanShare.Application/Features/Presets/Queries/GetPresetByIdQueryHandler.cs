@@ -5,19 +5,17 @@ using BeanShare.Domain.Repositories;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Queries;
+
 public sealed class GetPresetByIdQueryHandler : IRequestHandler<GetPresetByIdQuery, Result<PresetDto>>
 {
     private readonly IPresetRecipeRepository _presetRepository;
-    private readonly ISpaceRepository _spaceRepository;
     private readonly IUserContext _userContext;
 
     public GetPresetByIdQueryHandler(
         IPresetRecipeRepository presetRepository,
-        ISpaceRepository spaceRepository,
         IUserContext userContext)
     {
         _presetRepository = presetRepository;
-        _spaceRepository = spaceRepository;
         _userContext = userContext;
     }
 
@@ -29,12 +27,6 @@ public sealed class GetPresetByIdQueryHandler : IRequestHandler<GetPresetByIdQue
         if (preset is null)
         {
             return Result<PresetDto>.Failure(Error.NotFound("PresetRecipe", "Preset not found"));
-        }
-
-        var space = await _spaceRepository.GetByIdAsync(preset.SpaceId, cancellationToken);
-        if (space is null || !space.HasMember(_userContext.CurrentUserId))
-        {
-            return Result<PresetDto>.Failure(Error.Forbidden("PresetRecipe", "You do not have access to this preset"));
         }
 
         if (preset.UserId != _userContext.CurrentUserId && !preset.IsShared)

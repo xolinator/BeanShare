@@ -10,6 +10,7 @@ using MapsterMapper;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Commands;
+
 public sealed class RemoveMemberCommandHandler : IRequestHandler<RemoveMemberCommand, Result<MemberActionDto>>
 {
     private readonly ISpaceRepository _spaceRepository;

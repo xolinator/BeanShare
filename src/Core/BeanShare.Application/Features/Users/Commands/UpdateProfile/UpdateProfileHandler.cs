@@ -4,6 +4,7 @@ using BeanShare.Application.Services;
 using MediatR;
 
 namespace BeanShare.Application.Features.Users.Commands.UpdateProfile;
+
 public sealed class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result>
 {
     private readonly IUserService _userService;

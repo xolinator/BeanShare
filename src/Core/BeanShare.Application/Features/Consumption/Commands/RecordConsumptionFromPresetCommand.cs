@@ -4,11 +4,11 @@ using BeanShare.Application.Common.Authorization;
 using BeanShare.Application.Features.Consumption.Dtos;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
+
 [RequireSpaceMember("SpaceId")]
 public sealed record RecordConsumptionFromPresetCommand(
     Guid SpaceId,
     Guid PresetId,
     decimal? CustomQuantityGrams = null,
-    DateTime? ConsumedAt = null,
-    Guid? ForUserId = null
+    DateTime? ConsumedAt = null
 ) : IAuthorize, ICommand<Result<ConsumptionEntryDto>>;

@@ -41,18 +41,6 @@ public class PresetService : IPresetService
         }
     }
 
-    public async Task<PresetDto?> GetPresetByIdAsync(Guid presetId)
-    {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<PresetDto>($"/api/presets/{presetId}");
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     public async Task<bool> TogglePresetFavoriteAsync(Guid spaceId, Guid? globalPresetId, Guid? spacePresetId, bool isFavorite)
     {
         try

@@ -1,15 +1,22 @@
 <div class="bs-flex" style="gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
     <KpiChip Label="My Cups Today" Value="@MyCupsToday.ToString()" />
-    <KpiChip Label="My Total" Value="@FormatCurrency(MyTotalCost)" />
+    <KpiChip Label="My Total" Value="@MyTotalCost.ToString("C")" />
     <div class="bs-kpi-chip" style="position: relative;">
-        <span class="bs-font-medium">Total Stock</span>
-        <span class="bs-kpi-value">@FormatStock(RemainingStockGrams)</span>
+        <span class="bs-font-medium">Remaining Stock</span>
+        <span class="bs-kpi-value">@RemainingStockGrams g</span>
         @if (RemainingStockGrams < 200)
         {
             <span style="position: absolute; top: -0.25rem; right: -0.25rem; width: 0.75rem; height: 0.75rem; background: var(--bs-warning); border-radius: 9999px; animation: pulse 2s infinite;"></span>
         }
     </div>
 </div>
+
+<style>
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
 
 @code {
     [Parameter]
@@ -20,27 +27,4 @@
 
     [Parameter]
     public int RemainingStockGrams { get; set; }
-
-    [Parameter]
-    public string CurrencyCode { get; set; } = "USD";
-
-    private string FormatStock(int grams)
-    {
-        if (grams >= 1000)
-            return $"{grams / 1000.0:F1} kg";
-        return $"{grams} g";
-    }
-
-    private string FormatCurrency(decimal amount)
-    {
-        try
-        {
-            var currency = BeanShare.Domain.ValueObjects.Currency.Create(CurrencyCode);
-            return currency.FormatAmount(amount);
-        }
-        catch
-        {
-            return $"{amount:N2}";
-        }
-    }
 }

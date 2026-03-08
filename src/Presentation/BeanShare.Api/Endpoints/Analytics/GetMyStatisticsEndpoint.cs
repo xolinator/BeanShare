@@ -1,4 +1,3 @@
-using BeanShare.Application.Abstractions;
 using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics;
 using BeanShare.Contracts.Analytics.UserStatistics;
 using BeanShare.Domain.Common;
@@ -10,12 +9,10 @@ namespace BeanShare.Api.Endpoints.Analytics;
 public sealed class GetMyStatisticsEndpoint : Endpoint<GetUserStatisticsRequest, GetUserStatisticsResponse>
 {
     private readonly IMediator _mediator;
-    private readonly IUserContext _userContext;
 
-    public GetMyStatisticsEndpoint(IMediator mediator, IUserContext userContext)
+    public GetMyStatisticsEndpoint(IMediator mediator)
     {
         _mediator = mediator;
-        _userContext = userContext;
     }
 
     public override void Configure()
@@ -30,7 +27,16 @@ public sealed class GetMyStatisticsEndpoint : Endpoint<GetUserStatisticsRequest,
 
     public override async Task HandleAsync(GetUserStatisticsRequest req, CancellationToken ct)
     {
-        var userId = _userContext.CurrentUserId;
+        var userIdHeader = HttpContext.Request.Headers["X-User-Id"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userGuid))
+        {
+            AddError("Authentication", "User not authenticated");
+            await SendErrorsAsync(401);
+            return;
+        }
+
+        var userId = new UserId(userGuid);
         var query = new GetUserStatisticsQuery(userId, req.FromDate, req.ToDate);
         var result = await _mediator.Send(query, ct);
 

@@ -8,26 +8,27 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Settlement.Queries.GetSettlementReportData;
+
+/// <summary>
+/// Handler for GetSettlementReportDataQuery.
+/// </summary>
 public sealed class GetSettlementReportDataHandler : IRequestHandler<GetSettlementReportDataQuery, Result<SettlementReportData>>
 {
     private readonly ISettlementRepository _settlementRepository;
     private readonly IBillingPeriodRepository _billingPeriodRepository;
     private readonly ISpaceRepository _spaceRepository;
     private readonly IUserService _userService;
-    private readonly IUserContext _userContext;
 
     public GetSettlementReportDataHandler(
         ISettlementRepository settlementRepository,
         IBillingPeriodRepository billingPeriodRepository,
         ISpaceRepository spaceRepository,
-        IUserService userService,
-        IUserContext userContext)
+        IUserService userService)
     {
         _settlementRepository = settlementRepository;
         _billingPeriodRepository = billingPeriodRepository;
         _spaceRepository = spaceRepository;
         _userService = userService;
-        _userContext = userContext;
     }
 
     public async Task<Result<SettlementReportData>> Handle(GetSettlementReportDataQuery request, CancellationToken cancellationToken)
@@ -52,11 +53,6 @@ public sealed class GetSettlementReportDataHandler : IRequestHandler<GetSettleme
         if (space is null)
         {
             return Result<SettlementReportData>.Failure(Error.SpaceNotFound(settlement.SpaceId.Value));
-        }
-
-        if (!space.HasMember(_userContext.CurrentUserId))
-        {
-            return Result<SettlementReportData>.Failure(Error.InsufficientSpacePrivileges("view settlement report"));
         }
 
         var allUserIds = settlement.Lines.Select(l => l.UserId).ToList();

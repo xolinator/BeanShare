@@ -26,14 +26,12 @@ public static class DependencyInjection
         {
             // Use PostgreSQL for production
             services.AddDbContext<BeanShareDbContext>(options =>
-                options.UseNpgsql(connectionString, npgsqlOptions =>
-                    npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+                options.UseNpgsql(connectionString));
         }
 
         services.AddScoped<ISpaceRepository, SpaceRepository>();
         services.AddScoped<ICoffeeStockRepository, CoffeeStockRepository>();
         services.AddScoped<IConsumptionRepository, ConsumptionRepository>();
-        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IBillingPeriodRepository, BillingPeriodRepository>();
         services.AddScoped<ISettlementRepository, SettlementRepository>();
         services.AddScoped<IPresetRecipeRepository, PresetRecipeRepository>();

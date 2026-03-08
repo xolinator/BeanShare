@@ -32,7 +32,7 @@ public sealed class GetSpaceLowStockEndpoint : Endpoint<GetLowStockAlertsRequest
     public override async Task HandleAsync(GetLowStockAlertsRequest req, CancellationToken ct)
     {
         var routeSpaceId = Route<Guid>("spaceId");
-        var thresholdGrams = Query<decimal?>("threshold", false) ?? req.ThresholdGrams;
+        var thresholdGrams = Query<decimal?>("thresholdGrams", false) ?? 100;
 
         var query = new GetLowStockAlertsQuery(routeSpaceId, thresholdGrams);
         var result = await _mediator.Send(query, ct);

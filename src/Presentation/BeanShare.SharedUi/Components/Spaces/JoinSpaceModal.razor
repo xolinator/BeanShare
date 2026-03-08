@@ -53,15 +53,9 @@
     private async Task HandleSubmit()
     {
         isSubmitting = true;
-        try
-        {
-            await OnSubmit.InvokeAsync(model.InviteCode.ToUpperInvariant());
-            model = new JoinSpaceModel();
-        }
-        finally
-        {
-            isSubmitting = false;
-        }
+        await OnSubmit.InvokeAsync(model.InviteCode.ToUpperInvariant());
+        isSubmitting = false;
+        model = new JoinSpaceModel();
     }
 
     private async Task Cancel()

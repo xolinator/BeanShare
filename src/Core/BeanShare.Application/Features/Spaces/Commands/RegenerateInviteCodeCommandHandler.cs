@@ -8,6 +8,7 @@ using MapsterMapper;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Commands;
+
 public sealed class RegenerateInviteCodeCommandHandler : IRequestHandler<RegenerateInviteCodeCommand, Result<SpaceDto>>
 {
     private readonly ISpaceRepository _spaceRepository;

@@ -6,6 +6,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;
+
 public sealed class ConsumeStockCommandHandler : IRequestHandler<ConsumeStockCommand, Result<ConsumedStockDto>>
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;

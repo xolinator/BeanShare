@@ -39,11 +39,6 @@ public sealed class OpenExchangeRatesProvider : IExchangeRateProvider
                 return ExchangeRatesResult.Failure("Empty response from API");
             }
 
-            if (response.Rates is null || response.Rates.Count == 0)
-            {
-                return ExchangeRatesResult.Failure("No exchange rates in API response");
-            }
-
             var timestamp = DateTimeOffset.FromUnixTimeSeconds(response.Timestamp).UtcDateTime;
 
             _logger.LogInformation("Successfully fetched {Count} exchange rates", response.Rates.Count);

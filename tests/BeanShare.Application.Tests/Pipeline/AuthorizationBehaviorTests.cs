@@ -51,7 +51,7 @@ public sealed class AuthorizationBehaviorTests
         var result = await behavior.Handle(request, Substitute.For<RequestHandlerDelegate<Result<string>>>(), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "UNAUTHENTICATED");
+        result.Errors.Should().ContainSingle(e => e.Code == "auth.unauthenticated");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class AuthorizationBehaviorTests
         var result = await behavior.Handle(request, _next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "NOT_ADMIN");
+        result.Errors.Should().ContainSingle(e => e.Code == "auth.not_admin");
         await _next.DidNotReceive().Invoke();
     }
 
@@ -127,7 +127,7 @@ public sealed class AuthorizationBehaviorTests
         var result = await _behavior.Handle(request, _next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "SPACE_NOT_FOUND");
+        result.Errors.Should().ContainSingle(e => e.Code == "auth.space_not_found");
         await _next.DidNotReceive().Invoke();
     }
 
@@ -144,7 +144,7 @@ public sealed class AuthorizationBehaviorTests
         var result = await behavior.Handle(request, _next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == "INVALID_REQUEST");
+        result.Errors.Should().ContainSingle(e => e.Code == "auth.invalid_request");
         await _next.DidNotReceive().Invoke();
     }
 }

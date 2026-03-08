@@ -54,10 +54,8 @@
             ));
             spaceAnalytics = result;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // Analytics loading failed - log but show empty state gracefully
-            Console.Error.WriteLine($"Failed to load analytics: {ex.Message}");
         }
         finally
         {

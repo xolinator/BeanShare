@@ -16,8 +16,6 @@
     </div>
 }
 
-@implements IDisposable
-
 @code {
     [Parameter]
     public bool IsVisible { get; set; }
@@ -34,40 +32,19 @@
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    private CancellationTokenSource? _autoCloseCts;
-
     protected override void OnParametersSet()
     {
         if (IsVisible)
         {
-            // Cancel any previous timer to prevent stacking
-            _autoCloseCts?.Cancel();
-            _autoCloseCts?.Dispose();
-            _autoCloseCts = new CancellationTokenSource();
-            var token = _autoCloseCts.Token;
-
-            _ = Task.Delay(3000, token).ContinueWith(_ =>
+            Task.Delay(3000).ContinueWith(_ =>
             {
-                if (!token.IsCancellationRequested)
+                InvokeAsync(async () =>
                 {
-                    InvokeAsync(async () =>
-                    {
-                        IsVisible = false;
-                        await OnClose.InvokeAsync();
-                        StateHasChanged();
-                    });
-                }
-            }, TaskContinuationOptions.OnlyOnRanToCompletion);
+                    IsVisible = false;
+                    await OnClose.InvokeAsync();
+                    StateHasChanged();
+                });
+            });
         }
-        else
-        {
-            _autoCloseCts?.Cancel();
-        }
-    }
-
-    public void Dispose()
-    {
-        _autoCloseCts?.Cancel();
-        _autoCloseCts?.Dispose();
     }
 }

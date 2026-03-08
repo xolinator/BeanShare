@@ -1,5 +1,4 @@
 using BeanShare.Application.Abstractions;
-using BeanShare.Application.Constants;
 using BeanShare.Application.Services;
 using BeanShare.Domain.Entities;
 using BeanShare.Domain.ValueObjects;
@@ -14,10 +13,9 @@ public sealed class CurrencyConversionService : ICurrencyConversionService
     private readonly IMemoryCache _cache;
     private readonly ILogger<CurrencyConversionService> _logger;
 
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(CacheSettings.ExchangeRateCacheDurationMinutes);
-    private static readonly TimeSpan MaxStaleness = TimeSpan.FromHours(CacheSettings.ExchangeRateMaxStalenessHours);
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan MaxStaleness = TimeSpan.FromHours(24);
     private const string RatesCacheKey = "exchange_rates_all";
-    private static readonly SemaphoreSlim _cacheLock = new(1, 1);
 
     public CurrencyConversionService(
         IExchangeRateRepository rateRepository,
@@ -37,7 +35,6 @@ public sealed class CurrencyConversionService : ICurrencyConversionService
         var rates = await GetCachedRatesAsync(ct);
         if (rates.Count == 0)
         {
-            // TODO: Should we fallback to a default rate or throw exception instead of returning null?
             _logger.LogWarning("No exchange rates available for conversion from {Source} to {Target}",
                 amount.Currency.Code, targetCurrency.Code);
             return null;
@@ -46,9 +43,9 @@ public sealed class CurrencyConversionService : ICurrencyConversionService
         var sourceToUsd = GetRateToUsd(amount.Currency.Code, rates);
         var usdToTarget = GetRateFromUsd(targetCurrency.Code, rates);
 
-        if (sourceToUsd is null or 0 || usdToTarget is null or 0)
+        if (sourceToUsd is null || usdToTarget is null)
         {
-            _logger.LogWarning("Missing or zero rate for conversion: {Source} -> USD ({SourceRate}) -> {Target} ({TargetRate})",
+            _logger.LogWarning("Missing rate for conversion: {Source} -> USD ({SourceRate}) -> {Target} ({TargetRate})",
                 amount.Currency.Code, sourceToUsd, targetCurrency.Code, usdToTarget);
             return null;
         }
@@ -111,21 +108,9 @@ public sealed class CurrencyConversionService : ICurrencyConversionService
         if (_cache.TryGetValue<IReadOnlyList<ExchangeRate>>(RatesCacheKey, out var cached) && cached is not null)
             return cached;
 
-        await _cacheLock.WaitAsync(ct);
-        try
-        {
-            // Double-check after acquiring lock
-            if (_cache.TryGetValue<IReadOnlyList<ExchangeRate>>(RatesCacheKey, out cached) && cached is not null)
-                return cached;
-
-            var rates = await _rateRepository.GetAllRatesAsync(ct);
-            _cache.Set(RatesCacheKey, rates, CacheDuration);
-            return rates;
-        }
-        finally
-        {
-            _cacheLock.Release();
-        }
+        var rates = await _rateRepository.GetAllRatesAsync(ct);
+        _cache.Set(RatesCacheKey, rates, CacheDuration);
+        return rates;
     }
 
     private static decimal? GetRateToUsd(string currencyCode, IReadOnlyList<ExchangeRate> rates)
@@ -137,7 +122,7 @@ public sealed class CurrencyConversionService : ICurrencyConversionService
         var rate = rates.FirstOrDefault(r =>
             r.BaseCurrencyCode == "USD" && r.TargetCurrencyCode == currencyCode);
 
-        return rate is not null && rate.Rate != 0 ? 1m / rate.Rate : null;
+        return rate is not null ? 1m / rate.Rate : null;
     }
 
     private static decimal? GetRateFromUsd(string currencyCode, IReadOnlyList<ExchangeRate> rates)

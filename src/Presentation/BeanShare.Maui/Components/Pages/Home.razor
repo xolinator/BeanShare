@@ -32,7 +32,7 @@
                         hasNavigated = true;
                         var targetUrl = isAuthenticated ? "/spaces" : "/login";
                         System.Diagnostics.Debug.WriteLine($"[Home] Navigating to {targetUrl}");
-                        Navigation.NavigateTo(targetUrl);
+                        Navigation.NavigateTo(targetUrl, forceLoad: true);
                     }
                 });
             }, null, 200, System.Threading.Timeout.Infinite);
@@ -47,7 +47,7 @@
                     if (!hasNavigated)
                     {
                         hasNavigated = true;
-                        Navigation.NavigateTo("/login");
+                        Navigation.NavigateTo("/login", forceLoad: true);
                     }
                 });
             }, null, 200, System.Threading.Timeout.Infinite);

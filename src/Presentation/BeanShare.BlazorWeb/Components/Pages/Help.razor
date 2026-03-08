@@ -77,7 +77,33 @@
                         <span class="material-symbols-outlined" style="color: var(--bs-primary);">bookmark</span>
                         Preset Recipes
                     </h3>
-                    <p class="bs-text-subtle">Use built-in or custom presets for quick consumption logging with predefined coffee types and amounts.</p>
+                    <p class="bs-text-subtle" style="color: var(--bs-warning);">Coming soon - Save favorite coffee preparations.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keyboard Shortcuts -->
+        <div class="bs-card">
+            <h2 class="bs-font-bold" style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 0.5rem;">keyboard</span>
+                Keyboard Shortcuts
+            </h2>
+            <div class="bs-grid bs-grid-cols-1 md:bs-grid-cols-2 bs-gap-3">
+                <div class="bs-flex bs-justify-between">
+                    <span>Quick consumption log</span>
+                    <kbd style="background: var(--bs-gray-200); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Ctrl + L</kbd>
+                </div>
+                <div class="bs-flex bs-justify-between">
+                    <span>Navigate to spaces</span>
+                    <kbd style="background: var(--bs-gray-200); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Ctrl + S</kbd>
+                </div>
+                <div class="bs-flex bs-justify-between">
+                    <span>View profile</span>
+                    <kbd style="background: var(--bs-gray-200); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Ctrl + P</kbd>
+                </div>
+                <div class="bs-flex bs-justify-between">
+                    <span>Toggle theme</span>
+                    <kbd style="background: var(--bs-gray-200); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Ctrl + T</kbd>
                 </div>
             </div>
         </div>
@@ -134,16 +160,35 @@
                     <span class="material-symbols-outlined" style="margin-right: 0.5rem;">mail</span>
                     Email Support
                 </a>
-                <a href="mailto:support@beanshare.com?subject=Bug Report" class="bs-btn bs-btn-outline" style="text-decoration: none;">
+                <button class="bs-btn bs-btn-outline">
                     <span class="material-symbols-outlined" style="margin-right: 0.5rem;">bug_report</span>
                     Report an Issue
-                </a>
-                <a href="mailto:support@beanshare.com?subject=Feature Suggestion" class="bs-btn bs-btn-outline" style="text-decoration: none;">
+                </button>
+                <button class="bs-btn bs-btn-outline">
                     <span class="material-symbols-outlined" style="margin-right: 0.5rem;">lightbulb</span>
                     Suggest a Feature
-                </a>
+                </button>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+    .bs-faq-item {
+        border-bottom: 1px solid var(--bs-border);
+        padding: 0.5rem 0;
+    }
+
+    .bs-faq-item:last-child {
+        border-bottom: none;
+    }
+
+    details[open] summary {
+        color: var(--bs-primary);
+    }
+
+    kbd {
+        font-family: monospace;
+        font-size: 0.875rem;
+    }
+</style>

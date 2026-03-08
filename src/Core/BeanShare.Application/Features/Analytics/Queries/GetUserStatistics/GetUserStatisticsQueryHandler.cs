@@ -6,6 +6,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Analytics.Queries.GetUserStatistics;
+
 public sealed class GetUserStatisticsQueryHandler : IRequestHandler<GetUserStatisticsQuery, UserStatisticsDto>
 {
     private readonly IConsumptionRepository _consumptionRepository;
@@ -104,10 +105,7 @@ public sealed class GetUserStatisticsQueryHandler : IRequestHandler<GetUserStati
             }
         }
 
-        // Count actual space memberships, not just spaces with consumption
-        var spacesSpec = new SpacesWithUserMembershipSpecification(request.UserId);
-        var memberSpaces = await _spaceRepository.GetBySpecAsync(spacesSpec, cancellationToken);
-        var activeSpaces = memberSpaces.Count;
+        var activeSpaces = consumptions.Select(c => c.SpaceId).Distinct().Count();
 
         Money? totalCost = null;
         bool isCostFullyConverted = false;

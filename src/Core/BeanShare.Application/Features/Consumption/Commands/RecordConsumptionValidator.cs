@@ -3,11 +3,8 @@ using BeanShare.Domain.ValueObjects;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
 
-// NOTE: Error messages use property names - might want to make these more user-friendly later
 public sealed class RecordConsumptionValidator : AbstractValidator<RecordConsumptionCommand>
 {
-    private const int ClockSkewToleranceMinutes = 5;
-
     public RecordConsumptionValidator()
     {
         RuleFor(x => x.SpaceId)
@@ -37,7 +34,7 @@ public sealed class RecordConsumptionValidator : AbstractValidator<RecordConsump
             .WithMessage($"{nameof(RecordConsumptionCommand.QuantityGrams)} must be positive");
 
         RuleFor(x => x.ConsumedAt)
-            .LessThanOrEqualTo(DateTime.UtcNow.AddMinutes(ClockSkewToleranceMinutes))
+            .LessThanOrEqualTo(DateTime.UtcNow)
             .When(x => x.ConsumedAt.HasValue)
             .WithMessage($"{nameof(RecordConsumptionCommand.ConsumedAt)} cannot be in the future");
     }

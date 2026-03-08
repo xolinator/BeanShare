@@ -1,4 +1,5 @@
 namespace BeanShare.Application.Features.Spaces.Dtos;
+
 public sealed record SpaceDto
 {
     public required Guid Id { get; init; }

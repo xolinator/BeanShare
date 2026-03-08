@@ -14,8 +14,6 @@ internal sealed class ConsumptionEntryConfiguration : IEntityTypeConfiguration<C
     {
         builder.ToTable("Consumptions");
 
-        builder.Ignore(x => x.DomainEvents);
-
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.Id)

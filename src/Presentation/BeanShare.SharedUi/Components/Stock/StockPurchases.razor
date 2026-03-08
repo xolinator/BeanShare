@@ -10,7 +10,7 @@
         </div>
         <div class="bs-card">
             <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem; font-weight: 500;">Total Cost</p>
-            <p class="bs-font-bold" style="margin: 0.25rem 0 0 0; font-size: 1.5rem;">@FormatCurrency(TotalCost)</p>
+            <p class="bs-font-bold" style="margin: 0.25rem 0 0 0; font-size: 1.5rem;">@TotalCost.ToString("C")</p>
         </div>
     </div>
 
@@ -42,7 +42,6 @@
             {
                 <PurchaseRow ProductName="@purchase.ProductName"
                             TotalCost="@purchase.TotalCost"
-                            CurrencyCode="@purchase.CostCurrency"
                             QuantityGrams="@((int)purchase.QuantityGrams)"
                             CoffeeType="@purchase.CoffeeType"
                             PurchasedAt="@purchase.PurchasedAt"
@@ -59,23 +58,7 @@
     [Parameter]
     public bool IsLoading { get; set; }
 
-    [Parameter]
-    public string CurrencyCode { get; set; } = "USD";
-
     private int TotalPurchases => Purchases?.Count() ?? 0;
     private int TotalGrams => (int)(Purchases?.Sum(p => p.QuantityGrams) ?? 0);
     private decimal TotalCost => Purchases?.Sum(p => p.TotalCost) ?? 0m;
-
-    private string FormatCurrency(decimal amount)
-    {
-        try
-        {
-            var currency = BeanShare.Domain.ValueObjects.Currency.Create(CurrencyCode);
-            return currency.FormatAmount(amount);
-        }
-        catch
-        {
-            return $"{amount:N2}";
-        }
-    }
 }

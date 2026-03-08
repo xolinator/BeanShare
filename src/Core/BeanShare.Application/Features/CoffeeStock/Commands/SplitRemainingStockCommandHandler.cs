@@ -8,13 +8,13 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;
+
 public sealed class SplitRemainingStockCommandHandler : IRequestHandler<SplitRemainingStockCommand, Result<SplitRemainingStockResult>>
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ISpaceRepository _spaceRepository;
     private readonly IUserService _userService;
-    private readonly IUserContext _userContext;
     private readonly IClock _clock;
 
     public SplitRemainingStockCommandHandler(
@@ -22,14 +22,12 @@ public sealed class SplitRemainingStockCommandHandler : IRequestHandler<SplitRem
         IConsumptionRepository consumptionRepository,
         ISpaceRepository spaceRepository,
         IUserService userService,
-        IUserContext userContext,
         IClock clock)
     {
         _coffeeStockRepository = coffeeStockRepository;
         _consumptionRepository = consumptionRepository;
         _spaceRepository = spaceRepository;
         _userService = userService;
-        _userContext = userContext;
         _clock = clock;
     }
 
@@ -42,11 +40,6 @@ public sealed class SplitRemainingStockCommandHandler : IRequestHandler<SplitRem
         if (space == null)
         {
             return Result<SplitRemainingStockResult>.Failure(Error.SpaceNotFound(request.SpaceId));
-        }
-
-        if (!space.IsAdmin(_userContext.CurrentUserId))
-        {
-            return Result<SplitRemainingStockResult>.Failure(Error.InsufficientSpacePrivileges("split remaining stock"));
         }
 
         var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
@@ -102,7 +95,7 @@ public sealed class SplitRemainingStockCommandHandler : IRequestHandler<SplitRem
                 }
             }
         }
-        else if (memberIds.Count > 0)
+        else
         {
             var memberCount = memberIds.Count;
             var equalShare = Math.Round(remainingGrams / memberCount, 2);

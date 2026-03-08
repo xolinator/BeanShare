@@ -13,7 +13,6 @@
 @inject IMediator Mediator
 @inject NavigationManager Navigation
 @inject IUserContext UserContext
-@inject IJSRuntime JSRuntime
 
 <PageTitle>Settlement Details - BeanShare</PageTitle>
 
@@ -176,14 +175,14 @@
         <div class="bs-card" style="padding: 1.5rem; margin-top: 1.5rem;">
             <h3 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600;">Export & Share</h3>
             <div class="bs-flex bs-gap-3" style="flex-wrap: wrap;">
-                <button class="bs-btn bs-btn-secondary" @onclick="DownloadPdf">
+                <a href="http://localhost:5247/api/settlements/@SettlementId/export/pdf" download class="bs-btn bs-btn-secondary">
                     <span class="material-symbols-outlined">picture_as_pdf</span>
                     Export PDF
-                </button>
-                <button class="bs-btn bs-btn-secondary" @onclick="DownloadExcel">
+                </a>
+                <a href="http://localhost:5247/api/settlements/@SettlementId/export/excel" download class="bs-btn bs-btn-secondary">
                     <span class="material-symbols-outlined">table_chart</span>
                     Export Excel
-                </button>
+                </a>
                 @if (isAdmin)
                 {
                     <button class="bs-btn bs-btn-primary" disabled="@isSendingEmails" @onclick="HandleSendEmails">
@@ -254,9 +253,8 @@
                 isAdmin = result.Value.Members.Any(m => m.UserId == currentUserId && m.Role == "Admin");
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            ShowToast(true, "Error", $"Failed to load space: {ex.Message}");
         }
     }
 
@@ -374,16 +372,6 @@
         {
             isSendingEmails = false;
         }
-    }
-
-    private async Task DownloadPdf()
-    {
-        await JSRuntime.InvokeVoidAsync("open", $"/api/settlements/{SettlementId}/export/pdf", "_blank");
-    }
-
-    private async Task DownloadExcel()
-    {
-        await JSRuntime.InvokeVoidAsync("open", $"/api/settlements/{SettlementId}/export/excel", "_blank");
     }
 
     private void ShowToast(bool isError, string title, string message)

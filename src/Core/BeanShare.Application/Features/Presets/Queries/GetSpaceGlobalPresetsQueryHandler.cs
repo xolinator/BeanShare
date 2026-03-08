@@ -5,6 +5,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Queries;
+
 public sealed class GetSpaceGlobalPresetsQueryHandler : IRequestHandler<GetSpaceGlobalPresetsQuery, Result<GetSpaceGlobalPresetsResult>>
 {
     private readonly IGlobalPresetRepository _globalPresetRepository;

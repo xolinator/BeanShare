@@ -59,10 +59,9 @@ public sealed class PresetRecipeRepository : IPresetRecipeRepository
         await _context.PresetRecipes.AddAsync(preset, ct);
     }
 
-    public Task UpdateAsync(PresetRecipe preset, CancellationToken ct = default)
+    public async Task UpdateAsync(PresetRecipe preset, CancellationToken ct = default)
     {
         _context.PresetRecipes.Update(preset);
-        return Task.CompletedTask;
     }
 
     public async Task DeleteAsync(PresetRecipeId id, CancellationToken ct = default)

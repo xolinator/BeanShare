@@ -42,24 +42,19 @@
             @if (SpaceMembers != null && SpaceMembers.Count > 1)
             {
                 <div class="bs-form-group">
-                    <label class="bs-label">Log for</label>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: var(--bs-gray-50); border-radius: 0.5rem; max-height: 10rem; overflow-y: auto;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
-                            <input type="checkbox" checked="@logForMyself" @onchange="ToggleMyself" />
-                            <span style="font-weight: 500;">Myself</span>
-                        </label>
-                        @foreach (var member in SpaceMembers.Where(m => !CurrentUserId.HasValue || m.UserId != CurrentUserId.Value))
+                    <label class="bs-label" for="memberSelect">Log for</label>
+                    <select id="memberSelect"
+                            class="bs-input"
+                            @onchange="OnMemberSelected"
+                            value="@selectedMemberId">
+                        <option value="">Myself</option>
+                        @foreach (var member in SpaceMembers)
                         {
-                            var memberId = member.UserId;
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
-                                <input type="checkbox" checked="@selectedMemberIds.Contains(memberId)" @onchange="() => ToggleMember(memberId)" />
-                                <span>@member.UserName</span>
-                                <span style="color: var(--bs-text-subtle); font-size: 0.75rem;">@member.Email</span>
-                            </label>
+                            <option value="@member.UserId">@member.UserName (@member.Email)</option>
                         }
-                    </div>
+                    </select>
                     <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: var(--bs-text-subtle);">
-                        Select one or more members to log coffee for simultaneously.
+                        Optionally log coffee for another team member.
                     </p>
                 </div>
             }
@@ -199,9 +194,6 @@
     [Parameter]
     public List<MembershipDto>? SpaceMembers { get; set; }
 
-    [Parameter]
-    public Guid? CurrentUserId { get; set; }
-
     private ConsumptionFormModel model = new() { ConsumedAt = DateTime.Now };
     private bool isSubmitting;
     private bool isCustomMode = false;
@@ -209,8 +201,7 @@
     private StockLevelDto? selectedProduct;
     private string selectedProductId = "";
     private string productSelectionError = "";
-    private HashSet<Guid> selectedMemberIds = new();
-    private bool logForMyself = true;
+    private string selectedMemberId = "";
 
     protected override void OnParametersSet()
     {
@@ -276,17 +267,10 @@
         }
     }
 
-    private void ToggleMyself()
+    private void OnMemberSelected(ChangeEventArgs e)
     {
-        logForMyself = !logForMyself;
-    }
-
-    private void ToggleMember(Guid memberId)
-    {
-        if (selectedMemberIds.Contains(memberId))
-            selectedMemberIds.Remove(memberId);
-        else
-            selectedMemberIds.Add(memberId);
+        selectedMemberId = e.Value?.ToString() ?? "";
+        model.ForUserId = string.IsNullOrEmpty(selectedMemberId) ? null : Guid.Parse(selectedMemberId);
     }
 
     private void SelectPreset(PresetOption preset)
@@ -323,47 +307,10 @@
             return;
         }
 
-        // Validate that at least one person is selected
-        if (!logForMyself && !selectedMemberIds.Any())
-        {
-            productSelectionError = "Please select at least one member to log consumption for.";
-            return;
-        }
-
-        // Build target user list: allow both "Myself" and other members simultaneously
-        if (logForMyself && selectedMemberIds.Any())
-        {
-            // Both myself and others selected
-            var allIds = new List<Guid>();
-            if (CurrentUserId.HasValue)
-                allIds.Add(CurrentUserId.Value);
-            allIds.AddRange(selectedMemberIds);
-            model.ForUserIds = allIds;
-            model.ForUserId = null;
-        }
-        else if (!logForMyself && selectedMemberIds.Any())
-        {
-            // Only others selected
-            model.ForUserIds = selectedMemberIds.ToList();
-            model.ForUserId = null;
-        }
-        else
-        {
-            // Just myself (default)
-            model.ForUserIds = null;
-            model.ForUserId = null;
-        }
-
         isSubmitting = true;
-        try
-        {
-            await OnSubmit.InvokeAsync(model);
-            Reset();
-        }
-        finally
-        {
-            isSubmitting = false;
-        }
+        await OnSubmit.InvokeAsync(model);
+        isSubmitting = false;
+        Reset();
     }
 
     private void Reset()
@@ -389,7 +336,6 @@
         selectedProduct = null;
         selectedProductId = "";
         productSelectionError = "";
-        selectedMemberIds.Clear();
-        logForMyself = true;
+        selectedMemberId = "";
     }
 }

@@ -6,6 +6,7 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Billing.Commands.CloseBillingPeriod;
+
 public sealed class CloseBillingPeriodHandler : IRequestHandler<CloseBillingPeriodCommand, Result>
 {
     private readonly IBillingPeriodRepository _billingPeriodRepository;

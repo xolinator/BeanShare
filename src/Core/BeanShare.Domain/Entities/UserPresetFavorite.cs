@@ -50,12 +50,6 @@ public sealed class UserPresetFavorite : Entity
         int displayOrder,
         DateTime createdAt)
     {
-        ArgumentNullException.ThrowIfNull(userId);
-        ArgumentNullException.ThrowIfNull(spaceId);
-        ArgumentNullException.ThrowIfNull(globalPresetId);
-        if (displayOrder < 0)
-            throw new ArgumentOutOfRangeException(nameof(displayOrder), "Display order cannot be negative");
-
         return new UserPresetFavorite(
             new UserPresetFavoriteId(Guid.NewGuid()),
             userId,
@@ -73,12 +67,6 @@ public sealed class UserPresetFavorite : Entity
         int displayOrder,
         DateTime createdAt)
     {
-        ArgumentNullException.ThrowIfNull(userId);
-        ArgumentNullException.ThrowIfNull(spaceId);
-        ArgumentNullException.ThrowIfNull(presetRecipeId);
-        if (displayOrder < 0)
-            throw new ArgumentOutOfRangeException(nameof(displayOrder), "Display order cannot be negative");
-
         return new UserPresetFavorite(
             new UserPresetFavoriteId(Guid.NewGuid()),
             userId,
@@ -91,8 +79,6 @@ public sealed class UserPresetFavorite : Entity
 
     public void UpdateDisplayOrder(int newOrder)
     {
-        if (newOrder < 0)
-            throw new ArgumentOutOfRangeException(nameof(newOrder), "Display order cannot be negative");
         DisplayOrder = newOrder;
     }
 

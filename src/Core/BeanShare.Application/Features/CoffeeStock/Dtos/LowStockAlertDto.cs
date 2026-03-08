@@ -1,4 +1,5 @@
 namespace BeanShare.Application.Features.CoffeeStock.Dtos;
+
 public sealed class LowStockAlertDto
 {
     public required Guid StockLevelId { get; init; }
