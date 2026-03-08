@@ -91,7 +91,8 @@ public static class AccountEndpoints
         HttpContext httpContext,
         [FromQuery] string? returnUrl,
         [FromServices] IConfiguration configuration,
-        [FromServices] IServiceProvider serviceProvider)
+        [FromServices] IServiceProvider serviceProvider,
+        [FromServices] ILogger logger)
     {
         var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
 
@@ -137,7 +138,7 @@ public static class AccountEndpoints
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"External callback error: {ex.Message}");
+            logger.LogError(ex, "External callback error during authentication");
             return Results.Redirect("/login?error=callback_failed");
         }
     }

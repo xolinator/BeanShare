@@ -5,17 +5,19 @@ using BeanShare.Domain.Repositories;
 using MediatR;
 
 namespace BeanShare.Application.Features.Presets.Commands;
-
 public sealed class DeletePresetCommandHandler : IRequestHandler<DeletePresetCommand, Result>
 {
     private readonly IPresetRecipeRepository _presetRepository;
+    private readonly ISpaceRepository _spaceRepository;
     private readonly IUserContext _userContext;
 
     public DeletePresetCommandHandler(
         IPresetRecipeRepository presetRepository,
+        ISpaceRepository spaceRepository,
         IUserContext userContext)
     {
         _presetRepository = presetRepository;
+        _spaceRepository = spaceRepository;
         _userContext = userContext;
     }
 
@@ -27,6 +29,12 @@ public sealed class DeletePresetCommandHandler : IRequestHandler<DeletePresetCom
         if (preset is null)
         {
             return Result.Failure(Error.NotFound("PresetRecipe", "Preset not found"));
+        }
+
+        var space = await _spaceRepository.GetByIdAsync(preset.SpaceId, cancellationToken);
+        if (space is null || !space.HasMember(_userContext.CurrentUserId))
+        {
+            return Result.Failure(Error.Forbidden("PresetRecipe", "You do not have access to this preset"));
         }
 
         if (preset.UserId != _userContext.CurrentUserId)

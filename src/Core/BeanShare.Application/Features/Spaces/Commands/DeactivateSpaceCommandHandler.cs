@@ -8,7 +8,6 @@ using MapsterMapper;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Commands;
-
 public sealed class DeactivateSpaceCommandHandler : IRequestHandler<DeactivateSpaceCommand, Result<SpaceDto>>
 {
     private readonly ISpaceRepository _spaceRepository;

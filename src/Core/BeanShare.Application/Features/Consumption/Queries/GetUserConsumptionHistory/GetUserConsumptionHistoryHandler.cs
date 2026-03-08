@@ -7,7 +7,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Consumption.Queries.GetUserConsumptionHistory;
-
 public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserConsumptionHistoryQuery, Result<ConsumptionHistoryDto>>
 {
     private readonly IConsumptionRepository _consumptionRepository;

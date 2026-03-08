@@ -7,7 +7,6 @@ using MapsterMapper;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Queries;
-
 public sealed class GetUserSpacesQueryHandler : IRequestHandler<GetUserSpacesQuery, Result<GetUserSpacesResult>>
 {
     private readonly ISpaceRepository _spaceRepository;
@@ -31,6 +30,21 @@ public sealed class GetUserSpacesQueryHandler : IRequestHandler<GetUserSpacesQue
 
         var spaceDtos = _mapper.Map<IReadOnlyList<SpaceSummaryDto>>(userSpaces);
 
-        return Result<GetUserSpacesResult>.Success(new GetUserSpacesResult(spaceDtos));
+        // Post-process to set the current user's actual role in each space
+        var userId = _userContext.CurrentUserId;
+        var spacesWithRoles = new List<SpaceSummaryDto>();
+        for (int i = 0; i < spaceDtos.Count; i++)
+        {
+            var dto = spaceDtos[i];
+            var space = userSpaces[i];
+            var membership = space.Members.FirstOrDefault(m => m.UserId == userId);
+            if (membership != null)
+            {
+                dto = dto with { Role = membership.Role.ToString() };
+            }
+            spacesWithRoles.Add(dto);
+        }
+
+        return Result<GetUserSpacesResult>.Success(new GetUserSpacesResult(spacesWithRoles));
     }
 }

@@ -66,8 +66,8 @@ public sealed class ConsumptionEntry : AggregateRoot
             throw new ArgumentException("Consumption quantity must be positive", nameof(quantity));
         }
 
-        // Allow a small tolerance of 1 minute for timezone conversion and clock drift
-        if (consumedAt > clock.UtcNow.AddMinutes(1))
+        // Allow a small tolerance of 5 minutes for timezone conversion and clock drift
+        if (consumedAt > clock.UtcNow.AddMinutes(5))
         {
             throw new ArgumentException("Consumption time cannot be in the future", nameof(consumedAt));
         }

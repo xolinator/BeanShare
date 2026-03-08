@@ -62,16 +62,16 @@ public readonly record struct Error(string Code, string Message)
     }
 
     public static Error SpaceNotFound(Guid spaceId) =>
-        new(Codes.SpaceNotFound, $"Coffee space with ID {spaceId} was not found");
+        new(Codes.SpaceNotFound, $"Space {spaceId} not found");
 
     public static Error InviteCodeNotFound(string inviteCode) =>
-        new(Codes.InviteCodeInvalid, $"Invite code '{inviteCode}' is not valid or has expired");
+        new(Codes.InviteCodeInvalid, $"Invalid or expired invite code");
 
     public static Error AlreadySpaceMember(Guid spaceId, Guid userId) =>
-        new(Codes.AlreadyMember, $"User {userId} is already a member of coffee space {spaceId}");
+        new(Codes.AlreadyMember, $"Already a member of this space");
 
     public static Error InsufficientSpacePrivileges(string action) =>
-        new(Codes.InsufficientPrivileges, $"User lacks privileges to {action} in this coffee space");
+        new(Codes.InsufficientPrivileges, $"Not authorized to {action}");
 
     public static Error LastAdminProtection() =>
         new(Codes.LastAdminProtection, "Cannot remove or demote the last admin of a coffee space");

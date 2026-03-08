@@ -25,7 +25,6 @@ public sealed class ExportSettlementExcelEndpoint : Endpoint<ExportSettlementExc
     public override void Configure()
     {
         Get("/api/settlements/{Id}/export/excel");
-        AllowAnonymous();
         Summary(s =>
         {
             s.Summary = "Export settlement as Excel";

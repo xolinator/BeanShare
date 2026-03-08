@@ -117,6 +117,34 @@ public sealed class GlobalPreset : Entity
             description);
     }
 
+    public void Update(
+        string name,
+        string defaultCoffeeType,
+        string defaultPreparation,
+        Weight defaultGrams,
+        string? description,
+        int displayOrder)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Preset name is required", nameof(name));
+
+        if (string.IsNullOrWhiteSpace(defaultCoffeeType))
+            throw new ArgumentException("Coffee type is required", nameof(defaultCoffeeType));
+
+        if (string.IsNullOrWhiteSpace(defaultPreparation))
+            throw new ArgumentException("Preparation method is required", nameof(defaultPreparation));
+
+        if (!defaultGrams.IsPositive)
+            throw new ArgumentException("Default grams must be positive", nameof(defaultGrams));
+
+        Name = name;
+        DefaultCoffeeType = defaultCoffeeType;
+        DefaultPreparation = defaultPreparation;
+        DefaultGrams = defaultGrams;
+        Description = description;
+        DisplayOrder = displayOrder;
+    }
+
     public void Deactivate()
     {
         IsActive = false;

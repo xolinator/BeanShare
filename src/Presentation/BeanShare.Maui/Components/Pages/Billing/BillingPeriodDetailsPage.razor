@@ -1,12 +1,8 @@
 @page "/spaces/{SpaceId}/billing/{PeriodId}"
-@using MediatR
-@using BeanShare.Application.Features.Billing.Queries.GetBillingPeriodById
-@using BeanShare.Application.Features.Billing.Commands.OpenBillingPeriod
-@using BeanShare.Application.Features.Billing.Commands.CloseBillingPeriod
-@using BeanShare.Application.Features.Settlement.Commands.GenerateSettlement
-@using BeanShare.Application.Features.Billing.Dtos
-@using BeanShare.Domain.ValueObjects
-@inject IMediator Mediator
+@using BeanShare.Contracts.Billing
+@using BeanShare.Maui.Services
+@inject IBillingService BillingService
+@inject ISettlementService SettlementService
 @inject NavigationManager Navigation
 
 <PageTitle>@(period?.Name ?? "Billing Period") - BeanShare</PageTitle>
@@ -209,16 +205,11 @@
         isLoading = true;
         try
         {
-            var query = new GetBillingPeriodByIdQuery(new BillingPeriodId(Guid.Parse(PeriodId)));
-            var result = await Mediator.Send(query);
+            period = await BillingService.GetBillingPeriodByIdAsync(Guid.Parse(PeriodId));
 
-            if (result.IsSuccess)
+            if (period == null)
             {
-                period = result.Value;
-            }
-            else
-            {
-                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+                ShowToast(true, "Error", "Billing period not found.");
             }
         }
         catch (Exception ex)
@@ -228,6 +219,7 @@
         finally
         {
             isLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -236,18 +228,9 @@
         isProcessing = true;
         try
         {
-            var command = new OpenBillingPeriodCommand(Guid.Parse(PeriodId));
-            var result = await Mediator.Send(command);
-
-            if (result.IsSuccess)
-            {
-                ShowToast(false, "Success", "Billing period opened successfully!");
-                await LoadPeriod();
-            }
-            else
-            {
-                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
-            }
+            await BillingService.OpenBillingPeriodAsync(Guid.Parse(PeriodId));
+            ShowToast(false, "Success", "Billing period opened successfully!");
+            await LoadPeriod();
         }
         catch (Exception ex)
         {
@@ -264,18 +247,9 @@
         isProcessing = true;
         try
         {
-            var command = new CloseBillingPeriodCommand(Guid.Parse(PeriodId));
-            var result = await Mediator.Send(command);
-
-            if (result.IsSuccess)
-            {
-                ShowToast(false, "Success", "Billing period closed successfully!");
-                await LoadPeriod();
-            }
-            else
-            {
-                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
-            }
+            await BillingService.CloseBillingPeriodAsync(Guid.Parse(PeriodId));
+            ShowToast(false, "Success", "Billing period closed successfully!");
+            await LoadPeriod();
         }
         catch (Exception ex)
         {
@@ -292,19 +266,18 @@
         isProcessing = true;
         try
         {
-            var command = new GenerateSettlementCommand(Guid.Parse(PeriodId));
-            var result = await Mediator.Send(command);
+            var settlement = await SettlementService.GenerateSettlementAsync(Guid.Parse(PeriodId));
 
-            if (result.IsSuccess)
+            if (settlement != null)
             {
                 ShowToast(false, "Success", "Settlement generated successfully!");
                 await LoadPeriod();
                 await Task.Delay(1500);
-                Navigation.NavigateTo($"/spaces/{SpaceId}/settlements/{result.Value.Id}");
+                Navigation.NavigateTo($"/spaces/{SpaceId}/settlements/{settlement.Id}");
             }
             else
             {
-                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+                ShowToast(true, "Error", "Failed to generate settlement.");
             }
         }
         catch (Exception ex)

@@ -27,7 +27,6 @@ public sealed class GetUserConsumptionHistoryEndpoint : Endpoint<GetUserConsumpt
     public override void Configure()
     {
         Get("/api/me/consumption/history");
-        AllowAnonymous();
     }
 
     public override async Task HandleAsync(GetUserConsumptionHistoryRequest req, CancellationToken ct)

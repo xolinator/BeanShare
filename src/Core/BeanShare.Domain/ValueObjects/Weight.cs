@@ -23,7 +23,7 @@ public sealed record Weight
 
     public Weight Add(Weight other)
     {
-        return new Weight(Grams + other.Grams);
+        return FromGrams(Grams + other.Grams);
     }
 
     public Weight Subtract(Weight other)
@@ -34,7 +34,7 @@ public sealed record Weight
             throw new InvalidOperationException("Result cannot be negative");
         }
 
-        return new Weight(result);
+        return FromGrams(result);
     }
 
     public Weight Multiply(decimal factor)

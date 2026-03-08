@@ -39,7 +39,8 @@ public sealed class RecordConsumptionFromPresetEndpoint : Endpoint<RecordConsump
             spaceId,
             req.PresetId,
             req.CustomQuantityGrams,
-            req.ConsumedAt);
+            req.ConsumedAt,
+            req.ForUserId);
 
         var result = await _mediator.Send(command, ct);
 

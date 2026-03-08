@@ -2,6 +2,7 @@
 @using BeanShare.Contracts.Settlement
 @inject ISettlementService SettlementService
 @inject NavigationManager Navigation
+@inject IAlertService AlertService
 
 <div class="container mt-4">
     <h3 class="mb-4">Settlements</h3>
@@ -105,6 +106,10 @@
         try
         {
             settlements = await SettlementService.GetSpaceSettlementsAsync(SpaceId);
+        }
+        catch (Exception ex)
+        {
+            await AlertService.ShowAlertAsync("Error", $"Failed to load settlements: {ex.Message}");
         }
         finally
         {

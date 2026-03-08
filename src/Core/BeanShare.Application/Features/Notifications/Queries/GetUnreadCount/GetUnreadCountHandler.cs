@@ -3,7 +3,6 @@ using BeanShare.Application.Common;
 using MediatR;
 
 namespace BeanShare.Application.Features.Notifications.Queries.GetUnreadCount;
-
 public sealed class GetUnreadCountHandler : IRequestHandler<GetUnreadCountQuery, Result<int>>
 {
     private readonly INotificationRepository _notificationRepository;

@@ -3,7 +3,6 @@ using BeanShare.Application.Common;
 using BeanShare.Application.Common.Authorization;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;
-
 [RequireSpaceMember("SpaceId")]
 public sealed record ConsumeStockCommand(
     Guid SpaceId,

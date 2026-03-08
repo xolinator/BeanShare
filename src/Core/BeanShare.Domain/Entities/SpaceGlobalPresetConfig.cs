@@ -45,6 +45,9 @@ public sealed class SpaceGlobalPresetConfig : Entity
         bool isEnabled,
         DateTime createdAt)
     {
+        ArgumentNullException.ThrowIfNull(spaceId);
+        ArgumentNullException.ThrowIfNull(globalPresetId);
+
         return new SpaceGlobalPresetConfig(
             new SpaceGlobalPresetConfigId(Guid.NewGuid()),
             spaceId,

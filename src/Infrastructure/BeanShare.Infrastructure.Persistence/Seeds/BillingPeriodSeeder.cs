@@ -90,7 +90,7 @@ public class BillingPeriodSeeder : IDataSeeder
         );
         period4.Open(johnSmithId, new SeedClock(period4Start.AddDays(1)));
         periods.Add(period4);
-d
+
         var marketingSpaceId = new SpaceId(new Guid("bbbb2222-bbbb-2222-bbbb-222222222222"));
         var janeId = new UserId(new Guid("22222222-2222-2222-2222-222222222222"));
 

@@ -85,6 +85,11 @@ public sealed class BillingPeriod : AggregateRoot
             throw new InvalidOperationException("Cannot open billing period before its start date");
         }
 
+        if (clock.UtcNow > EndDate)
+        {
+            throw new InvalidOperationException("Cannot open billing period after its end date");
+        }
+
         State = BillingState.Open;
 
         RaiseDomainEvent(new BillingPeriodOpened(
@@ -141,8 +146,8 @@ public sealed class BillingPeriod : AggregateRoot
 
     public bool ContainsDate(DateTime date)
     {
-        var utcDate = date.ToUniversalTime();
-        return utcDate >= StartDate && utcDate <= EndDate;
+        // Use the date as-is - callers should provide UTC dates consistent with StartDate/EndDate
+        return date >= StartDate && date <= EndDate;
     }
 
     public bool OverlapsWith(DateTime startDate, DateTime endDate)

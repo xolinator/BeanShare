@@ -1,3 +1,4 @@
+using BeanShare.Application.Constants;
 using BeanShare.Application.Services;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
@@ -15,7 +16,7 @@ public sealed class UserService : IUserService
     private readonly BeanShareDbContext _context;
     private readonly IMemoryCache _cache;
     private const string UserCacheKeyPrefix = "user_";
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(CacheSettings.UserCacheDurationMinutes);
 
     public UserService(BeanShareDbContext context, IMemoryCache cache)
     {
@@ -74,7 +75,8 @@ public sealed class UserService : IUserService
 
         if (idsToFetch.Any())
         {
-            // Fetch each user individually to avoid Contains translation issues with value objects
+            // TODO: This is N+1 query but needed because EF Core can't translate Contains() with value objects
+            // Maybe use raw SQL or store GUIDs separately if this becomes a bottleneck
             foreach (var userId in idsToFetch)
             {
                 var user = await _context.Users

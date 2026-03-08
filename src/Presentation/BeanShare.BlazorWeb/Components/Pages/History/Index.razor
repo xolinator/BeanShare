@@ -1,8 +1,11 @@
 @page "/history"
+@rendermode InteractiveServer
 @using BeanShare.Application.Features.Consumption.Dtos
+@using BeanShare.Application.Features.Consumption.Queries.GetUserConsumptionHistory
 @using BeanShare.Application.Features.Spaces.Dtos
-@using System.Net.Http.Json
-@inject HttpClient Http
+@using BeanShare.Application.Features.Spaces.Queries
+@using MediatR
+@inject IMediator Mediator
 @inject ILogger<Index> Logger
 
 <PageTitle>Consumption History</PageTitle>
@@ -107,7 +110,7 @@
 @code {
     private bool isLoading = true;
     private ConsumptionHistoryDto? history;
-    private List<SpaceDto>? userSpaces;
+    private IReadOnlyList<SpaceSummaryDto>? userSpaces;
     private string? errorMessage;
 
     private string? selectedSpaceId;
@@ -126,9 +129,16 @@
     {
         try
         {
-            var response = await Http.GetFromJsonAsync<List<SpaceDto>>("/api/spaces");
-            userSpaces = response;
-            errorMessage = null;
+            var result = await Mediator.Send(new GetUserSpacesQuery());
+            if (result.IsSuccess)
+            {
+                userSpaces = result.Value.Spaces;
+                errorMessage = null;
+            }
+            else
+            {
+                errorMessage = "Unable to load spaces. Please refresh the page.";
+            }
         }
         catch (Exception ex)
         {
@@ -143,31 +153,26 @@
 
         try
         {
-            var queryParams = new List<string>
-            {
-                $"pageNumber={currentPage}",
-                $"pageSize={pageSize}"
-            };
+            Guid? spaceId = !string.IsNullOrEmpty(selectedSpaceId) ? Guid.Parse(selectedSpaceId) : null;
 
-            if (!string.IsNullOrEmpty(selectedSpaceId))
+            var query = new GetUserConsumptionHistoryQuery(
+                SpaceId: spaceId,
+                StartDate: startDate,
+                EndDate: endDate,
+                PageNumber: currentPage,
+                PageSize: pageSize
+            );
+
+            var result = await Mediator.Send(query);
+            if (result.IsSuccess)
             {
-                queryParams.Add($"spaceId={selectedSpaceId}");
+                history = result.Value;
+                errorMessage = null;
             }
-
-            if (startDate.HasValue)
+            else
             {
-                queryParams.Add($"startDate={startDate.Value:yyyy-MM-dd}");
+                errorMessage = "Unable to load consumption history. Please try again.";
             }
-
-            if (endDate.HasValue)
-            {
-                queryParams.Add($"endDate={endDate.Value:yyyy-MM-dd}");
-            }
-
-            var queryString = string.Join("&", queryParams);
-            var response = await Http.GetFromJsonAsync<ConsumptionHistoryDto>($"/api/me/consumption/history?{queryString}");
-            history = response;
-            errorMessage = null;
         }
         catch (Exception ex)
         {

@@ -151,6 +151,61 @@ BeanShare uses environment variables for sensitive configuration. See [CONFIGURA
 
 - Keycloak OIDC settings
 - Email (SMTP) settings
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+
+### Setup
+
+```bash
+# 1. Start PostgreSQL + Keycloak
+docker compose up -d
+
+# 2. Run the API (auto-creates database and seeds demo data)
+cd src/Presentation/BeanShare.Api
+dotnet run
+
+# 3. In another terminal, run the web app
+cd src/Presentation/BeanShare.BlazorWeb
+dotnet run
+```
+
+### Access
+
+- **Web App**: http://localhost:5126
+- **API / Swagger**: http://localhost:5247/swagger
+- **Keycloak Admin**: http://localhost:8080 (admin / admin)
+
+Login with any demo user (password: `password123`):
+- `john.smith@beanshare.dev` (Admin)
+- `sarah.johnson@beanshare.com` (Member)
+- `test@beanshare.com` (Member)
+
+See [PRODUCTION-DEPLOYMENT.md](../PRODUCTION-DEPLOYMENT.md) for production deployment and [TEST.md](TEST.md) for local setup.
+
+## Documentation
+
+- **[Local Testing Guide](TEST.md)** - Development setup & local testing
+- **[Production Deployment](../PRODUCTION-DEPLOYMENT.md)** - Production deployment guide
+- **[Configuration Guide](CONFIGURATION.md)** - All configuration options
+- **[Architecture](ARCHITECTURE.md)** - System architecture and design decisions
+- **[API Documentation](API_DOCUMENTATION.md)** - REST API reference
+- **[User Guide](USER_GUIDE.md)** - End-user documentation
+- **[CSS Architecture](CSS_ARCHITECTURE.md)** - UI styling and theming
+
+## Configuration
+
+See [CONFIGURATION.md](CONFIGURATION.md) for all options and [PRODUCTION-DEPLOYMENT.md](../PRODUCTION-DEPLOYMENT.md) for production setup.
+
+### Required for Production
+
+- PostgreSQL connection string
+- Keycloak realm URL and client secrets
+- JWT signing secret (minimum 32 characters)
+
+### Optional
+
+- [OpenExchangeRates](https://openexchangerates.org/signup/free) API key (currency conversion)
+- SMTP credentials (email notifications)
 - OAuth providers (Google, Facebook)
 
 ## Authentication Options
@@ -159,14 +214,11 @@ BeanShare supports multiple authentication methods:
 
 1. **Keycloak OIDC** (Recommended for production)
    - Enterprise-grade authentication
+   - OAuth 2.0 / OpenID Connect
    - Single sign-on support
    - User federation
 
-2. **Built-in JWT Authentication**
-   - Simple email/password authentication
-   - JWT token-based sessions
-
-3. **OAuth Providers**
+2. **OAuth Providers**
    - Google OAuth
    - Facebook OAuth
 
@@ -233,6 +285,7 @@ dotnet publish -f net10.0-android -c Release
 ```
 
 See [PRODUCTION_DEPLOYMENT_CHECKLIST.md](PRODUCTION_DEPLOYMENT_CHECKLIST.md) for complete deployment guide.
+See [TEST.md](TEST.md) for local setup and [PRODUCTION-DEPLOYMENT.md](../PRODUCTION-DEPLOYMENT.md) for production deployment.
 
 ## Project Structure
 
@@ -305,20 +358,9 @@ See [PRODUCTION_DEPLOYMENT_CHECKLIST.md](PRODUCTION_DEPLOYMENT_CHECKLIST.md) for
 
 [Your License]
 
-## Support
+This project is part of a diploma thesis at Brno University of Technology (VUT FIT).
 
 For issues and questions:
 - Create an issue in the repository
 - Check documentation in `/docs`
 - Review configuration guide
-
-## Roadmap
-
-- [ ] Dark mode support
-- [ ] Mobile push notifications
-- [ ] Recurring billing periods
-- [ ] Integration with payment providers
-- [ ] Advanced analytics and reporting
-- [ ] Multi-language support
-- [ ] Docker containerization
-- [ ] Kubernetes deployment

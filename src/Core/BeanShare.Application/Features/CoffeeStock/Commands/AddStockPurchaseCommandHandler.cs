@@ -8,7 +8,6 @@ using MapsterMapper;
 using MediatR;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;
-
 public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPurchaseCommand, Result<StockPurchaseDto>>
 {
     private readonly ICoffeeStockRepository _coffeeStockRepository;
@@ -48,6 +47,12 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
             return Result<StockPurchaseDto>.Failure(Error.InsufficientSpacePrivileges("manage coffee stock"));
         }
 
+        if (!string.Equals(space.Currency.Code, command.CostCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            return Result<StockPurchaseDto>.Failure(
+                Error.CurrencyConflict(space.Currency.Code, command.CostCurrency));
+        }
+
         try
         {
             var product = CoffeeProduct.Create(
@@ -69,11 +74,13 @@ public sealed class AddStockPurchaseCommandHandler : IRequestHandler<AddStockPur
             }
             else
             {
-                var existingPurchases = coffeeStock.Purchases.ToList();
-                if (existingPurchases.Any() && existingPurchases.First().Cost.Currency != command.CostCurrency)
+                var existingCurrency = coffeeStock.Purchases
+                    .Select(p => p.Cost.Currency)
+                    .FirstOrDefault(c => c != command.CostCurrency);
+                if (existingCurrency is not null)
                 {
                     return Result<StockPurchaseDto>.Failure(
-                        Error.CurrencyConflict(existingPurchases.First().Cost.Currency, command.CostCurrency));
+                        Error.CurrencyConflict(existingCurrency, command.CostCurrency));
                 }
             }
 

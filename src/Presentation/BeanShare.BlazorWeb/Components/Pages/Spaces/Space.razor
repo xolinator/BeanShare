@@ -16,6 +16,7 @@
 @inject IMediator Mediator
 @inject NavigationManager Navigation
 @inject IUserContext UserContext
+@inject IJSRuntime JSRuntime
 
 <PageTitle>@spaceName - BeanShare</PageTitle>
 
@@ -43,7 +44,7 @@ else
                     <span class="bs-text-subtle" style="font-size: 0.75rem; font-weight: 600;">INVITE CODE</span>
                     <div class="bs-flex bs-items-center bs-gap-2">
                         <span style="font-family: monospace; font-size: 0.875rem; font-weight: 700;">@space.InviteCode</span>
-                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code">
+                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code" @onclick="CopyInviteCode">
                             <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
                         </button>
                     </div>
@@ -63,15 +64,18 @@ else
             <SpaceMembers Members="@space.Members"
                          IsLoading="@isLoadingMembers"
                          IsAdmin="@isAdmin"
+                         CurrentUserId="@UserContext.CurrentUserId.Value"
                          OnPromoteMember="HandlePromoteMember"
                          OnDemoteMember="HandleDemoteMember"
-                         OnRemoveMember="HandleRemoveMember" />
+                         OnRemoveMember="HandleRemoveMember"
+                         OnLeaveSpace="HandleLeaveSpace" />
         }
         else if (activeTab == "stock")
         {
             <div>
                 <StockPurchases Purchases="@purchases"
-                               IsLoading="@isLoadingStock" />
+                               IsLoading="@isLoadingStock"
+                               CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
                 @if (isAdmin)
                 {
@@ -89,7 +93,8 @@ else
             <div class="bs-flex bs-flex-col bs-gap-6">
                 <ConsumptionKpis MyCupsToday="@myCupsToday"
                                 MyTotalCost="@myTotalCost"
-                                RemainingStockGrams="@remainingStock" />
+                                RemainingStockGrams="@remainingStock"
+                                CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
                 <ConsumptionForm OnSubmit="HandleLogConsumption" />
 
@@ -278,6 +283,9 @@ else
     private async Task HandleTabChange(string newTab)
     {
         activeTab = newTab;
+        isLoadingStock = (newTab == "stock");
+        isLoadingConsumption = (newTab == "consumption");
+        isLoadingAnalytics = (newTab == "analytics");
         StateHasChanged();
         await LoadTabData();
         StateHasChanged();
@@ -370,6 +378,33 @@ else
         }
     }
 
+    private async Task HandleLeaveSpace()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+        {
+            ShowToast(true, "Error", "Invalid space ID");
+            return;
+        }
+
+        try
+        {
+            var result = await Mediator.Send(new LeaveSpaceCommand(spaceGuid));
+            if (result.IsSuccess)
+            {
+                Navigation.NavigateTo("/spaces");
+                return;
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to leave space: {ex.Message}");
+        }
+    }
+
     private async Task HandleAddPurchase(AddPurchaseModal.AddPurchaseModel model)
     {
         try
@@ -377,7 +412,7 @@ else
             var result = await Mediator.Send(new AddStockPurchaseCommand(
                 Guid.Parse(SpaceId),
                 model.ProductName,
-                "Generic",
+                model.ProductBrand,
                 model.CoffeeType,
                 model.QuantityGrams,
                 model.TotalCost,
@@ -430,6 +465,15 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to log consumption: {ex.Message}");
+        }
+    }
+
+    private async Task CopyInviteCode()
+    {
+        if (space?.InviteCode != null)
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", space.InviteCode);
+            ShowToast(false, "Copied!", "Invite code copied to clipboard");
         }
     }
 

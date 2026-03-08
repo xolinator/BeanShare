@@ -5,7 +5,6 @@ using BeanShare.Domain.Common;
 using MediatR;
 
 namespace BeanShare.Application.Features.Notifications.Commands.MarkNotificationAsRead;
-
 public sealed class MarkNotificationAsReadHandler : IRequestHandler<MarkNotificationAsReadCommand, Result<Unit>>
 {
     private readonly INotificationRepository _notificationRepository;

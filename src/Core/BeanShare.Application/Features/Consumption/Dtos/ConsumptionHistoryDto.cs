@@ -1,5 +1,4 @@
 namespace BeanShare.Application.Features.Consumption.Dtos;
-
 public sealed record ConsumptionHistoryDto(
     int TotalCount,
     int PageNumber,

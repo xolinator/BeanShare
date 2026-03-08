@@ -8,6 +8,7 @@ public interface IAuthenticationService
     Task<AuthResult> LoginWithFacebookAsync();
     Task LogoutAsync();
     Task<bool> IsAuthenticatedAsync();
+    Task<bool> RefreshTokenAsync();
     Task<UserInfo?> GetCurrentUserAsync();
 }
 

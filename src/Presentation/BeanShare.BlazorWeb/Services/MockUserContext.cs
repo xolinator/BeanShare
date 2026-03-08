@@ -48,9 +48,9 @@ public class HttpUserContext : IUserContext
             {
                 return user.FindFirst(ClaimTypes.Email)?.Value
                     ?? user.FindFirst("email")?.Value
-                    ?? "arnzrk@gmail.com";
+                    ?? "john.smith@beanshare.dev";
             }
-            return "arnzrk@gmail.com";
+            return "john.smith@beanshare.dev";
         }
     }
 

@@ -16,7 +16,9 @@ public sealed class WeightedAverageCostingPolicy : ICostingPolicy
         ArgumentNullException.ThrowIfNull(totalConsumed);
         ArgumentException.ThrowIfNullOrWhiteSpace(currency);
 
-        var purchasesList = purchases.ToList();
+        var purchasesList = purchases
+            .Where(p => p.Cost.Currency.Code == currency)
+            .ToList();
 
         if (!purchasesList.Any())
         {

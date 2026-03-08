@@ -4,7 +4,6 @@ using BeanShare.Application.Common.Authorization;
 using BeanShare.Application.Features.Consumption.Dtos;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
-
 [RequireSpaceMember("SpaceId")]
 public sealed record RecordConsumptionCommand(
     Guid SpaceId,

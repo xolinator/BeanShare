@@ -9,7 +9,6 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
-
 public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<RecordConsumptionFromPresetCommand, Result<ConsumptionEntryDto>>
 {
     private readonly IPresetRecipeRepository _presetRepository;
@@ -35,7 +34,9 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
     public async Task<Result<ConsumptionEntryDto>> Handle(RecordConsumptionFromPresetCommand request, CancellationToken cancellationToken)
     {
         var spaceId = new SpaceId(request.SpaceId);
-        var userId = _userContext.CurrentUserId;
+        var userId = request.ForUserId.HasValue
+            ? new UserId(request.ForUserId.Value)
+            : _userContext.CurrentUserId;
         var presetId = new PresetRecipeId(request.PresetId);
 
         var preset = await _presetRepository.GetByIdAsync(presetId, cancellationToken);
@@ -56,15 +57,14 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
 
         if (!Enum.TryParse<Domain.ValueObjects.CoffeeType>(preset.CoffeeType, true, out var coffeeType))
         {
-            return Result<ConsumptionEntryDto>.Failure(Error.InvalidCoffeeTypeInPreset());
+            coffeeType = Domain.ValueObjects.CoffeeType.Specialty;
         }
 
         var quantityGrams = request.CustomQuantityGrams ?? preset.DefaultGrams.Grams;
-        var product = CoffeeProduct.Create(preset.Name, preset.Name, coffeeType);
         var quantity = Weight.FromGrams(quantityGrams);
         var consumedAt = request.ConsumedAt ?? _clock.UtcNow;
 
-        if (consumedAt > _clock.UtcNow)
+        if (consumedAt > _clock.UtcNow.AddMinutes(5))
         {
             return Result<ConsumptionEntryDto>.Failure(Error.InvalidConsumptionTime());
         }
@@ -74,6 +74,15 @@ public sealed class RecordConsumptionFromPresetCommandHandler : IRequestHandler<
         {
             return Result<ConsumptionEntryDto>.Failure(Error.StockNotFound(request.SpaceId));
         }
+
+        var stockProduct = coffeeStock.StockLevels
+            .Where(sl => sl.CurrentStock.Grams > 0)
+            .OrderByDescending(sl => sl.Product.Type == coffeeType)
+            .ThenByDescending(sl => sl.CurrentStock.Grams)
+            .Select(sl => sl.Product)
+            .FirstOrDefault();
+
+        var product = stockProduct ?? CoffeeProduct.Create(preset.Name, preset.Name, coffeeType);
 
         try
         {

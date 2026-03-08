@@ -1,3 +1,4 @@
+using BeanShare.Application.Constants;
 using BeanShare.Application.Features.Settlement.Dtos;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -7,17 +8,18 @@ namespace BeanShare.Infrastructure.Services.Documents;
 
 /// <summary>
 /// Generates PDF settlement reports using QuestPDF.
+/// Layout values are defined in <see cref="PdfLayoutConstants"/>.
 /// </summary>
 public sealed class SettlementPdfGenerator
 {
     static SettlementPdfGenerator()
     {
-        // Configure QuestPDF license
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
     /// <summary>
-    /// Generates a PDF settlement report.
+    /// Generates a PDF settlement report containing space info, summary statistics,
+    /// a detailed member breakdown table, and payment confirmations.
     /// </summary>
     public byte[] GeneratePdf(SettlementReportData data)
     {
@@ -26,8 +28,8 @@ public sealed class SettlementPdfGenerator
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(40);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                page.Margin(PdfLayoutConstants.PageMargin);
+                page.DefaultTextStyle(x => x.FontSize(PdfLayoutConstants.BodyFontSize));
 
                 page.Header().Element(c => ComposeHeader(c, data));
                 page.Content().Element(c => ComposeContent(c, data));
@@ -47,49 +49,49 @@ public sealed class SettlementPdfGenerator
                 row.RelativeItem().Column(col =>
                 {
                     col.Item().Text("BeanShare")
-                        .FontSize(24)
+                        .FontSize(PdfLayoutConstants.HeaderTitleFontSize)
                         .Bold()
                         .FontColor(Colors.Brown.Darken2);
 
                     col.Item().Text("Settlement Report")
-                        .FontSize(16)
+                        .FontSize(PdfLayoutConstants.HeaderSubtitleFontSize)
                         .SemiBold();
                 });
 
                 row.ConstantItem(150).AlignRight().Column(col =>
                 {
                     col.Item().Text($"Generated: {data.GeneratedAt:dd MMM yyyy}")
-                        .FontSize(9);
+                        .FontSize(PdfLayoutConstants.LabelFontSize);
                     col.Item().Text($"By: {data.GeneratedByName}")
-                        .FontSize(9);
+                        .FontSize(PdfLayoutConstants.LabelFontSize);
                 });
             });
 
-            column.Item().PaddingTop(10).LineHorizontal(1).LineColor(Colors.Grey.Lighten1);
+            column.Item().PaddingTop(PdfLayoutConstants.SectionSpacing)
+                .LineHorizontal(PdfLayoutConstants.BorderWidth)
+                .LineColor(Colors.Grey.Lighten1);
         });
     }
 
     private void ComposeContent(IContainer container, SettlementReportData data)
     {
-        container.PaddingVertical(10).Column(column =>
+        container.PaddingVertical(PdfLayoutConstants.SectionSpacing).Column(column =>
         {
             column.Item().Element(c => ComposeSpaceInfo(c, data));
-
-            column.Item().PaddingVertical(15).Element(c => ComposeSummary(c, data));
-
+            column.Item().PaddingVertical(PdfLayoutConstants.SectionPadding).Element(c => ComposeSummary(c, data));
             column.Item().Element(c => ComposeTable(c, data));
         });
     }
 
     private void ComposeSpaceInfo(IContainer container, SettlementReportData data)
     {
-        container.Background(Colors.Grey.Lighten4).Padding(15).Column(column =>
+        container.Background(Colors.Grey.Lighten4).Padding(PdfLayoutConstants.SectionPadding).Column(column =>
         {
             column.Item().Text(data.SpaceName)
-                .FontSize(14)
+                .FontSize(PdfLayoutConstants.SpaceNameFontSize)
                 .SemiBold();
 
-            column.Item().PaddingTop(5).Row(row =>
+            column.Item().PaddingTop(PdfLayoutConstants.SmallSpacing).Row(row =>
             {
                 row.RelativeItem().Text($"Billing Period: {data.BillingPeriodName}");
             });
@@ -103,43 +105,38 @@ public sealed class SettlementPdfGenerator
 
     private void ComposeSummary(IContainer container, SettlementReportData data)
     {
-        container.Border(1).BorderColor(Colors.Grey.Lighten1).Padding(15).Row(row =>
+        container.Border(PdfLayoutConstants.BorderWidth).BorderColor(Colors.Grey.Lighten1)
+            .Padding(PdfLayoutConstants.SectionPadding).Row(row =>
         {
-            row.RelativeItem().Column(col =>
-            {
-                col.Item().Text("Total Amount").FontSize(9).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{data.TotalAmount:N2} {data.Currency}")
-                    .FontSize(18)
-                    .Bold()
-                    .FontColor(Colors.Brown.Darken2);
-            });
-
-            row.RelativeItem().Column(col =>
-            {
-                col.Item().Text("Participants").FontSize(9).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{data.TotalParticipants}")
-                    .FontSize(18)
-                    .Bold();
-            });
-
-            row.RelativeItem().Column(col =>
-            {
-                col.Item().Text("Total Coffee").FontSize(9).FontColor(Colors.Grey.Darken1);
-                col.Item().Text($"{data.TotalCoffeeGrams:N1}g")
-                    .FontSize(18)
-                    .Bold();
-            });
+            ComposeSummaryItem(row.RelativeItem(), "Total Amount",
+                $"{data.TotalAmount:N2} {data.Currency}", Colors.Brown.Darken2);
+            ComposeSummaryItem(row.RelativeItem(), "Participants",
+                $"{data.TotalParticipants}", null);
+            ComposeSummaryItem(row.RelativeItem(), "Total Coffee",
+                $"{data.TotalCoffeeGrams:N1}g", null);
 
             if (data.TotalMilkMl > 0)
             {
-                row.RelativeItem().Column(col =>
-                {
-                    col.Item().Text("Total Milk").FontSize(9).FontColor(Colors.Grey.Darken1);
-                    col.Item().Text($"{data.TotalMilkMl:N1}ml")
-                        .FontSize(18)
-                        .Bold();
-                });
+                ComposeSummaryItem(row.RelativeItem(), "Total Milk",
+                    $"{data.TotalMilkMl:N1}ml", null);
             }
+        });
+    }
+
+    private static void ComposeSummaryItem(IContainer container, string label, string value, string? color)
+    {
+        container.Column(col =>
+        {
+            col.Item().Text(label)
+                .FontSize(PdfLayoutConstants.LabelFontSize)
+                .FontColor(Colors.Grey.Darken1);
+
+            var valueText = col.Item().Text(value)
+                .FontSize(PdfLayoutConstants.SummaryValueFontSize)
+                .Bold();
+
+            if (color != null)
+                valueText.FontColor(color);
         });
     }
 
@@ -148,83 +145,91 @@ public sealed class SettlementPdfGenerator
         container.Column(outerColumn =>
         {
             outerColumn.Item().Table(table =>
-        {
-            table.ColumnsDefinition(columns =>
             {
-                columns.RelativeColumn(3); // Name
-                columns.RelativeColumn(2); // Coffee (g)
-                columns.RelativeColumn(2); // Milk (ml)
-                columns.RelativeColumn(2); // Share %
-                columns.RelativeColumn(2); // Amount Due
-                columns.RelativeColumn(2); // Status
-            });
-
-            table.Header(header =>
-            {
-                header.Cell().Background(Colors.Brown.Darken2).Padding(5)
-                    .Text("Member").FontColor(Colors.White).SemiBold();
-                header.Cell().Background(Colors.Brown.Darken2).Padding(5)
-                    .Text("Coffee (g)").FontColor(Colors.White).SemiBold();
-                header.Cell().Background(Colors.Brown.Darken2).Padding(5)
-                    .Text("Milk (ml)").FontColor(Colors.White).SemiBold();
-                header.Cell().Background(Colors.Brown.Darken2).Padding(5)
-                    .Text("Share %").FontColor(Colors.White).SemiBold();
-                header.Cell().Background(Colors.Brown.Darken2).Padding(5)
-                    .Text("Amount Due").FontColor(Colors.White).SemiBold();
-                header.Cell().Background(Colors.Brown.Darken2).Padding(5)
-                    .Text("Status").FontColor(Colors.White).SemiBold();
-            });
-
-            foreach (var line in data.Lines.OrderByDescending(l => l.AmountDue))
-            {
-                var bgColor = line.IsPaid ? Colors.Green.Lighten5 : Colors.White;
-
-                table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                    .Padding(5).Column(col =>
-                    {
-                        col.Item().Text(line.UserName).SemiBold();
-                        col.Item().Text(line.UserEmail).FontSize(8).FontColor(Colors.Grey.Darken1);
-                    });
-
-                table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                    .Padding(5).AlignRight().Text($"{line.CoffeeGrams:N1}");
-
-                table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                    .Padding(5).AlignRight().Text(line.MilkMl.HasValue ? $"{line.MilkMl:N1}" : "-");
-
-                table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                    .Padding(5).AlignRight().Text($"{line.ConsumptionPercentage:N1}%");
-
-                table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                    .Padding(5).AlignRight().Text($"{line.AmountDue:N2} {data.Currency}").SemiBold();
-
-                var statusColor = line.IsPaid ? Colors.Green.Darken1 : Colors.Orange.Darken1;
-                var statusText = line.IsPaid ? "Paid" : "Pending";
-                table.Cell().Background(bgColor).BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                    .Padding(5).AlignCenter().Text(statusText).FontColor(statusColor).SemiBold();
-            }
-        });
-
-            var paidLines = data.Lines.Where(l => l.IsPaid && l.ConfirmedAt.HasValue).ToList();
-            if (paidLines.Any())
-            {
-                outerColumn.Item().PaddingTop(15).Column(column =>
+                table.ColumnsDefinition(columns =>
                 {
-                    column.Item().Text("Payment Confirmations")
-                        .FontSize(11)
-                        .SemiBold();
-
-                    column.Item().PaddingTop(5).Column(detailCol =>
-                    {
-                        foreach (var line in paidLines.OrderBy(l => l.ConfirmedAt))
-                        {
-                            detailCol.Item().Text($"  {line.UserName}: Confirmed by {line.ConfirmedByName ?? "Self"} on {line.ConfirmedAt:dd MMM yyyy HH:mm}")
-                                .FontSize(8)
-                                .FontColor(Colors.Grey.Darken1);
-                        }
-                    });
+                    columns.RelativeColumn(3); // Name
+                    columns.RelativeColumn(2); // Coffee (g)
+                    columns.RelativeColumn(2); // Milk (ml)
+                    columns.RelativeColumn(2); // Share %
+                    columns.RelativeColumn(2); // Amount Due
+                    columns.RelativeColumn(2); // Status
                 });
-            }
+
+                var headerLabels = new[] { "Member", "Coffee (g)", "Milk (ml)", "Share %", "Amount Due", "Status" };
+                table.Header(header =>
+                {
+                    foreach (var label in headerLabels)
+                    {
+                        header.Cell().Background(Colors.Brown.Darken2)
+                            .Padding(PdfLayoutConstants.TableCellPadding)
+                            .Text(label).FontColor(Colors.White).SemiBold();
+                    }
+                });
+
+                foreach (var line in data.Lines.OrderByDescending(l => l.AmountDue))
+                {
+                    var bgColor = line.IsPaid ? Colors.Green.Lighten5 : Colors.White;
+
+                    table.Cell().Background(bgColor).BorderBottom(PdfLayoutConstants.BorderWidth)
+                        .BorderColor(Colors.Grey.Lighten2)
+                        .Padding(PdfLayoutConstants.TableCellPadding).Column(col =>
+                        {
+                            col.Item().Text(line.UserName).SemiBold();
+                            col.Item().Text(line.UserEmail)
+                                .FontSize(PdfLayoutConstants.SmallFontSize)
+                                .FontColor(Colors.Grey.Darken1);
+                        });
+
+                    ComposeTableCell(table, bgColor, $"{line.CoffeeGrams:N1}");
+                    ComposeTableCell(table, bgColor, line.MilkMl.HasValue ? $"{line.MilkMl:N1}" : "-");
+                    ComposeTableCell(table, bgColor, $"{line.ConsumptionPercentage:N1}%");
+                    ComposeTableCell(table, bgColor, $"{line.AmountDue:N2} {data.Currency}", semiBold: true);
+
+                    var statusColor = line.IsPaid ? Colors.Green.Darken1 : Colors.Orange.Darken1;
+                    var statusText = line.IsPaid ? "Paid" : "Pending";
+                    table.Cell().Background(bgColor).BorderBottom(PdfLayoutConstants.BorderWidth)
+                        .BorderColor(Colors.Grey.Lighten2)
+                        .Padding(PdfLayoutConstants.TableCellPadding)
+                        .AlignCenter().Text(statusText).FontColor(statusColor).SemiBold();
+                }
+            });
+
+            ComposePaymentConfirmations(outerColumn, data);
+        });
+    }
+
+    private static void ComposeTableCell(TableDescriptor table, string bgColor, string text, bool semiBold = false)
+    {
+        var cell = table.Cell().Background(bgColor)
+            .BorderBottom(PdfLayoutConstants.BorderWidth).BorderColor(Colors.Grey.Lighten2)
+            .Padding(PdfLayoutConstants.TableCellPadding).AlignRight().Text(text);
+
+        if (semiBold)
+            cell.SemiBold();
+    }
+
+    private static void ComposePaymentConfirmations(ColumnDescriptor outerColumn, SettlementReportData data)
+    {
+        var paidLines = data.Lines.Where(l => l.IsPaid && l.ConfirmedAt.HasValue).ToList();
+        if (!paidLines.Any()) return;
+
+        outerColumn.Item().PaddingTop(PdfLayoutConstants.SectionPadding).Column(column =>
+        {
+            column.Item().Text("Payment Confirmations")
+                .FontSize(PdfLayoutConstants.SectionTitleFontSize)
+                .SemiBold();
+
+            column.Item().PaddingTop(PdfLayoutConstants.SmallSpacing).Column(detailCol =>
+            {
+                foreach (var line in paidLines.OrderBy(l => l.ConfirmedAt))
+                {
+                    detailCol.Item()
+                        .Text($"  {line.UserName}: Confirmed by {line.ConfirmedByName ?? "Self"} on {line.ConfirmedAt:dd MMM yyyy HH:mm}")
+                        .FontSize(PdfLayoutConstants.SmallFontSize)
+                        .FontColor(Colors.Grey.Darken1);
+                }
+            });
         });
     }
 
@@ -232,20 +237,20 @@ public sealed class SettlementPdfGenerator
     {
         container.Column(column =>
         {
-            column.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten1);
+            column.Item().LineHorizontal(PdfLayoutConstants.BorderWidth).LineColor(Colors.Grey.Lighten1);
 
-            column.Item().PaddingTop(5).Row(row =>
+            column.Item().PaddingTop(PdfLayoutConstants.SmallSpacing).Row(row =>
             {
                 row.RelativeItem().Text(text =>
                 {
-                    text.DefaultTextStyle(x => x.FontSize(8).FontColor(Colors.Grey.Darken1));
+                    text.DefaultTextStyle(x => x.FontSize(PdfLayoutConstants.SmallFontSize).FontColor(Colors.Grey.Darken1));
                     text.Span("Generated by BeanShare  |  ");
                     text.Span($"{data.GeneratedAt:dd MMM yyyy HH:mm}");
                 });
 
                 row.RelativeItem().AlignRight().Text(text =>
                 {
-                    text.DefaultTextStyle(x => x.FontSize(8).FontColor(Colors.Grey.Darken1));
+                    text.DefaultTextStyle(x => x.FontSize(PdfLayoutConstants.SmallFontSize).FontColor(Colors.Grey.Darken1));
                     text.Span("Page ");
                     text.CurrentPageNumber();
                     text.Span(" of ");

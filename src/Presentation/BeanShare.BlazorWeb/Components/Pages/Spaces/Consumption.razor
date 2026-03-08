@@ -13,9 +13,12 @@
 @using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.WebUtilities
-@*@attribute [Authorize]*@
+@using BeanShare.Application.Abstractions
+@attribute [Authorize]
 @inject IMediator Mediator
 @inject NavigationManager Navigation
+@inject IUserContext UserContext
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Consumption - @spaceName - BeanShare</PageTitle>
 
@@ -43,7 +46,7 @@ else
                     <span class="bs-text-subtle" style="font-size: 0.75rem; font-weight: 600;">INVITE CODE</span>
                     <div class="bs-flex bs-items-center bs-gap-2">
                         <span style="font-family: monospace; font-size: 0.875rem; font-weight: 700;">@space.InviteCode</span>
-                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code">
+                        <button class="bs-btn-sm" style="background: var(--bs-primary-light); color: var(--bs-primary); border: none; padding: 0.25rem 0.5rem;" title="Copy invite code" @onclick="CopyInviteCode">
                             <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
                         </button>
                     </div>
@@ -61,13 +64,15 @@ else
         <div class="bs-flex bs-flex-col bs-gap-6">
             <ConsumptionKpis MyCupsToday="@myCupsToday"
                             MyTotalCost="@myTotalCost"
-                            RemainingStockGrams="@remainingStock" />
+                            RemainingStockGrams="@remainingStock"
+                            CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
             <ConsumptionForm OnSubmit="HandleLogConsumption"
                            StockProducts="@stockProducts"
                            PresetData="@presetData"
                            QuickPresets="@quickPresets"
-                           SpaceMembers="@space?.Members?.ToList()" />
+                           SpaceMembers="@space?.Members?.ToList()"
+                           CurrentUserId="@UserContext.CurrentUserId.Value" />
 
             <RecentConsumptionList RecentLogs="@recentConsumptions"
                                   IsLoading="@isLoadingConsumption" />
@@ -102,16 +107,23 @@ else
     private bool isToastError;
     private string toastTitle = "";
     private string toastMessage = "";
+    private bool _isLoading;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (!string.IsNullOrEmpty(SpaceId))
+        if (_isLoading || string.IsNullOrEmpty(SpaceId)) return;
+        _isLoading = true;
+        try
         {
             await LoadSpace();
             await LoadStock();
             await LoadConsumption();
             await LoadQuickPresets();
             await LoadPresetIfProvided();
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -173,7 +185,6 @@ else
     private async Task LoadConsumption()
     {
         isLoadingConsumption = true;
-        StateHasChanged();
 
         try
         {
@@ -193,7 +204,6 @@ else
         finally
         {
             isLoadingConsumption = false;
-            StateHasChanged();
         }
     }
 
@@ -242,49 +252,75 @@ else
         try
         {
             var consumedAtUtc = model.ConsumedAt.ToUniversalTime();
+            var spaceGuid = Guid.Parse(SpaceId);
 
-            Result<ConsumptionEntryDto> result;
-
-            if (model.PresetId.HasValue)
+            // Build list of user IDs to log for
+            var targetUserIds = new List<Guid?>();
+            if (model.ForUserIds != null && model.ForUserIds.Count > 0)
             {
-                // Use preset-based consumption command
-                result = await Mediator.Send(new RecordConsumptionFromPresetCommand(
-                    Guid.Parse(SpaceId),
-                    model.PresetId.Value,
-                    model.Grams, // Override quantity if changed from preset default
-                    consumedAtUtc
-                ));
+                targetUserIds.AddRange(model.ForUserIds.Select(id => (Guid?)id));
             }
             else
             {
-                // Use regular consumption command
-                result = await Mediator.Send(new RecordConsumptionCommand(
-                    Guid.Parse(SpaceId),
+                targetUserIds.Add(model.ForUserId); // null = myself
+            }
+
+            var successCount = 0;
+            var errors = new List<string>();
+
+            foreach (var targetUserId in targetUserIds)
+            {
+                var result = await Mediator.Send(new RecordConsumptionCommand(
+                    spaceGuid,
                     model.ProductName,
                     model.ProductBrand,
                     model.ProductType,
                     model.Grams,
                     consumedAtUtc,
                     model.PresetName,
-                    model.ForUserId
+                    targetUserId
                 ));
+
+                if (result.IsSuccess)
+                    successCount++;
+                else
+                    errors.AddRange(result.Errors.Select(e => e.Message));
             }
 
-            if (result.IsSuccess)
+            // Track preset usage if a custom preset was used
+            if (successCount > 0 && model.PresetId.HasValue)
             {
-                ShowToast(false, "Success", "Consumption logged successfully!");
+                await Mediator.Send(new RecordPresetUsageCommand(model.PresetId.Value));
+            }
+
+            if (successCount > 0)
+            {
+                var msg = successCount == 1
+                    ? "Consumption logged successfully!"
+                    : $"Consumption logged for {successCount} members!";
+                ShowToast(false, "Success", msg);
                 await LoadStock();
                 await LoadConsumption();
                 presetData = null;
             }
-            else
+
+            if (errors.Any())
             {
-                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+                ShowToast(true, "Error", string.Join(", ", errors));
             }
         }
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to log consumption: {ex.Message}");
+        }
+    }
+
+    private async Task CopyInviteCode()
+    {
+        if (space?.InviteCode != null)
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", space.InviteCode);
+            ShowToast(false, "Copied!", "Invite code copied to clipboard");
         }
     }
 

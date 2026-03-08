@@ -28,7 +28,7 @@
                     <div class="bs-flex bs-justify-between bs-items-center">
                         <div>
                             <p class="bs-font-medium" style="margin: 0;">
-                                @(string.IsNullOrEmpty(log.PresetName) ? "Custom log" : log.PresetName) · @log.CoffeeGrams g
+                                @(GetLogDisplayName(log)) · @log.CoffeeGrams g
                             </p>
                             <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.75rem;">
                                 @FormatDate(log.ConsumedAt)
@@ -50,6 +50,21 @@
 
     [Parameter]
     public bool IsLoading { get; set; }
+
+    private string GetLogDisplayName(ConsumptionEntryDto log)
+    {
+        if (!string.IsNullOrEmpty(log.PresetName))
+            return log.PresetName;
+
+        if (!string.IsNullOrEmpty(log.ProductName) && log.ProductName != "Unknown")
+        {
+            if (!string.IsNullOrEmpty(log.ProductBrand) && log.ProductBrand != "Unknown" && log.ProductBrand != "Generic")
+                return $"{log.ProductBrand} {log.ProductName}";
+            return log.ProductName;
+        }
+
+        return "Custom log";
+    }
 
     private string FormatDate(DateTime date)
     {

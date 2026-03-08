@@ -2,7 +2,6 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 
 namespace BeanShare.Application.Features.Presets.Queries;
-
 public sealed record GetSpacePresetsQuery(Guid SpaceId) : IQuery<Result<GetSpacePresetsResult>>;
 
 public sealed record GetSpacePresetsResult(IReadOnlyCollection<PresetDto> Presets);

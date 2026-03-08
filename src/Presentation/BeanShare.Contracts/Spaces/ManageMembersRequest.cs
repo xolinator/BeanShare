@@ -18,6 +18,18 @@ public sealed record RemoveMemberRequest
     public required Guid UserId { get; init; }
 }
 
+public sealed record LeaveSpaceRequest
+{
+    public required Guid SpaceId { get; init; }
+}
+
+public sealed record LeaveSpaceResponse
+{
+    public required string Message { get; init; }
+    public required Guid SpaceId { get; init; }
+    public required string SpaceName { get; init; }
+}
+
 public sealed record MemberActionResponse
 {
     public required string Message { get; init; }

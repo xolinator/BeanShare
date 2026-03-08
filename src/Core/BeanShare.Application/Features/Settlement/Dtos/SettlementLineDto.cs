@@ -1,5 +1,4 @@
 namespace BeanShare.Application.Features.Settlement.Dtos;
-
 public sealed record SettlementLineDto(
     Guid UserId,
     string UserName,

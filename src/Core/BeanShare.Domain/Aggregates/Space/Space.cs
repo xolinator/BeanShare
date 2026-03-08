@@ -77,7 +77,7 @@ public sealed class Space : AggregateRoot
     public void Join(UserId userId, IClock clock)
     {
         if (HasMember(userId))
-            return;
+            throw new SpaceDomainException("User is already a member of this space");
             
         var joinedAt = clock.UtcNow;
         var membership = SpaceMembership.Create(userId, SpaceRole.Member, joinedAt);
@@ -177,7 +177,8 @@ public sealed class Space : AggregateRoot
     }
 
     public void RegenerateInviteCode(InviteCode newInviteCode)
-    { 
+    {
+        ArgumentNullException.ThrowIfNull(newInviteCode);
         InviteCode = newInviteCode;
     }
 }

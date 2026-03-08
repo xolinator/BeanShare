@@ -4,6 +4,7 @@
 @using BeanShare.Maui.Services
 @inject IAnalyticsService AnalyticsService
 @inject NavigationManager Navigation
+@inject IAlertService AlertService
 
 <PageTitle>Analytics - BeanShare</PageTitle>
 
@@ -50,8 +51,9 @@
                 DateTime.UtcNow
             );
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            await AlertService.ShowAlertAsync("Error", $"Failed to load analytics: {ex.Message}");
         }
         finally
         {
