@@ -45,6 +45,112 @@ BeanShare/
 
 ### Prerequisites
 
+- .NET 10.0 SDK
+- PostgreSQL 14+
+- (Optional) Keycloak for OIDC authentication
+- (Optional) OpenExchangeRates API key for currency conversion
+
+### Local Development Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd BeanShare
+   ```
+
+2. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your local configuration
+   ```
+
+3. **Set up the database**
+   ```bash
+   # Create PostgreSQL database
+   createdb beanshare
+
+   # Update connection string in .env
+   ConnectionStrings__DefaultConnection="Host=localhost;Database=beanshare;Username=postgres;Password=yourpassword"
+   ```
+
+4. **Run the API**
+   ```bash
+   cd src/Presentation/BeanShare.Api
+   dotnet run
+   ```
+
+5. **Run the Web Application**
+   ```bash
+   cd src/Presentation/BeanShare.BlazorWeb
+   dotnet run
+   ```
+
+6. **Access the application**
+   - Web App: http://localhost:5126
+   - API: http://localhost:5247
+   - Swagger: http://localhost:5247/swagger
+
+### Using Mock Services (No Database Required)
+
+For quick testing without setting up PostgreSQL:
+
+```json
+{
+  "UseMockServices": true,
+  "UseMockAuthentication": true
+}
+```
+
+Add these to `appsettings.Development.json` and run the application.
+
+### Nix / NixOS
+
+Development with Nix:
+
+```bash
+nix develop          # enter dev shell (.NET 10, git)
+nix run .#updateDeps # refresh NuGet lockfile (nix/deps.json)
+nix run .#blazorwebModuleTestContainer # build/load/run NixOS module test container in Docker
+```
+
+Test the `services.beanshare-blazorweb` NixOS module in a Docker-based NixOS container:
+
+```bash
+# default (builds x86_64-linux image)
+nix run .#blazorwebModuleTestContainer
+
+# Apple Silicon / ARM Linux target
+TARGET_SYSTEM=aarch64-linux nix run .#blazorwebModuleTestContainer
+```
+
+This command:
+- builds a NixOS container image via `dockerTools` (no project Dockerfile)
+- enables `services.beanshare-blazorweb` inside the container
+- loads and starts it under Docker with systemd
+- opens SSH (`nixos@localhost -p 2222`, password: `nixos`) for interactive testing
+
+## Documentation
+
+- **[Deployment Guide](DEPLOYMENT.md)** - Full deployment guide with infrastructure setup
+- **[Configuration Guide](CONFIGURATION.md)** - Complete guide to all configuration options
+- **[Production Deployment Checklist](PRODUCTION_DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment checklist
+- **[CSS Architecture](CSS_ARCHITECTURE.md)** - UI styling and theming guide
+- **[Architecture](ARCHITECTURE.md)** - System architecture and design decisions
+
+## Configuration
+
+BeanShare uses environment variables for sensitive configuration. See [CONFIGURATION.md](CONFIGURATION.md) for detailed information.
+
+### Required Configuration
+
+- `ConnectionStrings__DefaultConnection` - PostgreSQL connection string
+- `Jwt__Secret` - JWT signing secret (minimum 32 characters)
+- `OpenExchangeRates__AppId` - API key from openexchangerates.org
+
+### Optional Configuration
+
+- Keycloak OIDC settings
+- Email (SMTP) settings
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
 
@@ -107,15 +213,12 @@ See [CONFIGURATION.md](CONFIGURATION.md) for all options and [PRODUCTION-DEPLOYM
 BeanShare supports multiple authentication methods:
 
 1. **Keycloak OIDC** (Recommended for production)
+   - Enterprise-grade authentication
    - OAuth 2.0 / OpenID Connect
    - Single sign-on support
    - User federation
 
-2. **Built-in JWT Authentication**
-   - Simple email/password authentication
-   - JWT token-based sessions
-
-3. **OAuth Providers**
+2. **OAuth Providers**
    - Google OAuth
    - Facebook OAuth
 
@@ -181,6 +284,7 @@ dotnet publish -f net10.0-windows10.0.19041.0 -c Release
 dotnet publish -f net10.0-android -c Release
 ```
 
+See [PRODUCTION_DEPLOYMENT_CHECKLIST.md](PRODUCTION_DEPLOYMENT_CHECKLIST.md) for complete deployment guide.
 See [TEST.md](TEST.md) for local setup and [PRODUCTION-DEPLOYMENT.md](../PRODUCTION-DEPLOYMENT.md) for production deployment.
 
 ## Project Structure
@@ -252,13 +356,11 @@ See [TEST.md](TEST.md) for local setup and [PRODUCTION-DEPLOYMENT.md](../PRODUCT
 
 ## License
 
+[Your License]
+
 This project is part of a diploma thesis at Brno University of Technology (VUT FIT).
 
-## Roadmap
-
-- [ ] Dark mode support
-- [ ] Mobile push notifications
-- [ ] Recurring billing periods
-- [ ] Integration with payment providers
-- [ ] Multi-language support
-- [ ] Kubernetes deployment
+For issues and questions:
+- Create an issue in the repository
+- Check documentation in `/docs`
+- Review configuration guide
