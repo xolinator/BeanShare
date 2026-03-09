@@ -232,6 +232,7 @@
             services.nginx.enable = true;
             services.nginx.virtualHosts.${cfg.nginx.domain} = {
               serverName = cfg.nginx.domain;
+              recommendedProxySettings = true;
               locations."/" = {
                 proxyPass = "http://${cfg.listenAddress}:${toString cfg.port}";
                 proxyWebsockets = true;
