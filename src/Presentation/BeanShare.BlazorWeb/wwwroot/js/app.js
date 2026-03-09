@@ -11,9 +11,9 @@ window.beanshare = {
             var sidebar = document.querySelector('.sidebar');
             var backdrop = document.querySelector('.sidebar-backdrop');
             if (sidebar) {
-                sidebar.classList.add('open');
-                sidebar.style.transform = 'translateX(0)';
-                sidebar.style.pointerEvents = 'auto';
+                sidebar.classList.add('open', 'mobile');
+                sidebar.style.transform = '';
+                sidebar.style.pointerEvents = '';
             }
             if (backdrop) {
                 backdrop.style.display = 'block';
@@ -27,8 +27,8 @@ window.beanshare = {
             var backdrop = document.querySelector('.sidebar-backdrop');
             if (sidebar) {
                 sidebar.classList.remove('open');
-                sidebar.style.transform = 'translateX(-100%)';
-                sidebar.style.pointerEvents = 'none';
+                sidebar.style.transform = '';
+                sidebar.style.pointerEvents = '';
             }
             if (backdrop) {
                 backdrop.style.display = 'none';

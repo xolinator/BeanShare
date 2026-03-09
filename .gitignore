@@ -88,7 +88,7 @@ COMPREHENSIVE_E2E_TEST_REPORT.md
 CONFIGURATION.md
 CSS_ARCHITECTURE.md
 CURRENCY_SERVICE_STATUS.md
-DEPLOYMENT.md
+# DEPLOYMENT.md -- now lives at deploy/DEPLOYMENT.md (tracked)
 E2E_TEST_RESULTS.md
 FINAL_TEST_SUMMARY.md
 HONEST_PRODUCTION_ASSESSMENT.md
@@ -116,6 +116,7 @@ USER_GUIDE.md
 
 # Docker production config (secrets)
 docker-compose.production.yml
+deploy/.secrets.env
 
 # Node.js (test scripts)
 node_modules/

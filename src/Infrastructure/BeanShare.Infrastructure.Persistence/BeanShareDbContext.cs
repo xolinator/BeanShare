@@ -4,12 +4,14 @@ using BeanShare.Domain.Aggregates.BillingPeriod;
 using BeanShare.Domain.Aggregates.Settlement;
 using BeanShare.Domain.Entities;
 using BeanShare.Infrastructure.Persistence.Configurations;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeanShare.Infrastructure.Persistence;
 
-public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> options) : DbContext(options)
+public sealed class BeanShareDbContext(DbContextOptions<BeanShareDbContext> options) : DbContext(options), IDataProtectionKeyContext
 {
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Space> Spaces => Set<Space>();
     public DbSet<CoffeeStock> CoffeeStocks => Set<CoffeeStock>();

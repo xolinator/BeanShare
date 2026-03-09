@@ -1,4 +1,3 @@
-using BeanShare.Api.Infrastructure.Mocks;
 using BeanShare.Application;
 using BeanShare.Application.Constants;
 using BeanShare.Infrastructure;
@@ -7,6 +6,7 @@ using FastEndpoints;
 using FastEndpoints.Swagger;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,87 +16,19 @@ builder.Services.AddApplication();
 
 builder.Services.AddMapster();
 
-var useMockServices = builder.Configuration.GetValue<bool>("UseMockServices", false);
-var useMockAuthentication = builder.Configuration.GetValue<bool>("UseMockAuthentication", false);
 var useKeycloak = builder.Configuration.GetValue<bool>("UseKeycloak", false);
 
-if (useMockServices)
-{
-    builder.Services.AddSingleton<BeanShare.Domain.Common.IClock, SystemClock>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IInviteCodeGenerator, MockInviteCodeGenerator>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ISpaceRepository, MockSpaceRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUnitOfWork, MockUnitOfWork>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUserContext, MockUserContext>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IBillingPeriodRepository, MockBillingPeriodRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ISettlementRepository, MockSettlementRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ICoffeeStockRepository, MockCoffeeStockRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IConsumptionRepository, MockConsumptionRepository>();
-    builder.Services.AddSingleton<BeanShare.Domain.Services.ICostingPolicy, BeanShare.Domain.Services.WeightedAverageCostingPolicy>();
-    builder.Services.AddSingleton<BeanShare.Application.Services.IUserService, MockUserService>();
-    builder.Services.AddSingleton<BeanShare.Application.Services.ICostCalculationService, MockCostCalculationService>();
-    builder.Services.AddScoped<IAuthenticationService, MockIdentityAuthenticationService>();
-    builder.Services.AddSingleton<IJwtTokenService, MockJwtTokenService>();
-    builder.Services.AddSingleton<BeanShare.Domain.Repositories.IGlobalPresetRepository, MockGlobalPresetRepository>();
-    builder.Services.AddSingleton<BeanShare.Domain.Repositories.IPresetRecipeRepository, MockPresetRecipeRepository>();
-    builder.Services.AddSingleton<BeanShare.Domain.Repositories.ISpaceGlobalPresetConfigRepository, MockSpaceGlobalPresetConfigRepository>();
-    builder.Services.AddSingleton<BeanShare.Domain.Repositories.IUserPresetFavoriteRepository, MockUserPresetFavoriteRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.INotificationRepository, MockNotificationRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IExchangeRateRepository, MockExchangeRateRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IUserRepository, MockUserRepository>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IEmailService, MockEmailService>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.ISettlementEmailTemplateService, MockSettlementEmailTemplateService>();
-    builder.Services.AddSingleton<BeanShare.Application.Services.ICurrencyConversionService, MockCurrencyConversionService>();
-    builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, MockUserSynchronizationService>();
-    builder.Services.AddSingleton<BeanShare.Infrastructure.Services.Documents.ISettlementReportGenerator, MockSettlementReportGenerator>();
-    builder.Services.AddSingleton<BeanShare.Application.Abstractions.IExchangeRateProvider, MockExchangeRateProvider>();
-    builder.Services.AddHttpClient();
-}
-else
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-    var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
 
-    builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInMemoryDatabase);
-    builder.Services.AddExchangeRates(builder.Configuration);
-    builder.Services.AddCommunicationServices(builder.Configuration);
+builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInMemoryDatabase);
+builder.Services.AddExchangeRates(builder.Configuration);
+builder.Services.AddCommunicationServices(builder.Configuration);
 
-    // Register IUserSynchronizationService for Keycloak user sync endpoint
-    builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
+builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
 
-    if (useMockAuthentication)
-    {
-        builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, MockUserContext>();
-        builder.Services.AddScoped<IAuthenticationService, MockIdentityAuthenticationService>();
-        builder.Services.AddSingleton<IJwtTokenService, MockJwtTokenService>();
-        builder.Services.AddHttpClient();
-    }
-    else if (!useKeycloak)
-    {
-        builder.Services.AddIdentityInfrastructure(builder.Configuration);
-    }
-}
-
-if (useMockServices || useMockAuthentication)
-{
-    builder.Services.AddAuthentication(options =>
-        {
-            options.DefaultAuthenticateScheme = "Mock";
-            options.DefaultChallengeScheme = "Mock";
-            options.DefaultScheme = "Mock";
-        })
-        .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, MockAuthenticationHandler>("Mock", null);
-
-    builder.Services.AddAuthorization(options =>
-    {
-        options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-            .AddAuthenticationSchemes("Mock")
-            .RequireAuthenticatedUser()
-            .Build();
-    });
-}
-else if (useKeycloak)
+if (useKeycloak)
 {
     // Keycloak OIDC configuration
     var keycloakAuthority = builder.Configuration["Keycloak:Authority"]
@@ -105,6 +37,7 @@ else if (useKeycloak)
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, KeycloakUserContext>();
+    builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, BeanShare.Infrastructure.Identity.KeycloakClaimsTransformation>();
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -177,6 +110,8 @@ else if (useKeycloak)
 }
 else
 {
+    builder.Services.AddIdentityInfrastructure(builder.Configuration);
+
     var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
     var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "BeanShare";
     var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "BeanShare";
@@ -213,6 +148,16 @@ builder.Services.SwaggerDocument();
 
 var app = builder.Build();
 
+var fhOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+#pragma warning disable ASPDEPR005
+fhOptions.KnownNetworks.Clear();
+#pragma warning restore ASPDEPR005
+fhOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(fhOptions);
+
 var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath))
 {
@@ -237,25 +182,22 @@ app.UseFastEndpoints(c =>
 
 // Seed database: essential data (global presets) in all environments,
 // demo data (users, spaces, consumption, etc.) only in development.
-if (!useMockServices)
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var context = scope.ServiceProvider.GetRequiredService<BeanShare.Infrastructure.Persistence.BeanShareDbContext>();
-        await context.Database.EnsureCreatedAsync();
+    var context = scope.ServiceProvider.GetRequiredService<BeanShare.Infrastructure.Persistence.BeanShareDbContext>();
+    await context.Database.EnsureCreatedAsync();
 
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder>>();
-        var seeder = new BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder(context, logger);
-        await seeder.SeedAsync(includeDemoData: app.Environment.IsDevelopment());
-    }
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder>>();
+    var seeder = new BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder(context, logger);
+    await seeder.SeedAsync(includeDemoData: true);
 }
 
 // Validate critical configuration on startup
-ValidateConfiguration(app.Configuration, app.Logger);
+ValidateConfiguration(app.Configuration, useKeycloak, app.Logger);
 
 app.Run();
 
-static void ValidateConfiguration(IConfiguration configuration, ILogger logger)
+static void ValidateConfiguration(IConfiguration configuration, bool useKeycloak, ILogger logger)
 {
     var warnings = new List<string>();
 
@@ -274,32 +216,26 @@ static void ValidateConfiguration(IConfiguration configuration, ILogger logger)
     }
 
     // Check Keycloak configuration
-    var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
     if (useKeycloak)
     {
         var keycloakAuthority = configuration.GetValue<string>("Keycloak:Authority");
-        var keycloakClientSecret = configuration.GetValue<string>("Keycloak:ClientSecret");
-
         if (string.IsNullOrWhiteSpace(keycloakAuthority))
         {
             logger.LogError("CRITICAL: Keycloak:Authority is not configured but UseKeycloak is true!");
         }
-
-        if (string.IsNullOrWhiteSpace(keycloakClientSecret))
+    }
+    else
+    {
+        // Check JWT secret (only needed when not using Keycloak)
+        var jwtSecret = configuration.GetValue<string>("Jwt:Secret");
+        if (string.IsNullOrWhiteSpace(jwtSecret))
         {
-            warnings.Add("Keycloak:ClientSecret is not configured. This may cause authentication issues.");
+            logger.LogError("CRITICAL: JWT:Secret is not configured!");
         }
-    }
-
-    // Check JWT secret
-    var jwtSecret = configuration.GetValue<string>("Jwt:Secret");
-    if (string.IsNullOrWhiteSpace(jwtSecret))
-    {
-        logger.LogError("CRITICAL: JWT:Secret is not configured!");
-    }
-    else if (jwtSecret.Length < 32)
-    {
-        logger.LogWarning("JWT:Secret is less than 32 characters. Consider using a longer secret for better security.");
+        else if (jwtSecret.Length < 32)
+        {
+            logger.LogWarning("JWT:Secret is less than 32 characters. Consider using a longer secret for better security.");
+        }
     }
 
     // Check email configuration

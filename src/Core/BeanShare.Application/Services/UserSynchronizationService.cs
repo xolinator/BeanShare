@@ -57,7 +57,7 @@ public sealed class UserSynchronizationService : IUserSynchronizationService
 
         var userId = new UserId(keycloakUserId);
 
-        // Check if user already exists
+        // Check if user already exists by Keycloak UUID
         var existingUser = await _userService.GetByIdForUpdateAsync(userId, cancellationToken);
 
         if (existingUser is not null)
@@ -71,10 +71,31 @@ public sealed class UserSynchronizationService : IUserSynchronizationService
             return existingUser;
         }
 
-        // Create new user from Keycloak claims
+        // Fallback: check by email (handles seeded users with different IDs than Keycloak)
         var email = principal.FindFirst("email")?.Value
-            ?? principal.FindFirst("preferred_username")?.Value
-            ?? throw new InvalidOperationException("Email claim not found");
+            ?? principal.FindFirst("preferred_username")?.Value;
+
+        if (!string.IsNullOrEmpty(email))
+        {
+            var userByEmail = await _userService.GetByEmailAsync(email, cancellationToken);
+            if (userByEmail is not null)
+            {
+                userByEmail.UpdateLastLogin(_clock.UtcNow);
+                await _userService.UpdateAsync(userByEmail, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Matched Keycloak user {KeycloakId} to existing DB user {DbUserId} by email {Email}",
+                    keycloakUserId, userByEmail.Id, email);
+                return userByEmail;
+            }
+        }
+
+        // Create new user from Keycloak claims
+        email ??= principal.FindFirst("email")?.Value
+            ?? principal.FindFirst("preferred_username")?.Value;
+
+        if (string.IsNullOrEmpty(email))
+            throw new InvalidOperationException("Email claim not found");
 
         var name = principal.FindFirst("name")?.Value
             ?? principal.FindFirst("given_name")?.Value

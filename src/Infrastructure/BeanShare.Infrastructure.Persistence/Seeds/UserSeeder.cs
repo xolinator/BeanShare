@@ -24,7 +24,7 @@ public class UserSeeder : IDataSeeder
         var testPasswordHash = BCrypt.Net.BCrypt.HashPassword("test123");
         var now = DateTime.UtcNow;
 
-        var adminUser = User.CreateWithIdAndPassword(new Guid("11111111-1111-1111-1111-111111111111"), "arnzrk@gmail.com", "John Smith", passwordHash, now);
+        var adminUser = User.CreateWithIdAndPassword(new Guid("11111111-1111-1111-1111-111111111111"), "john.smith@beanshare.dev", "John Smith", passwordHash, now);
         adminUser.SetSystemRole(BeanShare.Domain.Enums.SystemRole.SystemAdmin);
 
         return new List<User>

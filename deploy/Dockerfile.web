@@ -1,0 +1,42 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+COPY BeanShare.sln ./
+COPY src/Core/BeanShare.Application/*.csproj src/Core/BeanShare.Application/
+COPY src/Core/BeanShare.Domain/*.csproj src/Core/BeanShare.Domain/
+COPY src/Infrastructure/BeanShare.Infrastructure/*.csproj src/Infrastructure/BeanShare.Infrastructure/
+COPY src/Infrastructure/BeanShare.Infrastructure.Communication/*.csproj src/Infrastructure/BeanShare.Infrastructure.Communication/
+COPY src/Infrastructure/BeanShare.Infrastructure.Identity/*.csproj src/Infrastructure/BeanShare.Infrastructure.Identity/
+COPY src/Infrastructure/BeanShare.Infrastructure.Persistence/*.csproj src/Infrastructure/BeanShare.Infrastructure.Persistence/
+COPY src/Presentation/BeanShare.BlazorWeb/*.csproj src/Presentation/BeanShare.BlazorWeb/
+COPY src/Presentation/BeanShare.SharedUi/*.csproj src/Presentation/BeanShare.SharedUi/
+COPY src/Presentation/BeanShare.Contracts/*.csproj src/Presentation/BeanShare.Contracts/
+COPY src/Presentation/BeanShare.Api/*.csproj src/Presentation/BeanShare.Api/
+COPY src/Presentation/BeanShare.Maui/*.csproj src/Presentation/BeanShare.Maui/
+
+RUN dotnet restore src/Presentation/BeanShare.BlazorWeb/BeanShare.BlazorWeb.csproj
+
+COPY src/ src/
+COPY deploy/blazor-framework/blazor.web.js /tmp/blazor.web.js
+RUN dotnet publish src/Presentation/BeanShare.BlazorWeb/BeanShare.BlazorWeb.csproj \
+    -c Release -o /app/publish --no-restore
+
+# .NET 10 preview doesn't include blazor.web.js in publish output.
+# Copy our vendored copy as a reliable fallback.
+RUN mkdir -p /app/publish/wwwroot/_framework && \
+    if ! ls /app/publish/wwwroot/_framework/blazor.web*.js 1>/dev/null 2>&1; then \
+      echo "blazor.web.js not in publish output, using vendored copy" && \
+      cp /tmp/blazor.web.js /app/publish/wwwroot/_framework/blazor.web.js; \
+    else \
+      echo "blazor.web.js found in publish output"; \
+    fi
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "BeanShare.BlazorWeb.dll"]

@@ -1,0 +1,19 @@
+app = "beanshare-web"
+primary_region = "fra"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  AllowedHosts = "*"
+  UseKeycloak = "true"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

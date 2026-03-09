@@ -201,7 +201,11 @@
     {
         try
         {
-            await CloseMobileSidebar();
+            var isMobile = await JSRuntime.InvokeAsync<bool>("beanshare.isMobile");
+            if (isMobile)
+            {
+                await CloseMobileSidebar();
+            }
         }
         catch (ObjectDisposedException)
         {

@@ -1,0 +1,31 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+
+COPY BeanShare.sln ./
+COPY src/Core/BeanShare.Application/*.csproj src/Core/BeanShare.Application/
+COPY src/Core/BeanShare.Domain/*.csproj src/Core/BeanShare.Domain/
+COPY src/Infrastructure/BeanShare.Infrastructure/*.csproj src/Infrastructure/BeanShare.Infrastructure/
+COPY src/Infrastructure/BeanShare.Infrastructure.Communication/*.csproj src/Infrastructure/BeanShare.Infrastructure.Communication/
+COPY src/Infrastructure/BeanShare.Infrastructure.Identity/*.csproj src/Infrastructure/BeanShare.Infrastructure.Identity/
+COPY src/Infrastructure/BeanShare.Infrastructure.Persistence/*.csproj src/Infrastructure/BeanShare.Infrastructure.Persistence/
+COPY src/Presentation/BeanShare.Api/*.csproj src/Presentation/BeanShare.Api/
+COPY src/Presentation/BeanShare.SharedUi/*.csproj src/Presentation/BeanShare.SharedUi/
+COPY src/Presentation/BeanShare.Contracts/*.csproj src/Presentation/BeanShare.Contracts/
+COPY src/Presentation/BeanShare.BlazorWeb/*.csproj src/Presentation/BeanShare.BlazorWeb/
+COPY src/Presentation/BeanShare.Maui/*.csproj src/Presentation/BeanShare.Maui/
+
+RUN dotnet restore src/Presentation/BeanShare.Api/BeanShare.Api.csproj
+
+COPY src/ src/
+RUN dotnet publish src/Presentation/BeanShare.Api/BeanShare.Api.csproj \
+    -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "BeanShare.Api.dll"]
