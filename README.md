@@ -110,17 +110,17 @@ Development with Nix:
 ```bash
 nix develop          # enter dev shell (.NET 10, git)
 nix run .#updateDeps # refresh NuGet lockfile (nix/deps.json)
-nix run .#blazorwebModuleTestContainer # build/load/run NixOS module test container in Docker
+nix run .#beanshareModuleTestContainer # build/load/run NixOS module test container in Docker
 ```
 
 Test the `services.beanshare-blazorweb` NixOS module in a Docker-based NixOS container:
 
 ```bash
 # default (builds x86_64-linux image)
-nix run .#blazorwebModuleTestContainer
+nix run .#beanshareModuleTestContainer
 
 # Apple Silicon / ARM Linux target
-TARGET_SYSTEM=aarch64-linux nix run .#blazorwebModuleTestContainer
+TARGET_SYSTEM=aarch64-linux nix run .#beanshareModuleTestContainer
 ```
 
 This command:

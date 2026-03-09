@@ -1,10 +1,10 @@
 # NixOS module for deploying BeanShare Blazor web app.
-# Use: self.nixosModules.blazorweb and set services.beanshare-blazorweb.package (e.g. self.packages.${system}.blazorwebapp).
-# Database and OIDC config are passed as environment variables matching appsettings.
+# Use: self.nixosModules.beanshare (services.beanshare-blazorweb.package defaults to config.packages.blazorwebapp from this flake).
+# Database and OIDC (Keycloak-compatible) config are passed as environment variables matching appsettings.
 
 { moduleWithSystem, ... }:
 {
-  flake.nixosModules.blazorweb = moduleWithSystem (
+  flake.nixosModules.beanshare = moduleWithSystem (
     perSystem @ { inputs', ... }: nixos @ { pkgs, config, lib, system, ... }:
       let
         cfg = config.services.beanshare-blazorweb;
@@ -20,15 +20,15 @@
         baseEnv = {
           ASPNETCORE_ENVIRONMENT = cfg.environment;
           ASPNETCORE_URLS = "http://${cfg.listenAddress}:${toString cfg.port}";
+          UseKeycloak = if cfg.oidc.enable then "true" else "false";
         };
         dbEnv = lib.optionalAttrs useDatabase {
           ConnectionStrings__DefaultConnection = dbConnectionString;
         };
         oidcEnv = lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.authority != "") {
-          UseOidc = "true";
-          Oidc__Authority = cfg.oidc.authority;
-          Oidc__ClientId = cfg.oidc.clientId;
-          Oidc__ClientSecret = cfg.oidc.clientSecret;
+          Keycloak__Authority = cfg.oidc.authority;
+          Keycloak__ClientId = cfg.oidc.clientId;
+          Keycloak__ClientSecret = cfg.oidc.clientSecret;
         };
         serviceEnvironment = baseEnv // dbEnv // oidcEnv;
       in
@@ -39,7 +39,7 @@
 
           package = mkOption {
             type = types.package;
-            description = "BeanShare Blazor package (e.g. pkgs.blazorwebapp or self.packages.${system}.blazorwebapp from the flake).";
+            description = "BeanShare Blazor package (defaults to the flake's per-system blazorwebapp package; can be overridden, e.g. with pkgs.blazorwebapp).";
             example = "pkgs.blazorwebapp";
           };
 
@@ -125,7 +125,7 @@
             enable = mkOption {
               type = types.bool;
               default = false;
-              description = "Enable OIDC authentication. Sets UseOidc and Oidc:* config.";
+              description = "Enable OIDC authentication (Keycloak-compatible). Sets UseKeycloak and Keycloak:* config.";
             };
 
             authority = mkOption {
@@ -199,10 +199,13 @@
             }
           ))
           {
+            services.beanshare-blazorweb.package = mkDefault config.packages.blazorwebapp;
+
             systemd.services.beanshare-blazorweb = {
               description = "BeanShare Blazor web application";
               after = [ "network-online.target" ] ++ (lib.optionals cfg.database.postgresql.enable [ "postgresql.service" ]);
               wants = [ "network-online.target" ] ++ (lib.optionals cfg.database.postgresql.enable [ "postgresql.service" ]);
+              wantedBy = [ "multi-user.target" ];
 
               serviceConfig = {
                 DynamicUser = true;
@@ -232,7 +235,6 @@
               locations."/" = {
                 proxyPass = "http://${cfg.listenAddress}:${toString cfg.port}";
                 proxyWebsockets = true;
-                proxyHeaders = true;
                 extraConfig = cfg.nginx.extraConfig;
               };
               forceSSL = cfg.nginx.enableACME;

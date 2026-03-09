@@ -30,7 +30,7 @@
         #   nixosConfigurations.myhost = nixosSystem {
         #     system = "x86_64-linux";
         #     modules = [
-        #       self.nixosModules.blazorweb
+        #       self.nixosModules.beanshare
         #       ({ config, ... }: {
         #         services.beanshare-blazorweb = {
         #           enable = true;

@@ -19,10 +19,10 @@
       }}/bin/updateDeps";
     };
 
-    apps.blazorwebModuleTestContainer = {
+    apps.beanshareModuleTestContainer = {
       type = "app";
       program = "${pkgs.writeShellApplication {
-        name = "blazorwebModuleTestContainer";
+        name = "beanshareModuleTestContainer";
         runtimeInputs = [
           pkgs.nix
           pkgs.docker
@@ -32,10 +32,10 @@
         text = ''
           set -euo pipefail
 
-          image_name="''${IMAGE_NAME:-blazorweb-module-test-container}"
-          container_name="''${CONTAINER_NAME:-blazorweb-module-test-instance}"
+          image_name="''${IMAGE_NAME:-beanshare-module-test-container}"
+          container_name="''${CONTAINER_NAME:-beanshare-module-test-instance}"
           target_system="''${TARGET_SYSTEM:-x86_64-linux}"
-          package_attr="''${PACKAGE_ATTR:-blazorweb-module-test-container}"
+          package_attr="''${PACKAGE_ATTR:-beanshare-module-test-container}"
           flake_ref="path:$PWD"
 
           echo ">>> Building NixOS module test image for $target_system ($package_attr)"
@@ -75,7 +75,7 @@
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null
         '';
-      }}/bin/blazorwebModuleTestContainer";
+      }}/bin/beanshareModuleTestContainer";
     };
   };
 }
