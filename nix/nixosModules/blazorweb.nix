@@ -1,6 +1,6 @@
 # NixOS module for deploying BeanShare Blazor web app.
 # Use: self.nixosModules.blazorweb and set services.beanshare-blazorweb.package (e.g. self.packages.${system}.blazorwebapp).
-# Database and OIDC (Keycloak-compatible) config are passed as environment variables matching appsettings.
+# Database and OIDC config are passed as environment variables matching appsettings.
 
 { moduleWithSystem, ... }:
 {
@@ -25,10 +25,10 @@
           ConnectionStrings__DefaultConnection = dbConnectionString;
         };
         oidcEnv = lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.authority != "") {
-          UseKeycloak = "true";
-          Keycloak__Authority = cfg.oidc.authority;
-          Keycloak__ClientId = cfg.oidc.clientId;
-          Keycloak__ClientSecret = cfg.oidc.clientSecret;
+          UseOidc = "true";
+          Oidc__Authority = cfg.oidc.authority;
+          Oidc__ClientId = cfg.oidc.clientId;
+          Oidc__ClientSecret = cfg.oidc.clientSecret;
         };
         serviceEnvironment = baseEnv // dbEnv // oidcEnv;
       in
@@ -125,7 +125,7 @@
             enable = mkOption {
               type = types.bool;
               default = false;
-              description = "Enable OIDC authentication (Keycloak-compatible). Sets UseKeycloak and Keycloak:* config.";
+              description = "Enable OIDC authentication. Sets UseOidc and Oidc:* config.";
             };
 
             authority = mkOption {

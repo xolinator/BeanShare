@@ -78,7 +78,7 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
             TotalCurrentStockGrams = coffeeStock.TotalCurrentStock.Grams,
             TotalInvestmentAmount = coffeeStock.Purchases.Sum(p => p.Cost.Amount),
             TotalInvestmentCurrency = space.Currency.Code,
-            StockLevels = _mapper.Map<List<StockLevelDto>>(coffeeStock.StockLevels),
+            StockLevels = _mapper.Map<List<StockLevelDto>>(coffeeStock.StockLevels.Where(sl => !sl.IsArchived).ToList()),
             RecentPurchases = await BuildPurchaseDtosAsync(coffeeStock, cancellationToken)
         };
 

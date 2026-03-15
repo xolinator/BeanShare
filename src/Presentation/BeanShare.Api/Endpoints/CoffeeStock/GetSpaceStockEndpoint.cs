@@ -62,6 +62,7 @@ public sealed class GetSpaceStockEndpoint : Endpoint<GetSpaceStockRequest, Space
                     TotalConsumedGrams = sl.TotalConsumedGrams,
                     CurrentStockGrams = sl.CurrentStockGrams,
                     ConsumptionPercentage = sl.ConsumptionPercentage,
+                    IsArchived = sl.IsArchived,
                     UpdatedAt = sl.UpdatedAt
                 }).ToList(),
                 RecentPurchases = dto.RecentPurchases.Select(rp => new StockPurchaseResponse

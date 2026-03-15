@@ -7,7 +7,7 @@
 
 <PageTitle>Sign In - BeanShare</PageTitle>
 
-@if (_useKeycloak)
+@if (_useOidc)
 {
     <div class="bs-login-container">
         <div class="bs-login-card">
@@ -18,7 +18,7 @@
 
             <div class="bs-login-providers">
                 <a href="/account/login?returnUrl=@GetReturnUrl()" class="bs-btn bs-btn-primary bs-w-full" data-enhance-nav="false">
-                    Sign in with Keycloak
+                    Sign In
                 </a>
             </div>
 
@@ -147,7 +147,7 @@ else
 
     private bool _isLoading;
     private string? _errorMessage;
-    private bool _useKeycloak;
+    private bool _useOidc;
 
     [Inject]
     private IServiceProvider ServiceProvider { get; set; } = default!;
@@ -155,7 +155,7 @@ else
     protected override void OnInitialized()
     {
         _model ??= new();
-        _useKeycloak = Configuration.GetValue<bool>("UseKeycloak", false);
+        _useOidc = Configuration.GetValue<bool>("UseOidc", false);
     }
 
     private string GetReturnUrl()
@@ -166,7 +166,7 @@ else
 
     private async Task HandleLogin()
     {
-        if (_useKeycloak)
+        if (_useOidc)
         {
             Navigation.NavigateTo($"/account/login?returnUrl={GetReturnUrl()}", forceLoad: true);
             return;

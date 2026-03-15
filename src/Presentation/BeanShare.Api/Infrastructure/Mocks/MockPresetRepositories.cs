@@ -140,11 +140,11 @@ public sealed class MockUserSynchronizationService : IUserSynchronizationService
 {
     public Task<User> SyncFromClaimsAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
-        var user = User.CreateFromKeycloak(
+        var user = User.CreateFromOidc(
             Guid.Parse("11111111-1111-1111-1111-111111111111"),
             "testuser@beanshare.com",
             "Test User",
-            BeanShare.Domain.Enums.AuthenticationProvider.Keycloak,
+            BeanShare.Domain.Enums.AuthenticationProvider.Oidc,
             DateTime.UtcNow);
         return Task.FromResult(user);
     }

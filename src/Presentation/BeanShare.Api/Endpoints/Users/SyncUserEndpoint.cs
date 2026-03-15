@@ -5,8 +5,8 @@ using FastEndpoints;
 namespace BeanShare.Api.Endpoints.Users;
 
 /// <summary>
-/// Endpoint to synchronize user from Keycloak to local database.
-/// Called by clients after authenticating with Keycloak.
+/// Endpoint to synchronize user from OIDC provider to local database.
+/// Called by clients after authenticating with the OIDC provider.
 /// </summary>
 public sealed class SyncUserEndpoint : EndpointWithoutRequest<SyncUserResponse>
 {
@@ -22,9 +22,9 @@ public sealed class SyncUserEndpoint : EndpointWithoutRequest<SyncUserResponse>
         Post("/api/users/sync");
         Summary(s =>
         {
-            s.Summary = "Sync user from Keycloak";
-            s.Description = "Creates or updates the local user record from Keycloak claims. " +
-                          "Call this after successful Keycloak authentication to ensure user exists in BeanShare.";
+            s.Summary = "Sync user from OIDC provider";
+            s.Description = "Creates or updates the local user record from OIDC claims. " +
+                          "Call this after successful OIDC authentication to ensure user exists in BeanShare.";
             s.Response<SyncUserResponse>(200, "User synchronized successfully");
             s.Response(401, "User is not authenticated");
         });

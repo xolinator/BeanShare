@@ -6,15 +6,15 @@ using Microsoft.AspNetCore.Authentication;
 namespace BeanShare.Infrastructure.Identity;
 
 /// <summary>
-/// Remaps the Keycloak "sub" claim to the database user ID when they differ.
-/// This happens when the database was seeded with fixed user IDs but Keycloak
+/// Remaps the OIDC "sub" claim to the database user ID when they differ.
+/// This happens when the database was seeded with fixed user IDs but the OIDC provider
 /// assigned its own UUIDs. Falls back to email-based matching.
 /// </summary>
-public sealed class KeycloakClaimsTransformation : IClaimsTransformation
+public sealed class OidcClaimsTransformation : IClaimsTransformation
 {
     private readonly IUserService _userService;
 
-    public KeycloakClaimsTransformation(IUserService userService)
+    public OidcClaimsTransformation(IUserService userService)
     {
         _userService = userService;
     }
@@ -27,24 +27,21 @@ public sealed class KeycloakClaimsTransformation : IClaimsTransformation
         var sub = principal.FindFirst("sub")?.Value
                   ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var keycloakId))
+        if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var oidcId))
             return principal;
 
-        // Check if user exists by Keycloak UUID
-        var user = await _userService.GetByIdAsync(new UserId(keycloakId));
+        var user = await _userService.GetByIdAsync(new UserId(oidcId));
         if (user is not null)
-            return principal; // IDs match, no remapping needed
+            return principal;
 
-        // Try email-based fallback
         var email = principal.FindFirst("email")?.Value;
         if (string.IsNullOrEmpty(email))
             return principal;
 
         user = await _userService.GetByEmailAsync(email);
         if (user is null)
-            return principal; // No matching user, sync service will create one
+            return principal;
 
-        // Remap: replace sub claim with the database user's ID
         var identity = principal.Identity as ClaimsIdentity;
         if (identity is null)
             return principal;

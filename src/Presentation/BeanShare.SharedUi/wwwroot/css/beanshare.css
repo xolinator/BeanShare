@@ -367,6 +367,43 @@ body {
     cursor: not-allowed;
 }
 
+/* Stock Stats Grid */
+.stock-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stock-stat-label {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.stock-stat-value {
+    margin: 0.25rem 0 0 0;
+    font-size: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .stock-stats-grid {
+        gap: 0.5rem;
+    }
+
+    .stock-stats-grid .bs-card {
+        padding: 0.625rem;
+    }
+
+    .stock-stat-label {
+        font-size: 0.7rem;
+    }
+
+    .stock-stat-value {
+        font-size: 1.125rem;
+    }
+}
+
 /* Empty State */
 .bs-empty-state {
     text-align: center;
@@ -781,8 +818,8 @@ body {
         padding: 1rem;
     }
 
-    /* Flex wrap on mobile for items that overflow */
-    .bs-flex.bs-items-center.bs-justify-between {
+    /* Flex wrap on mobile for member row actions */
+    .bs-card > .bs-flex.bs-items-center.bs-justify-between {
         flex-wrap: wrap;
         gap: 0.5rem;
     }
@@ -790,6 +827,29 @@ body {
     /* Settlement details mobile */
     .bs-flex.bs-gap-4 {
         flex-direction: column;
+    }
+
+    /* Tabs: shrink padding + font to fit on small screens */
+    .bs-tabs {
+        gap: 0;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .bs-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .bs-tab {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.75rem;
+    }
+
+    /* KPI chips: smaller on mobile */
+    .bs-kpi-chip {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        gap: 0.25rem;
     }
 }
 

@@ -8,10 +8,10 @@
 
 <PageTitle>Create Account - BeanShare</PageTitle>
 
-@if (_useKeycloak)
+@if (_useOidc)
 {
     <HeadContent>
-        <meta http-equiv="refresh" content="0; url=@_keycloakRegistrationUrl" />
+        <meta http-equiv="refresh" content="0; url=@_oidcRegistrationUrl" />
     </HeadContent>
     <div class="bs-login-container">
         <div class="bs-login-card">
@@ -19,7 +19,7 @@
                 <h1 class="bs-login-title">Create Your Account</h1>
                 <p class="bs-login-subtitle">Redirecting to secure registration...</p>
                 <noscript>
-                    <p><a href="@_keycloakRegistrationUrl">Click here if not redirected</a></p>
+                    <p><a href="@_oidcRegistrationUrl">Click here if not redirected</a></p>
                 </noscript>
             </div>
         </div>
@@ -126,21 +126,24 @@ else
 
     private bool _isLoading;
     private string? _errorMessage;
-    private bool _useKeycloak;
-    private string _keycloakRegistrationUrl = "";
+    private bool _useOidc;
+    private string _oidcRegistrationUrl = "";
 
     protected override void OnInitialized()
     {
         _model ??= new();
-        _useKeycloak = Configuration.GetValue<bool>("UseKeycloak", false);
+        _useOidc = Configuration.GetValue<bool>("UseOidc", false);
 
-        if (_useKeycloak)
+        if (_useOidc)
         {
-            var keycloakAuthority = Configuration["Keycloak:Authority"] ?? "http://localhost:8080/realms/beanshare";
-            var clientId = Configuration["Keycloak:ClientId"] ?? "beanshare-web";
+            var oidcAuthority = Configuration["Oidc:Authority"] ?? "http://localhost:8080/realms/beanshare";
+            var clientId = Configuration["Oidc:ClientId"] ?? "beanshare-web";
+            var registrationEndpoint = Configuration["Oidc:RegistrationEndpoint"];
+            if (string.IsNullOrEmpty(registrationEndpoint))
+                registrationEndpoint = $"{oidcAuthority}/protocol/openid-connect/registrations";
             var baseUrl = HttpContextAccessor.HttpContext?.Request.Scheme + "://" +
                          HttpContextAccessor.HttpContext?.Request.Host;
-            _keycloakRegistrationUrl = $"{keycloakAuthority}/protocol/openid-connect/registrations?client_id={clientId}&response_type=code&scope=openid&redirect_uri={Uri.EscapeDataString($"{baseUrl}/signin-oidc")}";
+            _oidcRegistrationUrl = $"{registrationEndpoint}?client_id={clientId}&response_type=code&scope=openid&redirect_uri={Uri.EscapeDataString($"{baseUrl}/signin-oidc")}";
         }
     }
 
@@ -155,7 +158,7 @@ else
     {
         var authService = ServiceProvider.GetService<IAuthenticationService>();
 
-        if (_useKeycloak || authService == null)
+        if (_useOidc || authService == null)
         {
             _errorMessage = "Registration is handled by the identity provider";
             return;

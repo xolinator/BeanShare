@@ -1,16 +1,16 @@
 <div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div class="stock-stats-grid">
         <div class="bs-card">
-            <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem; font-weight: 500;">Total Purchases</p>
-            <p class="bs-font-bold" style="margin: 0.25rem 0 0 0; font-size: 1.5rem;">@TotalPurchases</p>
+            <p class="bs-text-subtle stock-stat-label">Total Purchases</p>
+            <p class="bs-font-bold stock-stat-value">@TotalPurchases</p>
         </div>
         <div class="bs-card">
-            <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem; font-weight: 500;">Total Grams</p>
-            <p class="bs-font-bold" style="margin: 0.25rem 0 0 0; font-size: 1.5rem;">@TotalGrams g</p>
+            <p class="bs-text-subtle stock-stat-label">Total Grams</p>
+            <p class="bs-font-bold stock-stat-value">@TotalGrams g</p>
         </div>
         <div class="bs-card">
-            <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem; font-weight: 500;">Total Cost</p>
-            <p class="bs-font-bold" style="margin: 0.25rem 0 0 0; font-size: 1.5rem;">@FormatCurrency(TotalCost)</p>
+            <p class="bs-text-subtle stock-stat-label">Total Cost</p>
+            <p class="bs-font-bold stock-stat-value">@FormatCurrency(TotalCost)</p>
         </div>
     </div>
 

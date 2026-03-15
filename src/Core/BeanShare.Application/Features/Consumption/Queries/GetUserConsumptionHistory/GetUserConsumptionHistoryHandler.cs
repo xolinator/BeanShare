@@ -2,6 +2,8 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.Consumption.Dtos;
 using BeanShare.Application.Services;
+using BeanShare.Domain.Common;
+using BeanShare.Domain.Enums;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
@@ -11,17 +13,23 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
 {
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ISpaceRepository _spaceRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IBillingPeriodRepository _billingPeriodRepository;
     private readonly ICostCalculationService _costCalculationService;
     private readonly IUserContext _userContext;
 
     public GetUserConsumptionHistoryHandler(
         IConsumptionRepository consumptionRepository,
         ISpaceRepository spaceRepository,
+        IUserRepository userRepository,
+        IBillingPeriodRepository billingPeriodRepository,
         ICostCalculationService costCalculationService,
         IUserContext userContext)
     {
         _consumptionRepository = consumptionRepository;
         _spaceRepository = spaceRepository;
+        _userRepository = userRepository;
+        _billingPeriodRepository = billingPeriodRepository;
         _costCalculationService = costCalculationService;
         _userContext = userContext;
     }
@@ -47,6 +55,9 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
         var allConsumptions = new List<Domain.Entities.ConsumptionEntry>();
         var spaces = new Dictionary<SpaceId, Domain.Aggregates.Space.Space>();
 
+        var isSpaceWideQuery = query.SpaceId.HasValue && !query.MemberUserId.HasValue;
+        var isSpecificMemberQuery = query.SpaceId.HasValue && query.MemberUserId.HasValue;
+
         foreach (var space in userSpaces)
         {
             if (query.SpaceId.HasValue && space.Id.Value != query.SpaceId.Value)
@@ -60,16 +71,34 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
                 ? new BillingPeriodId(query.BillingPeriodId.Value)
                 : (BillingPeriodId?)null;
 
-            var consumptionSpec = new ConsumptionsByUserAndDateRangeSpecification(
-                currentUserId,
-                space.Id,
-                query.StartDate,
-                query.EndDate,
-                billingPeriodId);
+            if (isSpaceWideQuery || isSpecificMemberQuery)
+            {
+                UserId? targetUserId = query.MemberUserId.HasValue
+                    ? new UserId(query.MemberUserId.Value)
+                    : null;
 
-            var userConsumptions = await _consumptionRepository.GetBySpecAsync(consumptionSpec, cancellationToken);
+                var spaceSpec = new ConsumptionsBySpaceAndDateRangeSpecification(
+                    space.Id,
+                    targetUserId,
+                    query.StartDate,
+                    query.EndDate,
+                    billingPeriodId);
 
-            allConsumptions.AddRange(userConsumptions);
+                var spaceConsumptions = await _consumptionRepository.GetBySpecAsync(spaceSpec, cancellationToken);
+                allConsumptions.AddRange(spaceConsumptions);
+            }
+            else
+            {
+                var consumptionSpec = new ConsumptionsByUserAndDateRangeSpecification(
+                    currentUserId,
+                    space.Id,
+                    query.StartDate,
+                    query.EndDate,
+                    billingPeriodId);
+
+                var userConsumptions = await _consumptionRepository.GetBySpecAsync(consumptionSpec, cancellationToken);
+                allConsumptions.AddRange(userConsumptions);
+            }
         }
 
         if (query.SpaceId.HasValue && !spaces.Any(s => s.Key.Value == query.SpaceId.Value))
@@ -95,6 +124,38 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
             .Take(query.PageSize)
             .ToList();
 
+        var userIds = paginatedConsumptions.Select(c => c.UserId).Distinct().ToList();
+        var userNames = new Dictionary<UserId, string>();
+        foreach (var uid in userIds)
+        {
+            var user = await _userRepository.GetByIdAsync(uid, cancellationToken);
+            userNames[uid] = user?.Name ?? "Unknown";
+        }
+
+        var editablePeriodIds = new HashSet<BillingPeriodId>();
+        if (query.SpaceId.HasValue)
+        {
+            var spaceId = new SpaceId(query.SpaceId.Value);
+            var billingPeriods = await _billingPeriodRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
+            editablePeriodIds = billingPeriods
+                .Where(bp => bp.State == BillingState.Draft || bp.State == BillingState.Open)
+                .Select(bp => bp.Id)
+                .ToHashSet();
+        }
+        else
+        {
+ 
+            var spaceIdsInResults = paginatedConsumptions.Select(c => c.SpaceId).Distinct().ToList();
+            foreach (var sid in spaceIdsInResults)
+            {
+                var billingPeriods = await _billingPeriodRepository.GetBySpaceIdAsync(sid, cancellationToken);
+                foreach (var bp in billingPeriods.Where(bp => bp.State == BillingState.Draft || bp.State == BillingState.Open))
+                {
+                    editablePeriodIds.Add(bp.Id);
+                }
+            }
+        }
+
         var items = new List<ConsumptionHistoryItemDto>();
         foreach (var c in paginatedConsumptions)
         {
@@ -109,6 +170,8 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
                 currency = cost.Currency.Code;
             }
 
+            var canEdit = c.BillingPeriodId == null || editablePeriodIds.Contains(c.BillingPeriodId.Value);
+
             items.Add(new ConsumptionHistoryItemDto(
                 c.Id.Value,
                 c.SpaceId.Value,
@@ -121,7 +184,10 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
                 estimatedCost,
                 currency,
                 c.BillingPeriodId?.Value,
-                null
+                null,
+                c.UserId.Value,
+                userNames.TryGetValue(c.UserId, out var userName) ? userName : "Unknown",
+                canEdit
             ));
         }
 

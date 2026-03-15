@@ -16,7 +16,7 @@ builder.Services.AddApplication();
 
 builder.Services.AddMapster();
 
-var useKeycloak = builder.Configuration.GetValue<bool>("UseKeycloak", false);
+var useOidc = builder.Configuration.GetValue<bool>("UseOidc", false);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -28,22 +28,22 @@ builder.Services.AddCommunicationServices(builder.Configuration);
 
 builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
 
-if (useKeycloak)
+if (useOidc)
 {
-    // Keycloak OIDC configuration
-    var keycloakAuthority = builder.Configuration["Keycloak:Authority"]
-        ?? throw new InvalidOperationException("Keycloak:Authority not configured");
-    var keycloakAudience = builder.Configuration["Keycloak:Audience"] ?? "beanshare-api";
+    // OIDC configuration
+    var oidcAuthority = builder.Configuration["Oidc:Authority"]
+        ?? throw new InvalidOperationException("Oidc:Authority not configured");
+    var oidcAudience = builder.Configuration["Oidc:Audience"] ?? "beanshare-api";
 
     builder.Services.AddHttpContextAccessor();
-    builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, KeycloakUserContext>();
-    builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, BeanShare.Infrastructure.Identity.KeycloakClaimsTransformation>();
+    builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, OidcUserContext>();
+    builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, BeanShare.Infrastructure.Identity.OidcClaimsTransformation>();
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
-            options.Authority = keycloakAuthority;
-            options.Audience = keycloakAudience;
+            options.Authority = oidcAuthority;
+            options.Audience = oidcAudience;
             options.RequireHttpsMetadata = builder.Environment.IsProduction();
             options.MapInboundClaims = false;
             options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
@@ -51,19 +51,19 @@ if (useKeycloak)
                 ValidateIssuer = true,
                 ValidIssuers = new[]
                 {
-                    keycloakAuthority,
+                    oidcAuthority,
                     // Android emulator uses 10.0.2.2 to reach host, so tokens have a different issuer
-                    keycloakAuthority.Replace("localhost", "10.0.2.2"),
+                    oidcAuthority.Replace("localhost", "10.0.2.2"),
                 },
-                // Keycloak public clients (beanshare-mobile) don't include an audience claim by default.
-                // Issuer validation is sufficient since all clients are in the same realm.
+                // Public OIDC clients (beanshare-mobile) may not include an audience claim.
+                // Issuer validation is sufficient since all clients share the same provider.
                 ValidateAudience = false,
                 ValidateLifetime = true,
                 NameClaimType = "preferred_username",
                 ClockSkew = TimeSpan.FromMinutes(AuthenticationSettings.TokenClockSkewMinutes)
             };
 
-            // Keycloak puts roles in realm_access as JSON: {"roles":["admin","user"]}
+            // Some OIDC providers (e.g. Keycloak) put roles in realm_access as JSON: {"roles":["admin","user"]}
             // ASP.NET Core can't parse nested JSON as role claims, so we extract them manually.
             options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
             {
@@ -193,11 +193,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Validate critical configuration on startup
-ValidateConfiguration(app.Configuration, useKeycloak, app.Logger);
+ValidateConfiguration(app.Configuration, useOidc, app.Logger);
 
 app.Run();
 
-static void ValidateConfiguration(IConfiguration configuration, bool useKeycloak, ILogger logger)
+static void ValidateConfiguration(IConfiguration configuration, bool useOidc, ILogger logger)
 {
     var warnings = new List<string>();
 
@@ -215,18 +215,18 @@ static void ValidateConfiguration(IConfiguration configuration, bool useKeycloak
         logger.LogError("CRITICAL: Database connection string is not configured!");
     }
 
-    // Check Keycloak configuration
-    if (useKeycloak)
+    // Check OIDC configuration
+    if (useOidc)
     {
-        var keycloakAuthority = configuration.GetValue<string>("Keycloak:Authority");
-        if (string.IsNullOrWhiteSpace(keycloakAuthority))
+        var oidcAuthority = configuration.GetValue<string>("Oidc:Authority");
+        if (string.IsNullOrWhiteSpace(oidcAuthority))
         {
-            logger.LogError("CRITICAL: Keycloak:Authority is not configured but UseKeycloak is true!");
+            logger.LogError("CRITICAL: Oidc:Authority is not configured but UseOidc is true!");
         }
     }
     else
     {
-        // Check JWT secret (only needed when not using Keycloak)
+        // Check JWT secret (only needed when not using OIDC)
         var jwtSecret = configuration.GetValue<string>("Jwt:Secret");
         if (string.IsNullOrWhiteSpace(jwtSecret))
         {

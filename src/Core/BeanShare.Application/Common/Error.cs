@@ -59,6 +59,10 @@ public readonly record struct Error(string Code, string Message)
 
         // Currency errors
         public const string InvalidCurrency = "INVALID_CURRENCY";
+
+        // CSV import errors
+        public const string CsvImportFailed = "CSV_IMPORT_FAILED";
+        public const string CsvImportInvalidFormat = "CSV_IMPORT_INVALID_FORMAT";
     }
 
     public static Error SpaceNotFound(Guid spaceId) =>
@@ -191,4 +195,10 @@ public readonly record struct Error(string Code, string Message)
 
     public static Error InvalidCurrency(string currencyCode) =>
         new(Codes.InvalidCurrency, $"'{currencyCode}' is not a valid ISO 4217 currency code");
+
+    public static Error CsvImportFailed(string message) =>
+        new(Codes.CsvImportFailed, message);
+
+    public static Error CsvImportInvalidFormat(string message) =>
+        new(Codes.CsvImportInvalidFormat, message);
 }

@@ -51,6 +51,12 @@ public sealed class MockConsumptionRepository : IConsumptionRepository
         return Task.FromResult<IEnumerable<ConsumptionEntry>>(entries);
     }
 
+    public Task<ConsumptionEntry?> GetByIdAsync(ConsumptionEntryId id, CancellationToken cancellationToken = default)
+    {
+        _consumptions.TryGetValue(id, out var entry);
+        return Task.FromResult(entry);
+    }
+
     public Task<IReadOnlyList<ConsumptionEntry>> GetBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(specification);
@@ -62,5 +68,17 @@ public sealed class MockConsumptionRepository : IConsumptionRepository
             .ToList();
 
         return Task.FromResult<IReadOnlyList<ConsumptionEntry>>(entries);
+    }
+
+    public Task UpdateAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default)
+    {
+        _consumptions[consumption.Id] = consumption;
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default)
+    {
+        _consumptions.TryRemove(consumption.Id, out _);
+        return Task.CompletedTask;
     }
 }

@@ -24,9 +24,9 @@
             </div>
         }
 
-        @if (_useKeycloak)
+        @if (_useOidc)
         {
-            <button type="button" class="bs-btn bs-btn-primary bs-w-full" disabled="@_isLoading" @onclick="HandleKeycloakRegister">
+            <button type="button" class="bs-btn bs-btn-primary bs-w-full" disabled="@_isLoading" @onclick="HandleOidcRegister">
                 @if (_isLoading)
                 {
                     <span>Creating account...</span>
@@ -94,14 +94,14 @@
     private RegisterModel _model = new();
     private bool _isLoading;
     private string? _errorMessage;
-    private bool _useKeycloak;
+    private bool _useOidc;
 
     protected override void OnInitialized()
     {
-        _useKeycloak = Configuration.GetValue<bool>("UseKeycloak", false);
+        _useOidc = Configuration.GetValue<bool>("UseOidc", false);
     }
 
-    private async Task HandleKeycloakRegister()
+    private async Task HandleOidcRegister()
     {
         _isLoading = true;
         _errorMessage = null;

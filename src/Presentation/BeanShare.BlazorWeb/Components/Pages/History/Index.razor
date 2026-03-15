@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using BeanShare.Application.Features.Consumption.Dtos
 @using BeanShare.Application.Features.Consumption.Queries.GetUserConsumptionHistory
+@using BeanShare.Application.Features.Consumption.Commands
 @using BeanShare.Application.Features.Spaces.Dtos
 @using BeanShare.Application.Features.Spaces.Queries
 @using MediatR
@@ -14,7 +15,7 @@
     <div class="row mb-4">
         <div class="col">
             <h1 class="h3">
-                <i class="bi bi-clock-history"></i> My Consumption History
+                <i class="bi bi-clock-history"></i> Consumption History
             </h1>
         </div>
     </div>
@@ -28,7 +29,7 @@
                         <div class="row g-3">
                             <div class="col-md-3">
                                 <label class="form-label">Space</label>
-                                <select class="form-select" @bind="selectedSpaceId">
+                                <select class="form-select" @bind="selectedSpaceId" @bind:after="OnSpaceChanged">
                                     <option value="">All Spaces</option>
                                     @if (userSpaces != null)
                                     {
@@ -40,12 +41,26 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-3">
+                            @if (!string.IsNullOrEmpty(selectedSpaceId) && spaceMembers != null && spaceMembers.Any())
+                            {
+                                <div class="col-md-2">
+                                    <label class="form-label">Member</label>
+                                    <select class="form-select" @bind="selectedMemberUserId">
+                                        <option value="">All Members</option>
+                                        @foreach (var member in spaceMembers)
+                                        {
+                                            <option value="@member.UserId">@member.UserName</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+
+                            <div class="col-md-2">
                                 <label class="form-label">Start Date</label>
                                 <input type="date" class="form-control" @bind="startDate" />
                             </div>
 
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">End Date</label>
                                 <input type="date" class="form-control" @bind="endDate" />
                             </div>
@@ -75,6 +90,14 @@
         </div>
     }
 
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @successMessage
+            <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+        </div>
+    }
+
     @if (isLoading)
     {
         <LoadingSpinner />
@@ -99,7 +122,10 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <ConsumptionHistoryList History="history" OnPageChange="OnPageChange" />
+                        <ConsumptionHistoryList History="history"
+                                                OnPageChange="OnPageChange"
+                                                OnEdit="HandleEditConsumption"
+                                                OnDelete="HandleDeleteConsumption" />
                     </div>
                 </div>
             </div>
@@ -111,9 +137,12 @@
     private bool isLoading = true;
     private ConsumptionHistoryDto? history;
     private IReadOnlyList<SpaceSummaryDto>? userSpaces;
+    private IReadOnlyList<MembershipDto>? spaceMembers;
     private string? errorMessage;
+    private string? successMessage;
 
     private string? selectedSpaceId;
+    private string? selectedMemberUserId;
     private DateTime? startDate;
     private DateTime? endDate;
     private int currentPage = 1;
@@ -147,6 +176,28 @@
         }
     }
 
+    private async Task OnSpaceChanged()
+    {
+        selectedMemberUserId = null;
+        spaceMembers = null;
+
+        if (!string.IsNullOrEmpty(selectedSpaceId) && Guid.TryParse(selectedSpaceId, out var spaceGuid))
+        {
+            try
+            {
+                var result = await Mediator.Send(new GetSpaceByIdQuery(spaceGuid));
+                if (result.IsSuccess && result.Value.Members != null)
+                {
+                    spaceMembers = result.Value.Members;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to load space members");
+            }
+        }
+    }
+
     private async Task LoadHistory()
     {
         isLoading = true;
@@ -154,13 +205,15 @@
         try
         {
             Guid? spaceId = !string.IsNullOrEmpty(selectedSpaceId) ? Guid.Parse(selectedSpaceId) : null;
+            Guid? memberUserId = !string.IsNullOrEmpty(selectedMemberUserId) ? Guid.Parse(selectedMemberUserId) : null;
 
             var query = new GetUserConsumptionHistoryQuery(
                 SpaceId: spaceId,
                 StartDate: startDate,
                 EndDate: endDate,
                 PageNumber: currentPage,
-                PageSize: pageSize
+                PageSize: pageSize,
+                MemberUserId: memberUserId
             );
 
             var result = await Mediator.Send(query);
@@ -194,6 +247,8 @@
     private async Task ClearFilters()
     {
         selectedSpaceId = null;
+        selectedMemberUserId = null;
+        spaceMembers = null;
         startDate = null;
         endDate = null;
         currentPage = 1;
@@ -204,5 +259,68 @@
     {
         currentPage = pageNumber;
         await LoadHistory();
+    }
+
+    private async Task HandleEditConsumption(ConsumptionHistoryItemDto updated)
+    {
+        try
+        {
+            var result = await Mediator.Send(new UpdateConsumptionCommand(
+                updated.Id,
+                updated.SpaceId,
+                updated.ProductName,
+                updated.ProductBrand,
+                updated.ProductType,
+                updated.QuantityGrams,
+                updated.ConsumedAt));
+
+            if (result.IsSuccess)
+            {
+                successMessage = "Consumption updated successfully!";
+                errorMessage = null;
+                await LoadHistory();
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Message));
+                successMessage = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update consumption");
+            errorMessage = $"Failed to update consumption: {ex.Message}";
+            successMessage = null;
+        }
+    }
+
+    private async Task HandleDeleteConsumption(Guid consumptionId)
+    {
+        try
+        {
+            // Need the spaceId — find it from the history items
+            var item = history?.Items.FirstOrDefault(i => i.Id == consumptionId);
+            if (item == null) return;
+
+            var result = await Mediator.Send(new DeleteConsumptionCommand(consumptionId, item.SpaceId));
+
+            if (result.IsSuccess)
+            {
+                successMessage = "Consumption deleted successfully!";
+                errorMessage = null;
+                await LoadHistory();
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Message));
+                successMessage = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to delete consumption");
+            errorMessage = $"Failed to delete consumption: {ex.Message}";
+            successMessage = null;
+        }
     }
 }

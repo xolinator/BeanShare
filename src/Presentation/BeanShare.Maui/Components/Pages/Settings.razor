@@ -332,7 +332,7 @@
             await AlertService.ShowAlertAsync("Error", "New password and confirmation do not match.");
             return;
         }
-        // Password management is handled by the identity provider (Keycloak)
+        // Password management is handled by the identity provider
         await AlertService.ShowAlertAsync("Info", "Password changes are managed through your identity provider.");
         ClosePasswordModal();
     }

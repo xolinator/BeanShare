@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace BeanShare.Maui.Services;
 
 /// <summary>
-/// Orchestrates Keycloak OIDC authentication using PKCE flow for the MAUI app.
+/// Orchestrates OIDC authentication using PKCE flow for the MAUI app.
 /// Delegates token operations to <see cref="OidcTokenHandler"/> and cryptographic
 /// utilities to <see cref="PkceHelper"/>.
 /// </summary>
@@ -14,12 +14,13 @@ public class AuthenticationService : IAuthenticationService
     private readonly HttpClient _httpClient;
     private readonly ILogger<AuthenticationService> _logger;
     private readonly OidcTokenHandler _tokenHandler;
-    private readonly string _keycloakClientId;
+    private readonly string _oidcClientId;
     private readonly string _callbackUrl;
     private readonly string _authorizationEndpoint;
     private readonly string _registrationEndpoint;
     private readonly string _endSessionEndpoint;
-    private readonly bool _useKeycloak;
+    private readonly string? _idpHintParam;
+    private readonly bool _useOidc;
     private UserInfo? _currentUser;
 
     public AuthenticationService(HttpClient httpClient, ILogger<AuthenticationService> logger, IConfiguration configuration)
@@ -27,53 +28,66 @@ public class AuthenticationService : IAuthenticationService
         _httpClient = httpClient;
         _logger = logger;
 
-        var keycloakAuthority = configuration.GetValue<string>("Keycloak:Authority") ?? "http://localhost:8080/realms/beanshare";
-        _keycloakClientId = configuration.GetValue<string>("Keycloak:ClientId") ?? "beanshare-mobile";
-        _callbackUrl = configuration.GetValue<string>("Keycloak:RedirectUri") ?? "beanshare://callback";
-        _useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+        var oidcAuthority = configuration.GetValue<string>("Oidc:Authority") ?? "http://localhost:8080/realms/beanshare";
+        _oidcClientId = configuration.GetValue<string>("Oidc:ClientId") ?? "beanshare-mobile";
+        _callbackUrl = configuration.GetValue<string>("Oidc:RedirectUri") ?? "beanshare://callback";
+        _useOidc = configuration.GetValue<bool>("UseOidc", false);
+        _idpHintParam = configuration.GetValue<string>("Oidc:IdentityProviderHintParam");
 
         // Android emulator uses 10.0.2.2 to reach the host machine's localhost
 #if ANDROID
-        if (keycloakAuthority.Contains("localhost") || keycloakAuthority.Contains("127.0.0.1"))
+        if (oidcAuthority.Contains("localhost") || oidcAuthority.Contains("127.0.0.1"))
         {
-            keycloakAuthority = keycloakAuthority.Replace("localhost", "10.0.2.2").Replace("127.0.0.1", "10.0.2.2");
-            logger.LogInformation("Android emulator detected - Keycloak authority remapped to: {Authority}", keycloakAuthority);
+            oidcAuthority = oidcAuthority.Replace("localhost", "10.0.2.2").Replace("127.0.0.1", "10.0.2.2");
+            logger.LogInformation("Android emulator detected - OIDC authority remapped to: {Authority}", oidcAuthority);
         }
 #endif
 
-        _authorizationEndpoint = $"{keycloakAuthority}/protocol/openid-connect/auth";
-        _registrationEndpoint = $"{keycloakAuthority}/protocol/openid-connect/registrations";
-        var tokenEndpoint = $"{keycloakAuthority}/protocol/openid-connect/token";
-        _endSessionEndpoint = $"{keycloakAuthority}/protocol/openid-connect/logout";
+        // Use explicit endpoint overrides if configured, otherwise derive from authority using common OIDC provider conventions
+        _authorizationEndpoint = configuration.GetValue<string>("Oidc:AuthorizationEndpoint");
+        if (string.IsNullOrEmpty(_authorizationEndpoint))
+            _authorizationEndpoint = $"{oidcAuthority}/protocol/openid-connect/auth";
 
-        _tokenHandler = new OidcTokenHandler(httpClient, logger, _keycloakClientId, _callbackUrl, tokenEndpoint);
+        _registrationEndpoint = configuration.GetValue<string>("Oidc:RegistrationEndpoint");
+        if (string.IsNullOrEmpty(_registrationEndpoint))
+            _registrationEndpoint = $"{oidcAuthority}/protocol/openid-connect/registrations";
+
+        var tokenEndpoint = configuration.GetValue<string>("Oidc:TokenEndpoint");
+        if (string.IsNullOrEmpty(tokenEndpoint))
+            tokenEndpoint = $"{oidcAuthority}/protocol/openid-connect/token";
+
+        _endSessionEndpoint = configuration.GetValue<string>("Oidc:EndSessionEndpoint");
+        if (string.IsNullOrEmpty(_endSessionEndpoint))
+            _endSessionEndpoint = $"{oidcAuthority}/protocol/openid-connect/logout";
+
+        _tokenHandler = new OidcTokenHandler(httpClient, logger, _oidcClientId, _callbackUrl, tokenEndpoint);
     }
 
     public Task<AuthResult> LoginAsync(string email, string password)
     {
-        return LoginWithKeycloakAsync();
+        return LoginWithOidcAsync();
     }
 
     public Task<AuthResult> RegisterAsync(string email, string name, string password)
     {
-        return RegisterWithKeycloakAsync();
+        return RegisterWithOidcAsync();
     }
 
     /// <summary>
-    /// Opens Keycloak's self-registration page using PKCE flow.
-    /// Uses the /registrations endpoint instead of /auth to show the registration form.
+    /// Opens the OIDC provider's self-registration page using PKCE flow.
+    /// Uses the registration endpoint instead of the authorization endpoint to show the registration form.
     /// </summary>
-    public async Task<AuthResult> RegisterWithKeycloakAsync()
+    public async Task<AuthResult> RegisterWithOidcAsync()
     {
-        if (!_useKeycloak)
+        if (!_useOidc)
         {
-            _logger.LogInformation("UseKeycloak=false - using development authentication bypass for registration");
+            _logger.LogInformation("UseOidc=false - using development authentication bypass for registration");
             return await LoginWithDevBypassAsync();
         }
 
         try
         {
-            _logger.LogInformation("Starting Keycloak PKCE registration flow");
+            _logger.LogInformation("Starting OIDC PKCE registration flow");
 
             var codeVerifier = PkceHelper.GenerateCodeVerifier();
             var codeChallenge = PkceHelper.GenerateCodeChallenge(codeVerifier);
@@ -97,7 +111,7 @@ public class AuthenticationService : IAuthenticationService
 
             if (string.IsNullOrEmpty(code))
             {
-                _logger.LogWarning("Keycloak registration returned no authorization code");
+                _logger.LogWarning("OIDC registration returned no authorization code");
                 return new AuthResult(false, null, "Registration failed. No authorization code received.");
             }
 
@@ -117,41 +131,41 @@ public class AuthenticationService : IAuthenticationService
         }
         catch (TaskCanceledException)
         {
-            _logger.LogInformation("Keycloak registration was cancelled by user");
+            _logger.LogInformation("OIDC registration was cancelled by user");
             return new AuthResult(false, null, "Registration was cancelled.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Keycloak registration failed");
+            _logger.LogError(ex, "OIDC registration failed");
             return new AuthResult(false, null, $"Registration failed: {ex.Message}");
         }
     }
 
     public Task<AuthResult> LoginWithGoogleAsync()
     {
-        return LoginWithKeycloakAsync("google");
+        return LoginWithOidcAsync("google");
     }
 
     public Task<AuthResult> LoginWithFacebookAsync()
     {
-        return LoginWithKeycloakAsync("facebook");
+        return LoginWithOidcAsync("facebook");
     }
 
     /// <summary>
-    /// Initiates Keycloak PKCE authentication, optionally hinting at an identity provider.
-    /// Falls back to development bypass when UseKeycloak is false in configuration.
+    /// Initiates OIDC PKCE authentication, optionally hinting at an identity provider.
+    /// Falls back to development bypass when UseOidc is false in configuration.
     /// </summary>
-    public async Task<AuthResult> LoginWithKeycloakAsync(string? identityProviderHint = null)
+    public async Task<AuthResult> LoginWithOidcAsync(string? identityProviderHint = null)
     {
-        if (!_useKeycloak)
+        if (!_useOidc)
         {
-            _logger.LogInformation("UseKeycloak=false - using development authentication bypass (API mock auth)");
+            _logger.LogInformation("UseOidc=false - using development authentication bypass (API mock auth)");
             return await LoginWithDevBypassAsync();
         }
 
         try
         {
-            _logger.LogInformation("Starting Keycloak PKCE authentication flow. IDP hint: {IdpHint}", identityProviderHint ?? "none");
+            _logger.LogInformation("Starting OIDC PKCE authentication flow. IDP hint: {IdpHint}", identityProviderHint ?? "none");
 
             var codeVerifier = PkceHelper.GenerateCodeVerifier();
             var codeChallenge = PkceHelper.GenerateCodeChallenge(codeVerifier);
@@ -175,7 +189,7 @@ public class AuthenticationService : IAuthenticationService
 
             if (string.IsNullOrEmpty(code))
             {
-                _logger.LogWarning("Keycloak authentication returned no authorization code");
+                _logger.LogWarning("OIDC authentication returned no authorization code");
                 return new AuthResult(false, null, "Authentication failed. No authorization code received.");
             }
 
@@ -195,19 +209,19 @@ public class AuthenticationService : IAuthenticationService
         }
         catch (TaskCanceledException)
         {
-            _logger.LogInformation("Keycloak login was cancelled by user");
+            _logger.LogInformation("OIDC login was cancelled by user");
             return new AuthResult(false, null, "Authentication was cancelled.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Keycloak authentication failed");
+            _logger.LogError(ex, "OIDC authentication failed");
             return new AuthResult(false, null, $"Authentication failed: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Development-only bypass used when UseKeycloak is false in configuration.
-    /// The API uses MockAuthenticationHandler (Sarah Johnson) when UseKeycloak=false.
+    /// Development-only bypass used when UseOidc is false in configuration.
+    /// The API uses MockAuthenticationHandler (Sarah Johnson) when UseOidc=false.
     /// </summary>
     private async Task<AuthResult> LoginWithDevBypassAsync()
     {
@@ -292,7 +306,7 @@ public class AuthenticationService : IAuthenticationService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to open Keycloak logout page (non-fatal)");
+                _logger.LogWarning(ex, "Failed to open OIDC logout page (non-fatal)");
             }
         }
     }
@@ -369,7 +383,7 @@ public class AuthenticationService : IAuthenticationService
     private Uri BuildAuthorizationUrl(string codeChallenge, string state, string? identityProviderHint)
     {
         var urlBuilder = new StringBuilder(_authorizationEndpoint);
-        urlBuilder.Append($"?client_id={Uri.EscapeDataString(_keycloakClientId)}");
+        urlBuilder.Append($"?client_id={Uri.EscapeDataString(_oidcClientId)}");
         urlBuilder.Append($"&redirect_uri={Uri.EscapeDataString(_callbackUrl)}");
         urlBuilder.Append("&response_type=code");
         urlBuilder.Append("&scope=openid%20profile%20email");
@@ -377,9 +391,9 @@ public class AuthenticationService : IAuthenticationService
         urlBuilder.Append("&code_challenge_method=S256");
         urlBuilder.Append($"&state={Uri.EscapeDataString(state)}");
 
-        if (!string.IsNullOrEmpty(identityProviderHint))
+        if (!string.IsNullOrEmpty(identityProviderHint) && !string.IsNullOrEmpty(_idpHintParam))
         {
-            urlBuilder.Append($"&kc_idp_hint={Uri.EscapeDataString(identityProviderHint)}");
+            urlBuilder.Append($"&{Uri.EscapeDataString(_idpHintParam)}={Uri.EscapeDataString(identityProviderHint)}");
         }
 
         return new Uri(urlBuilder.ToString());
@@ -388,7 +402,7 @@ public class AuthenticationService : IAuthenticationService
     private Uri BuildRegistrationUrl(string codeChallenge, string state)
     {
         var urlBuilder = new StringBuilder(_registrationEndpoint);
-        urlBuilder.Append($"?client_id={Uri.EscapeDataString(_keycloakClientId)}");
+        urlBuilder.Append($"?client_id={Uri.EscapeDataString(_oidcClientId)}");
         urlBuilder.Append($"&redirect_uri={Uri.EscapeDataString(_callbackUrl)}");
         urlBuilder.Append("&response_type=code");
         urlBuilder.Append("&scope=openid%20profile%20email");

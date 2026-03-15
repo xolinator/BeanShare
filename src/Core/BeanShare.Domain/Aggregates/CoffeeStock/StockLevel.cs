@@ -10,6 +10,7 @@ public sealed class StockLevel : Entity
     public CoffeeProduct Product { get; private init; }
     public Weight TotalPurchased { get; private set; }
     public Weight TotalConsumed { get; private set; }
+    public bool IsArchived { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
     private StockLevel()
@@ -74,6 +75,18 @@ public sealed class StockLevel : Entity
     }
 
     public decimal ConsumptionPercentage => TotalPurchased.IsZero ? 0 : (TotalConsumed.Grams / TotalPurchased.Grams) * 100;
+
+    public void Archive(IClock clock)
+    {
+        IsArchived = true;
+        UpdatedAt = clock.UtcNow;
+    }
+
+    public void Unarchive(IClock clock)
+    {
+        IsArchived = false;
+        UpdatedAt = clock.UtcNow;
+    }
 
     protected override object GetId() => Id;
 

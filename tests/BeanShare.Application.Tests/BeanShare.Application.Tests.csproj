@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\BeanShare.Application\BeanShare.Application.csproj" />
+    <ProjectReference Include="..\..\src\Presentation\BeanShare.SharedUi\BeanShare.SharedUi.csproj" />
   </ItemGroup>
 
   <ItemGroup>

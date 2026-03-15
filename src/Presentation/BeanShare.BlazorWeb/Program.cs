@@ -18,7 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=beanshare_dev;Username=beanshare;Password=beanshare123";
 
-var useKeycloak = builder.Configuration.GetValue<bool>("UseKeycloak", false);
+var useOidc = builder.Configuration.GetValue<bool>("UseOidc", false);
 var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
 
 builder.Services.AddRazorComponents()
@@ -35,14 +35,14 @@ if (!useInMemoryDatabase)
         .PersistKeysToDbContext<BeanShareDbContext>();
 }
 
-if (useKeycloak)
+if (useOidc)
 {
-    // Keycloak OIDC configuration
-    var keycloakAuthority = builder.Configuration["Keycloak:Authority"]
-        ?? throw new InvalidOperationException("Keycloak:Authority not configured");
-    var keycloakClientId = builder.Configuration["Keycloak:ClientId"] ?? "beanshare-web";
-    var keycloakClientSecret = builder.Configuration["Keycloak:ClientSecret"]
-        ?? throw new InvalidOperationException("Keycloak:ClientSecret not configured");
+    // OIDC configuration
+    var oidcAuthority = builder.Configuration["Oidc:Authority"]
+        ?? throw new InvalidOperationException("Oidc:Authority not configured");
+    var oidcClientId = builder.Configuration["Oidc:ClientId"] ?? "beanshare-web";
+    var oidcClientSecret = builder.Configuration["Oidc:ClientSecret"]
+        ?? throw new InvalidOperationException("Oidc:ClientSecret not configured");
 
     builder.Services.AddAuthentication(options =>
     {
@@ -58,9 +58,9 @@ if (useKeycloak)
     })
     .AddOpenIdConnect(options =>
     {
-        options.Authority = keycloakAuthority;
-        options.ClientId = keycloakClientId;
-        options.ClientSecret = keycloakClientSecret;
+        options.Authority = oidcAuthority;
+        options.ClientId = oidcClientId;
+        options.ClientSecret = oidcClientSecret;
         options.ResponseType = "code";
         options.SaveTokens = true;
         options.GetClaimsFromUserInfoEndpoint = true;
@@ -82,7 +82,7 @@ if (useKeycloak)
         {
             OnTokenValidated = async context =>
             {
-                // Extract realm roles from Keycloak token
+                // Extract realm roles from OIDC token (e.g. Keycloak realm_access claim)
                 if (context.Principal != null)
                 {
                     var identity = context.Principal.Identity as System.Security.Claims.ClaimsIdentity;
@@ -124,7 +124,7 @@ if (useKeycloak)
                     catch (Exception ex)
                     {
                         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogError(ex, "Failed to sync user from Keycloak claims");
+                        logger.LogError(ex, "Failed to sync user from OIDC claims");
                     }
                 }
             }
@@ -132,9 +132,9 @@ if (useKeycloak)
     });
 
     builder.Services.AddHttpContextAccessor();
-    builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, KeycloakUserContext>();
+    builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, OidcUserContext>();
     builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
-    builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, BeanShare.Infrastructure.Identity.KeycloakClaimsTransformation>();
+    builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, BeanShare.Infrastructure.Identity.OidcClaimsTransformation>();
 }
 else
 {

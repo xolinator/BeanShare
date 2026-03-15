@@ -102,9 +102,9 @@ Configure via environment variables:
 ```bash
 export ASPNETCORE_ENVIRONMENT=Production
 export ConnectionStrings__DefaultConnection="Host=DB_HOST;Port=5432;Database=beanshare;Username=beanshare;Password=<DB_PASSWORD>"
-export UseKeycloak=true
-export Keycloak__Authority="https://auth.yourdomain.com/realms/beanshare"
-export Keycloak__ClientSecret="<API_CLIENT_SECRET>"
+export UseOidc=true
+export Oidc__Authority="https://auth.yourdomain.com/realms/beanshare"
+export Oidc__ClientSecret="<API_CLIENT_SECRET>"
 export Jwt__Secret="<RANDOM_SECRET_MIN_32_CHARS>"
 
 # Optional — without this, constant fallback exchange rates are used
@@ -136,10 +136,10 @@ Configure via environment variables:
 ```bash
 export ASPNETCORE_ENVIRONMENT=Production
 export ConnectionStrings__DefaultConnection="Host=DB_HOST;Port=5432;Database=beanshare;Username=beanshare;Password=<DB_PASSWORD>"
-export UseKeycloak=true
-export Keycloak__Authority="https://auth.yourdomain.com/realms/beanshare"
-export Keycloak__ClientId="beanshare-web"
-export Keycloak__ClientSecret="<WEB_CLIENT_SECRET>"
+export UseOidc=true
+export Oidc__Authority="https://auth.yourdomain.com/realms/beanshare"
+export Oidc__ClientId="beanshare-web"
+export Oidc__ClientSecret="<WEB_CLIENT_SECRET>"
 ```
 
 Run:

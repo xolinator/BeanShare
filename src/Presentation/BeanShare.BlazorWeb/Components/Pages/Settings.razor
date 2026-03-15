@@ -336,8 +336,8 @@
             await JSRuntime.InvokeVoidAsync("alert", "New password and confirmation do not match.");
             return;
         }
-        // Password management is handled by the identity provider (Keycloak)
-        await JSRuntime.InvokeVoidAsync("alert", "Password changes are managed through your identity provider. Please use Keycloak to update your password.");
+        // Password management is handled by the identity provider
+        await JSRuntime.InvokeVoidAsync("alert", "Password changes are managed through your identity provider.");
         ClosePasswordModal();
     }
 

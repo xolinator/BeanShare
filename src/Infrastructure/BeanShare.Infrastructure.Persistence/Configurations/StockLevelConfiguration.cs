@@ -54,6 +54,10 @@ public sealed class StockLevelConfiguration : IEntityTypeConfiguration<StockLeve
                 .IsRequired();
         });
 
+        builder.Property(sl => sl.IsArchived)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.Property(sl => sl.UpdatedAt)
             .IsRequired();
 

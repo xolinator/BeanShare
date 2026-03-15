@@ -56,13 +56,83 @@ public class ConsumptionService : IConsumptionService
         }
     }
 
+    public async Task<ImportConsumptionCsvResult?> ImportCsvAsync(Guid spaceId, IReadOnlyList<ImportConsumptionCsvRow> rows)
+    {
+        try
+        {
+            var request = new
+            {
+                SpaceId = spaceId,
+                Rows = rows.Select(r => new
+                {
+                    r.RowNumber,
+                    r.Email,
+                    r.ProductName,
+                    r.ProductBrand,
+                    r.ProductType,
+                    r.QuantityGrams,
+                    r.ConsumedAt
+                }).ToList()
+            };
+
+            var response = await _httpClient.PostAsJsonAsync("/api/consumptions/import-csv", request);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ImportConsumptionCsvResult>();
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateConsumptionAsync(Guid id, Guid spaceId, string productName, string productBrand, string productType, decimal quantityGrams, DateTime consumedAt)
+    {
+        try
+        {
+            var request = new
+            {
+                Id = id,
+                SpaceId = spaceId,
+                ProductName = productName,
+                ProductBrand = productBrand,
+                ProductType = productType,
+                QuantityGrams = quantityGrams,
+                ConsumedAt = consumedAt
+            };
+
+            var response = await _httpClient.PutAsJsonAsync($"/api/consumptions/{id}", request);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteConsumptionAsync(Guid id, Guid spaceId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/api/consumptions/{id}?spaceId={spaceId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<ConsumptionHistoryDto?> GetUserHistoryAsync(
         Guid? spaceId = null,
         DateTime? startDate = null,
         DateTime? endDate = null,
         Guid? billingPeriodId = null,
         int pageNumber = 1,
-        int pageSize = 20)
+        int pageSize = 20,
+        Guid? memberUserId = null)
     {
         try
         {
@@ -81,6 +151,9 @@ public class ConsumptionService : IConsumptionService
 
             if (billingPeriodId.HasValue)
                 queryParams["billingPeriodId"] = billingPeriodId.Value.ToString();
+
+            if (memberUserId.HasValue)
+                queryParams["memberUserId"] = memberUserId.Value.ToString();
 
             var url = $"/api/me/consumption/history?{queryParams}";
             return await _httpClient.GetFromJsonAsync<ConsumptionHistoryDto>(url);

@@ -11,5 +11,8 @@ public sealed record ConsumptionHistoryItemDto(
     decimal? EstimatedCost,
     string? Currency,
     Guid? BillingPeriodId,
-    string? BillingPeriodName
+    string? BillingPeriodName,
+    Guid UserId = default,
+    string UserName = "Unknown",
+    bool CanEdit = false
 );

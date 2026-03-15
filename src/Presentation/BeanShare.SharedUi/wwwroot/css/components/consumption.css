@@ -372,17 +372,84 @@
 }
 
 @media (max-width: 576px) {
+    .consumption-history {
+        padding: 0.25rem;
+    }
+
     .history-timeline {
-        padding-left: 1.5rem;
+        padding-left: 0;
+    }
+
+    .history-timeline::before {
+        display: none;
+    }
+
+    .timeline-item {
+        padding-left: 0;
     }
 
     .timeline-dot {
-        left: -20px;
+        display: none;
+    }
+
+    .timeline-content {
+        padding: 0.625rem;
+        border-radius: 0.5rem;
+    }
+
+    .date-header {
+        margin-left: 0;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .item-header {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-bottom: 0.375rem;
+    }
+
+    .item-header .badge {
+        font-size: 0.7rem;
+        padding: 0.15em 0.4em;
+    }
+
+    .item-details {
+        font-size: 0.8125rem;
+        word-break: break-word;
+        margin-bottom: 0.375rem;
     }
 
     .item-metrics {
         flex-wrap: wrap;
+        gap: 0.375rem;
+        font-size: 0.8rem;
+    }
+
+    .item-metrics .metric.ms-auto {
+        margin-left: 0 !important;
+        width: 100%;
+        justify-content: flex-end;
+        padding-top: 0.25rem;
+        border-top: 1px solid var(--bs-gray-200);
+        margin-top: 0.125rem;
+    }
+
+    .date-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .timeline-items {
         gap: 0.5rem;
+    }
+
+    /* Edit form responsive */
+    .edit-form .row .col-6,
+    .edit-form .row .col-4,
+    .edit-form .row .col-3,
+    .edit-form .row .col-5 {
+        flex: 0 0 100%;
+        max-width: 100%;
     }
 }
 

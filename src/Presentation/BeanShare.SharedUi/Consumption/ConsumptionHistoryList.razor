@@ -53,36 +53,88 @@
                             <div class="timeline-item">
                                 <div class="timeline-dot"></div>
                                 <div class="timeline-content">
-                                    <div class="item-header">
-                                        <span class="item-time">@item.ConsumedAt.ToString("HH:mm")</span>
-                                        <span class="item-space badge bg-secondary">@item.SpaceName</span>
-                                    </div>
-                                    <div class="item-details">
-                                        <strong>@item.ProductName</strong>
-                                        <span class="text-muted">by @item.ProductBrand</span>
-                                    </div>
-                                    <div class="item-metrics">
-                                        <span class="metric">
-                                            <i class="bi bi-droplet-half"></i> @item.QuantityGrams.ToString("F0")g
-                                        </span>
-                                        <span class="metric">
-                                            <span class="badge bg-info">@item.ProductType</span>
-                                        </span>
-                                        @if (item.EstimatedCost.HasValue)
-                                        {
-                                            <span class="metric text-success">
-                                                <i class="bi bi-cash"></i> @item.Currency @item.EstimatedCost.Value.ToString("F2")
-                                            </span>
-                                        }
-                                    </div>
-                                    @if (item.BillingPeriodId.HasValue)
+                                    @if (editingId == item.Id)
                                     {
-                                        <div class="item-billing">
-                                            <small class="text-muted">
-                                                <i class="bi bi-calendar-check"></i>
-                                                @(item.BillingPeriodName ?? "Billing Period")
-                                            </small>
+                                        <div class="edit-form p-2" style="background: var(--bs-light, #f8f9fa); border-radius: 0.5rem;">
+                                            <div class="row g-2 mb-2">
+                                                <div class="col-6">
+                                                    <input type="text" class="form-control form-control-sm" placeholder="Product name" @bind="editProductName" />
+                                                </div>
+                                                <div class="col-6">
+                                                    <input type="text" class="form-control form-control-sm" placeholder="Brand" @bind="editProductBrand" />
+                                                </div>
+                                            </div>
+                                            <div class="row g-2 mb-2">
+                                                <div class="col-4">
+                                                    <select class="form-select form-select-sm" @bind="editProductType">
+                                                        <option value="Espresso">Espresso</option>
+                                                        <option value="Filter">Filter</option>
+                                                        <option value="Instant">Instant</option>
+                                                        <option value="Decaf">Decaf</option>
+                                                        <option value="Specialty">Specialty</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-3">
+                                                    <input type="number" class="form-control form-control-sm" placeholder="Grams" @bind="editQuantity" min="1" />
+                                                </div>
+                                                <div class="col-5">
+                                                    <input type="datetime-local" class="form-control form-control-sm" @bind="editConsumedAt" />
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+                                                <button class="btn btn-sm btn-primary" @onclick="() => SaveEdit(item)">Save</button>
+                                            </div>
                                         </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="item-header">
+                                            <span class="item-time">@item.ConsumedAt.ToString("HH:mm")</span>
+                                            <span class="item-space badge bg-secondary">@item.SpaceName</span>
+                                            @if (!string.IsNullOrEmpty(item.UserName) && item.UserName != "Unknown")
+                                            {
+                                                <span class="item-user badge bg-light text-dark">@item.UserName</span>
+                                            }
+                                        </div>
+                                        <div class="item-details">
+                                            <strong>@item.ProductName</strong>
+                                            <span class="text-muted">by @item.ProductBrand</span>
+                                        </div>
+                                        <div class="item-metrics">
+                                            <span class="metric">
+                                                <i class="bi bi-droplet-half"></i> @item.QuantityGrams.ToString("F0")g
+                                            </span>
+                                            <span class="metric">
+                                                <span class="badge bg-info">@item.ProductType</span>
+                                            </span>
+                                            @if (item.EstimatedCost.HasValue)
+                                            {
+                                                <span class="metric text-success">
+                                                    <i class="bi bi-cash"></i> @item.Currency @item.EstimatedCost.Value.ToString("F2")
+                                                </span>
+                                            }
+                                            @if (item.CanEdit)
+                                            {
+                                                <span class="metric ms-auto">
+                                                    <button class="btn btn-sm btn-link p-0 text-muted" title="Edit" @onclick="() => StartEdit(item)">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-link p-0 text-danger ms-2" title="Delete" @onclick="() => ConfirmDelete(item)">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </span>
+                                            }
+                                        </div>
+                                        @if (item.BillingPeriodId.HasValue)
+                                        {
+                                            <div class="item-billing">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-calendar-check"></i>
+                                                    @(item.BillingPeriodName ?? "Billing Period")
+                                                </small>
+                                            </div>
+                                        }
                                     }
                                 </div>
                             </div>
@@ -128,7 +180,92 @@
     }
 </div>
 
+@if (showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" @onclick="CancelDelete">
+        <div class="modal-dialog modal-sm modal-dialog-centered" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete consumption?</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-sm btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button class="btn btn-sm btn-danger" @onclick="ExecuteDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public ConsumptionHistoryDto? History { get; set; }
     [Parameter] public EventCallback<int> OnPageChange { get; set; }
+    [Parameter] public EventCallback<ConsumptionHistoryItemDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+
+    private Guid? editingId;
+    private string editProductName = "";
+    private string editProductBrand = "";
+    private string editProductType = "Espresso";
+    private decimal editQuantity;
+    private DateTime editConsumedAt;
+
+    private bool showDeleteConfirm;
+    private ConsumptionHistoryItemDto? deleteTarget;
+
+    private void StartEdit(ConsumptionHistoryItemDto item)
+    {
+        editingId = item.Id;
+        editProductName = item.ProductName;
+        editProductBrand = item.ProductBrand;
+        editProductType = item.ProductType;
+        editQuantity = item.QuantityGrams;
+        editConsumedAt = item.ConsumedAt;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+    }
+
+    private async Task SaveEdit(ConsumptionHistoryItemDto item)
+    {
+        var updated = item with
+        {
+            ProductName = editProductName,
+            ProductBrand = editProductBrand,
+            ProductType = editProductType,
+            QuantityGrams = editQuantity,
+            ConsumedAt = editConsumedAt
+        };
+
+        await OnEdit.InvokeAsync(updated);
+        editingId = null;
+    }
+
+    private void ConfirmDelete(ConsumptionHistoryItemDto item)
+    {
+        deleteTarget = item;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (deleteTarget != null)
+        {
+            await OnDelete.InvokeAsync(deleteTarget.Id);
+        }
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
 }

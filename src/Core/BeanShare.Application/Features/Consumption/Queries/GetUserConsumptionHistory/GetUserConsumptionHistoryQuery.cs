@@ -9,5 +9,6 @@ public sealed record GetUserConsumptionHistoryQuery(
     DateTime? EndDate = null,
     Guid? BillingPeriodId = null,
     int PageNumber = 1,
-    int PageSize = 20
+    int PageSize = 20,
+    Guid? MemberUserId = null
 ) : IRequest<Result<ConsumptionHistoryDto>>;

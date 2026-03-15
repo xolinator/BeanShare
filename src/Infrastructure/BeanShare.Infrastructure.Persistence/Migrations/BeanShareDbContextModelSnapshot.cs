@@ -141,6 +141,11 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CoffeeStockId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -617,6 +622,25 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         .HasFilter("\"PresetRecipeId\" IS NOT NULL");
 
                     b.ToTable("UserPresetFavorites", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FriendlyName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DataProtectionKeys");
                 });
 
             modelBuilder.Entity("BeanShare.Domain.Aggregates.CoffeeStock.Purchase", b =>

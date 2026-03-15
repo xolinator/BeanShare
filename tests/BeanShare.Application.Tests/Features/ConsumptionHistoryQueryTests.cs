@@ -18,6 +18,8 @@ public sealed class ConsumptionHistoryQueryTests
 {
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ISpaceRepository _spaceRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IBillingPeriodRepository _billingPeriodRepository;
     private readonly ICostCalculationService _costCalculationService;
     private readonly IUserContext _userContext;
     private readonly IClock _clock;
@@ -30,6 +32,8 @@ public sealed class ConsumptionHistoryQueryTests
     {
         _consumptionRepository = Substitute.For<IConsumptionRepository>();
         _spaceRepository = Substitute.For<ISpaceRepository>();
+        _userRepository = Substitute.For<IUserRepository>();
+        _billingPeriodRepository = Substitute.For<IBillingPeriodRepository>();
         _costCalculationService = Substitute.For<ICostCalculationService>();
         _userContext = Substitute.For<IUserContext>();
         _clock = Substitute.For<IClock>();
@@ -43,6 +47,8 @@ public sealed class ConsumptionHistoryQueryTests
         _handler = new GetUserConsumptionHistoryHandler(
             _consumptionRepository,
             _spaceRepository,
+            _userRepository,
+            _billingPeriodRepository,
             _costCalculationService,
             _userContext);
     }

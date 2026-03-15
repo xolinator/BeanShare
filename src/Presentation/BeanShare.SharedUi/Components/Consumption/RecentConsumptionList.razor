@@ -25,21 +25,83 @@
             @foreach (var log in RecentLogs.Take(10))
             {
                 <div class="bs-card">
-                    <div class="bs-flex bs-justify-between bs-items-center">
-                        <div>
-                            <p class="bs-font-medium" style="margin: 0;">
-                                @(GetLogDisplayName(log)) · @log.CoffeeGrams g
-                            </p>
-                            <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.75rem;">
-                                @FormatDate(log.ConsumedAt)
-                            </p>
+                    @if (editingId == log.Id)
+                    {
+                        <div class="bs-flex bs-flex-col bs-gap-2">
+                            <div class="bs-flex bs-gap-2">
+                                <input type="text" class="bs-input" placeholder="Product name" @bind="editProductName" style="flex: 1;" />
+                                <input type="text" class="bs-input" placeholder="Brand" @bind="editProductBrand" style="flex: 1;" />
+                            </div>
+                            <div class="bs-flex bs-gap-2">
+                                <select class="bs-input" @bind="editProductType" style="flex: 1;">
+                                    <option value="Espresso">Espresso</option>
+                                    <option value="Filter">Filter</option>
+                                    <option value="Instant">Instant</option>
+                                    <option value="Decaf">Decaf</option>
+                                    <option value="Specialty">Specialty</option>
+                                </select>
+                                <input type="number" class="bs-input" placeholder="Grams" @bind="editQuantity" min="1" style="width: 5rem;" />
+                            </div>
+                            <div class="bs-flex bs-gap-2">
+                                <input type="datetime-local" class="bs-input" @bind="editConsumedAt" style="flex: 1;" />
+                            </div>
+                            <div class="bs-flex bs-gap-2 bs-justify-end">
+                                <button class="bs-btn-sm" style="background: var(--bs-gray-100); border: none; cursor: pointer;" @onclick="CancelEdit">
+                                    Cancel
+                                </button>
+                                <button class="bs-btn-sm" style="background: var(--bs-primary); color: white; border: none; cursor: pointer;" @onclick="() => SaveEdit(log)">
+                                    Save
+                                </button>
+                            </div>
                         </div>
-                        <span class="bs-font-semibold" style="text-align: right; color: var(--bs-text);">
-                            −@log.CoffeeGrams g
-                        </span>
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="bs-flex bs-justify-between bs-items-center">
+                            <div style="flex: 1; min-width: 0;">
+                                <p class="bs-font-medium" style="margin: 0;">
+                                    @(GetLogDisplayName(log)) · @log.CoffeeGrams g
+                                </p>
+                                <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.75rem;">
+                                    @log.UserName · @FormatDate(log.ConsumedAt)
+                                </p>
+                            </div>
+                            <div class="bs-flex bs-items-center bs-gap-2">
+                                <span class="bs-font-semibold" style="text-align: right; color: var(--bs-text); white-space: nowrap;">
+                                    −@log.CoffeeGrams g
+                                </span>
+                                @if (log.CanEdit)
+                                {
+                                    <button class="bs-btn-sm" style="background: transparent; border: none; cursor: pointer; padding: 0.25rem; color: var(--bs-text-subtle);" title="Edit" @onclick="() => StartEdit(log)">
+                                        <span class="material-symbols-outlined" style="font-size: 1rem;">edit</span>
+                                    </button>
+                                    <button class="bs-btn-sm" style="background: transparent; border: none; cursor: pointer; padding: 0.25rem; color: var(--bs-error, #dc3545);" title="Delete" @onclick="() => ConfirmDelete(log)">
+                                        <span class="material-symbols-outlined" style="font-size: 1rem;">delete</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
             }
+        </div>
+    }
+
+    @if (showDeleteConfirm)
+    {
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center;" @onclick="CancelDelete">
+            <div class="bs-card" style="max-width: 24rem; width: 90%;" @onclick:stopPropagation="true">
+                <h3 class="bs-font-bold" style="margin: 0 0 0.5rem;">Delete consumption?</h3>
+                <p style="margin: 0 0 1rem; color: var(--bs-text-subtle);">This action cannot be undone.</p>
+                <div class="bs-flex bs-gap-2 bs-justify-end">
+                    <button class="bs-btn-sm" style="background: var(--bs-gray-100); border: none; cursor: pointer;" @onclick="CancelDelete">
+                        Cancel
+                    </button>
+                    <button class="bs-btn-sm" style="background: var(--bs-error, #dc3545); color: white; border: none; cursor: pointer;" @onclick="ExecuteDelete">
+                        Delete
+                    </button>
+                </div>
+            </div>
         </div>
     }
 </div>
@@ -50,6 +112,83 @@
 
     [Parameter]
     public bool IsLoading { get; set; }
+
+    [Parameter]
+    public EventCallback<ConsumptionEntryDto> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDelete { get; set; }
+
+    private Guid? editingId;
+    private string editProductName = "";
+    private string editProductBrand = "";
+    private string editProductType = "Espresso";
+    private decimal editQuantity;
+    private DateTime editConsumedAt;
+
+    private bool showDeleteConfirm;
+    private ConsumptionEntryDto? deleteTarget;
+
+    private void StartEdit(ConsumptionEntryDto log)
+    {
+        editingId = log.Id;
+        editProductName = log.ProductName;
+        editProductBrand = log.ProductBrand;
+        editProductType = log.ProductType;
+        editQuantity = log.QuantityGrams;
+        editConsumedAt = log.ConsumedAt;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+    }
+
+    private async Task SaveEdit(ConsumptionEntryDto log)
+    {
+        var updated = new ConsumptionEntryDto
+        {
+            Id = log.Id,
+            SpaceId = log.SpaceId,
+            UserId = log.UserId,
+            UserName = log.UserName,
+            ProductName = editProductName,
+            ProductBrand = editProductBrand,
+            ProductType = editProductType,
+            QuantityGrams = editQuantity,
+            RemainingGrams = 0,
+            ConsumedAt = editConsumedAt,
+            CreatedAt = log.CreatedAt,
+            CanEdit = log.CanEdit,
+            PresetId = log.PresetId,
+            PresetName = log.PresetName
+        };
+
+        await OnEdit.InvokeAsync(updated);
+        editingId = null;
+    }
+
+    private void ConfirmDelete(ConsumptionEntryDto log)
+    {
+        deleteTarget = log;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (deleteTarget != null)
+        {
+            await OnDelete.InvokeAsync(deleteTarget.Id);
+        }
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
 
     private string GetLogDisplayName(ConsumptionEntryDto log)
     {

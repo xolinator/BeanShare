@@ -1,12 +1,12 @@
 <div class="bs-card">
     <div class="bs-flex bs-items-center bs-justify-between">
-        <div class="bs-flex bs-items-center bs-gap-3">
-            <div style="width: 3rem; height: 3rem; background: @(IsAdmin ? "var(--bs-primary-light)" : "var(--bs-gray-200)"); border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; color: @(IsAdmin ? "var(--bs-primary)" : "var(--bs-gray-700)");">
+        <div class="bs-flex bs-items-center bs-gap-3" style="min-width: 0; flex: 1;">
+            <div style="width: 3rem; height: 3rem; min-width: 3rem; background: @(IsAdmin ? "var(--bs-primary-light)" : "var(--bs-gray-200)"); border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; color: @(IsAdmin ? "var(--bs-primary)" : "var(--bs-gray-700)");">
                 @GetInitials()
             </div>
-            <div>
-                <p class="bs-font-bold" style="margin: 0;">@Name</p>
-                <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem;">@Email</p>
+            <div style="min-width: 0;">
+                <p class="bs-font-bold" style="margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@Name</p>
+                <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@Email</p>
             </div>
         </div>
         <div class="bs-flex bs-items-center bs-gap-2">

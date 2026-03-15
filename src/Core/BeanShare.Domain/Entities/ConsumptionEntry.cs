@@ -89,6 +89,30 @@ public sealed class ConsumptionEntry : AggregateRoot
         return entry;
     }
 
+    public void Update(
+        CoffeeProduct product,
+        Weight quantity,
+        DateTime consumedAt,
+        IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (quantity.IsZero || !quantity.IsPositive)
+        {
+            throw new ArgumentException("Consumption quantity must be positive", nameof(quantity));
+        }
+
+        if (consumedAt > clock.UtcNow.AddMinutes(5))
+        {
+            throw new ArgumentException("Consumption time cannot be in the future", nameof(consumedAt));
+        }
+
+        Product = product;
+        Quantity = quantity;
+        ConsumedAt = consumedAt;
+    }
+
     public void AssignToBillingPeriod(BillingPeriodId billingPeriodId)
     {
         ArgumentNullException.ThrowIfNull(billingPeriodId);

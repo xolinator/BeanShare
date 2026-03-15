@@ -21,9 +21,9 @@
           ConnectionStrings__DefaultConnection = dbConnectionString;
         };
         oidcEnv = lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.authority != "") {
-          UseKeycloak = "true";
-          Keycloak__Authority = cfg.oidc.authority;
-          Keycloak__Audience = cfg.oidc.audience;
+          UseOidc = "true";
+          Oidc__Authority = cfg.oidc.authority;
+          Oidc__Audience = cfg.oidc.audience;
         };
         serviceEnvironment = baseEnv // dbEnv // oidcEnv;
       in

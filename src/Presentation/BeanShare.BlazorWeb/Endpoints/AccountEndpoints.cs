@@ -26,9 +26,9 @@ public static class AccountEndpoints
         [FromQuery] string? returnUrl,
         [FromServices] IConfiguration configuration)
     {
-        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+        var useOidc = configuration.GetValue<bool>("UseOidc", false);
 
-        if (useKeycloak)
+        if (useOidc)
         {
             var properties = new AuthenticationProperties
             {
@@ -47,9 +47,9 @@ public static class AccountEndpoints
         [FromServices] IConfiguration configuration,
         HttpContext httpContext)
     {
-        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+        var useOidc = configuration.GetValue<bool>("UseOidc", false);
 
-        if (useKeycloak)
+        if (useOidc)
         {
             var properties = new AuthenticationProperties
             {
@@ -65,7 +65,8 @@ public static class AccountEndpoints
 
             if (idpHint != null)
             {
-                properties.Items["kc_idp_hint"] = idpHint;
+                var hintParam = configuration.GetValue<string>("Oidc:IdentityProviderHintParam") ?? "kc_idp_hint";
+                properties.Items[hintParam] = idpHint;
             }
 
             return Task.FromResult(Results.Challenge(properties, new[] { OpenIdConnectDefaults.AuthenticationScheme }));
@@ -94,9 +95,9 @@ public static class AccountEndpoints
         [FromServices] IServiceProvider serviceProvider,
         [FromServices] ILogger logger)
     {
-        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+        var useOidc = configuration.GetValue<bool>("UseOidc", false);
 
-        if (useKeycloak)
+        if (useOidc)
         {
             var finalReturnUrl = string.IsNullOrEmpty(returnUrl) ? "/spaces" : returnUrl;
             return Results.Redirect(finalReturnUrl);
@@ -148,9 +149,9 @@ public static class AccountEndpoints
         [FromServices] IConfiguration configuration,
         [FromServices] IServiceProvider serviceProvider)
     {
-        var useKeycloak = configuration.GetValue<bool>("UseKeycloak", false);
+        var useOidc = configuration.GetValue<bool>("UseOidc", false);
 
-        if (useKeycloak)
+        if (useOidc)
         {
             var properties = new AuthenticationProperties
             {

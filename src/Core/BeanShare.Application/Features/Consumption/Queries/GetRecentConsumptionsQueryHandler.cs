@@ -3,6 +3,7 @@ using BeanShare.Application.Common;
 using BeanShare.Application.Features.Consumption.Dtos;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
+using BeanShare.Domain.Enums;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
@@ -14,6 +15,8 @@ public sealed class GetRecentConsumptionsQueryHandler
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly ISpaceRepository _spaceRepository;
+    private readonly IBillingPeriodRepository _billingPeriodRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUserContext _userContext;
     private readonly IClock _clock;
 
@@ -21,12 +24,16 @@ public sealed class GetRecentConsumptionsQueryHandler
         IConsumptionRepository consumptionRepository,
         ICoffeeStockRepository coffeeStockRepository,
         ISpaceRepository spaceRepository,
+        IBillingPeriodRepository billingPeriodRepository,
+        IUserRepository userRepository,
         IUserContext userContext,
         IClock clock)
     {
         _consumptionRepository = consumptionRepository;
         _coffeeStockRepository = coffeeStockRepository;
         _spaceRepository = spaceRepository;
+        _billingPeriodRepository = billingPeriodRepository;
+        _userRepository = userRepository;
         _userContext = userContext;
         _clock = clock;
     }
@@ -51,14 +58,32 @@ public sealed class GetRecentConsumptionsQueryHandler
         }
 
         var allEntries = await _consumptionRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
-        var recentEntries = allEntries
+        var recentRaw = allEntries
             .OrderByDescending(e => e.ConsumedAt)
             .Take(20)
+            .ToList();
+
+        var userIds = recentRaw.Select(e => e.UserId).Distinct().ToList();
+        var userNames = new Dictionary<UserId, string>();
+        foreach (var uid in userIds)
+        {
+            var user = await _userRepository.GetByIdAsync(uid, cancellationToken);
+            userNames[uid] = user?.Name ?? "Unknown";
+        }
+
+        var billingPeriods = await _billingPeriodRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
+        var editablePeriodIds = billingPeriods
+            .Where(bp => bp.State == BillingState.Draft || bp.State == BillingState.Open)
+            .Select(bp => bp.Id)
+            .ToHashSet();
+
+        var recentEntries = recentRaw
             .Select(e => new ConsumptionEntryDto
             {
                 Id = e.Id.Value,
                 SpaceId = e.SpaceId.Value,
                 UserId = e.UserId.Value,
+                UserName = userNames.GetValueOrDefault(e.UserId, "Unknown"),
                 ProductName = e.Product?.Name ?? "Unknown",
                 ProductBrand = e.Product?.Brand ?? "Unknown",
                 ProductType = e.Product?.Type.ToString() ?? "Unknown",
@@ -67,7 +92,8 @@ public sealed class GetRecentConsumptionsQueryHandler
                 ConsumedAt = e.ConsumedAt,
                 CreatedAt = e.CreatedAt,
                 PresetId = e.PresetId?.Value,
-                PresetName = e.PresetName
+                PresetName = e.PresetName,
+                CanEdit = e.BillingPeriodId == null || editablePeriodIds.Contains(e.BillingPeriodId.Value)
             })
             .ToList();
 

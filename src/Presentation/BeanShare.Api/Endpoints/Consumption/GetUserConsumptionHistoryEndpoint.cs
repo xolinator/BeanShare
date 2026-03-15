@@ -13,6 +13,7 @@ public sealed class GetUserConsumptionHistoryRequest
     public Guid? BillingPeriodId { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+    public Guid? MemberUserId { get; set; }
 }
 
 public sealed class GetUserConsumptionHistoryEndpoint : Endpoint<GetUserConsumptionHistoryRequest, ConsumptionHistoryDto>
@@ -37,7 +38,8 @@ public sealed class GetUserConsumptionHistoryEndpoint : Endpoint<GetUserConsumpt
             req.EndDate,
             req.BillingPeriodId,
             req.PageNumber,
-            req.PageSize
+            req.PageSize,
+            req.MemberUserId
         );
 
         var result = await _mediator.Send(query, ct);

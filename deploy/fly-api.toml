@@ -4,7 +4,7 @@ primary_region = "fra"
 [env]
   ASPNETCORE_ENVIRONMENT = "Production"
   AllowedHosts = "*"
-  UseKeycloak = "true"
+  UseOidc = "true"
 
 [http_service]
   internal_port = 8080

@@ -112,24 +112,24 @@ The `full` command performs these steps in order:
 | Variable | Description |
 |----------|-------------|
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
-| `UseKeycloak` | `true` - enables OIDC authentication |
-| `Keycloak__Authority` | `https://beanshare-keycloak.fly.dev/realms/beanshare` |
-| `Keycloak__ClientId` | `beanshare-web` |
-| `Keycloak__ClientSecret` | Web client secret |
+| `UseOidc` | `true` - enables OIDC authentication |
+| `Oidc__Authority` | `https://beanshare-keycloak.fly.dev/realms/beanshare` |
+| `Oidc__ClientId` | `beanshare-web` |
+| `Oidc__ClientSecret` | Web client secret |
 | `ApiBaseUrl` | `https://beanshare-api.fly.dev` |
 
 ### REST API (`beanshare-api`)
 | Variable | Description |
 |----------|-------------|
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
-| `UseKeycloak` | `true` - enables JWT Bearer authentication |
-| `Keycloak__Authority` | `https://beanshare-keycloak.fly.dev/realms/beanshare` |
-| `Keycloak__ClientId` | `beanshare-api` |
-| `Keycloak__ClientSecret` | API client secret |
+| `UseOidc` | `true` - enables JWT Bearer authentication |
+| `Oidc__Authority` | `https://beanshare-keycloak.fly.dev/realms/beanshare` |
+| `Oidc__ClientId` | `beanshare-api` |
+| `Oidc__ClientSecret` | API client secret |
 
 ## Authentication Flow
 
-1. User clicks "Sign in with Keycloak" on BlazorWeb
+1. User clicks "Sign In" on BlazorWeb
 2. Browser redirects to Keycloak login page (`beanshare-keycloak.fly.dev`)
 3. User enters credentials → Keycloak validates against its PostgreSQL user store
 4. Keycloak redirects back to BlazorWeb with authorization code

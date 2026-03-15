@@ -1,0 +1,300 @@
+@using BeanShare.Application.Features.Consumption.Dtos
+@using BeanShare.SharedUi.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+@if (IsVisible)
+{
+    <div class="bs-modal-backdrop" @onclick="Cancel">
+        <div class="bs-modal" style="max-width: 56rem; width: 95vw;" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h3 class="bs-modal-title">
+                    <span class="material-symbols-outlined" style="vertical-align: middle;">upload_file</span>
+                    Import Consumption Data
+                </h3>
+            </div>
+
+            @if (step == ImportStep.Upload)
+            {
+                <div style="padding: 1.5rem;">
+                    <p style="color: var(--bs-text-subtle); margin-bottom: 1rem;">
+                        Upload a CSV file to bulk-import consumption entries. Only space admins can use this feature.
+                    </p>
+
+                    <div style="border: 2px dashed var(--bs-border); border-radius: 0.75rem; padding: 2rem; text-align: center; margin-bottom: 1rem;">
+                        <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--bs-primary); margin-bottom: 0.5rem; display: block;">cloud_upload</span>
+                        <p style="font-weight: 600; margin-bottom: 0.5rem;">Choose a CSV file</p>
+                        <p style="color: var(--bs-text-subtle); font-size: 0.8rem; margin-bottom: 1rem;">Max 1000 rows, .csv format</p>
+                        <InputFile OnChange="HandleFileSelected" accept=".csv,text/csv,text/comma-separated-values,application/csv" style="display: inline-block;" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(uploadError))
+                    {
+                        <div style="background: #fef2f2; color: #dc2626; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;">
+                            <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">error</span>
+                            @uploadError
+                        </div>
+                    }
+
+                    <div style="background: var(--bs-gray-100); border-radius: 0.5rem; padding: 1rem; font-size: 0.8rem;">
+                        <p style="font-weight: 600; margin-bottom: 0.5rem;">CSV Format:</p>
+                        <code style="display: block; background: white; padding: 0.5rem; border-radius: 0.25rem; overflow-x: auto; white-space: pre; font-size: 0.75rem;">Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
+john.smith@beanshare.dev,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30</code>
+                        <p style="margin-top: 0.5rem; color: var(--bs-text-subtle);">
+                            ProductType: Espresso, Filter, Instant, Decaf, or Specialty
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="button" class="bs-btn" style="background: var(--bs-gray-200); color: var(--bs-text);" @onclick="DownloadTemplate">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">download</span>
+                        Download Template
+                    </button>
+                </div>
+            }
+            else if (step == ImportStep.Preview)
+            {
+                <div style="padding: 1.5rem;">
+                    <div class="bs-flex bs-gap-4" style="margin-bottom: 1rem;">
+                        <div style="background: #f0fdf4; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
+                            <span style="color: #16a34a; font-weight: 600;">@validRows.Count valid</span>
+                        </div>
+                        @if (invalidRows.Count > 0)
+                        {
+                            <div style="background: #fef2f2; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
+                                <span style="color: #dc2626; font-weight: 600;">@invalidRows.Count with errors</span>
+                            </div>
+                        }
+                        <div style="background: var(--bs-gray-100); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
+                            @parsedRows.Count total rows
+                        </div>
+                    </div>
+
+                    <div style="max-height: 24rem; overflow-y: auto; border: 1px solid var(--bs-border); border-radius: 0.5rem;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                            <thead style="background: var(--bs-gray-100); position: sticky; top: 0;">
+                                <tr>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">#</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">Status</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">Email</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">Product</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">Brand</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">Type</th>
+                                    <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--bs-border);">Grams</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">Date</th>
+                                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--bs-border);">Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in parsedRows)
+                                {
+                                    var error = parseErrors.FirstOrDefault(e => e.RowNumber == row.RowNumber);
+                                    var hasError = error != null;
+                                    <tr style="@(hasError ? "background: #fef2f2;" : "")">
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.RowNumber</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">
+                                            @if (hasError)
+                                            {
+                                                <span class="material-symbols-outlined" style="color: #dc2626; font-size: 1rem;">close</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="material-symbols-outlined" style="color: #16a34a; font-size: 1rem;">check</span>
+                                            }
+                                        </td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.Email</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.ProductName</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.ProductBrand</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.ProductType</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border); text-align: right;">@row.QuantityGrams</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.ConsumedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border); color: #dc2626; font-size: 0.75rem;">@(error?.Message ?? "")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-secondary" @onclick="BackToUpload">Back</button>
+                    <button type="button" class="bs-btn bs-btn-primary" disabled="@(isImporting || validRows.Count == 0)" @onclick="SubmitImport">
+                        @if (isImporting)
+                        {
+                            <span>Importing...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined" style="font-size: 1rem;">upload</span>
+                            <span>Import @validRows.Count rows</span>
+                        }
+                    </button>
+                </div>
+            }
+            else if (step == ImportStep.Result)
+            {
+                <div style="padding: 1.5rem; text-align: center;">
+                    @if (importResult != null && importResult.ErrorCount == 0)
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 3rem; color: #16a34a; display: block; margin-bottom: 0.5rem;">check_circle</span>
+                        <h4 style="margin-bottom: 0.5rem;">Import Successful</h4>
+                        <p style="color: var(--bs-text-subtle);">@importResult.SuccessCount consumption entries imported.</p>
+                    }
+                    else if (importResult != null)
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 3rem; color: #f59e0b; display: block; margin-bottom: 0.5rem;">warning</span>
+                        <h4 style="margin-bottom: 0.5rem;">Import Completed with Errors</h4>
+                        <p style="color: var(--bs-text-subtle); margin-bottom: 1rem;">
+                            @importResult.SuccessCount imported, @importResult.ErrorCount failed.
+                        </p>
+
+                        @if (importResult.Errors.Count > 0)
+                        {
+                            <div style="text-align: left; max-height: 12rem; overflow-y: auto; background: #fef2f2; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem;">
+                                @foreach (var err in importResult.Errors)
+                                {
+                                    <div style="margin-bottom: 0.25rem;">
+                                        <strong>Row @err.RowNumber</strong> (@err.Field): @err.Message
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="bs-modal-footer">
+                    <button type="button" class="bs-btn bs-btn-primary" @onclick="Close">Close</button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<ImportConsumptionCsvRow>> OnImport { get; set; }
+    [Parameter] public ImportConsumptionCsvResult? ImportResult { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private enum ImportStep { Upload, Preview, Result }
+    private ImportStep step = ImportStep.Upload;
+
+    private CsvParseResult? parseResult;
+    private string? uploadError;
+    private bool isImporting;
+    private ImportConsumptionCsvResult? importResult;
+
+    private IReadOnlyList<ImportConsumptionCsvRow> parsedRows => parseResult?.Rows ?? [];
+    private IReadOnlyList<ImportConsumptionCsvRow> validRows => parseResult?.ValidRows ?? [];
+    private IReadOnlyList<ImportConsumptionCsvRow> invalidRows => parseResult?.InvalidRows ?? [];
+    private IReadOnlyList<ImportRowError> parseErrors => parseResult?.Errors ?? [];
+
+    protected override void OnParametersSet()
+    {
+        if (ImportResult != null && step == ImportStep.Preview)
+        {
+            importResult = ImportResult;
+            step = ImportStep.Result;
+            isImporting = false;
+        }
+
+        if (!IsVisible)
+        {
+            Reset();
+        }
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        uploadError = null;
+        parseResult = null;
+
+        var file = e.File;
+        if (file == null) return;
+
+        if (!file.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            uploadError = "Please select a .csv file.";
+            return;
+        }
+
+        if (file.Size > 1_048_576) // 1 MB
+        {
+            uploadError = "File is too large. Maximum size is 1 MB.";
+            return;
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 1_048_576);
+            var parser = new BeanShare.SharedUi.Services.CsvConsumptionParser();
+            parseResult = await parser.ParseAsync(stream);
+
+            if (parseResult.Rows.Count == 0 && parseResult.Errors.Count > 0)
+            {
+                uploadError = parseResult.Errors[0].Message;
+            }
+            else if (parseResult.Rows.Count > 1000)
+            {
+                uploadError = "CSV file cannot contain more than 1000 rows.";
+                parseResult = null;
+            }
+            else if (parseResult.Rows.Count > 0)
+            {
+                step = ImportStep.Preview;
+            }
+            else
+            {
+                uploadError = "CSV file contains no data rows.";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Failed to read file: {ex.Message}";
+        }
+    }
+
+    private async Task SubmitImport()
+    {
+        if (validRows.Count == 0) return;
+        isImporting = true;
+        await OnImport.InvokeAsync(validRows);
+    }
+
+    private async Task DownloadTemplate()
+    {
+        var csv = "Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt\njohn.smith@example.com,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30\njane.doe@example.com,Pike Place,Starbucks,Filter,20,2026-01-15 10:00";
+        await JSRuntime.InvokeVoidAsync("beanshare.downloadCsv", "consumption_import_template.csv", csv);
+    }
+
+    private void BackToUpload()
+    {
+        step = ImportStep.Upload;
+        parseResult = null;
+    }
+
+    private async Task Cancel()
+    {
+        Reset();
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task Close()
+    {
+        Reset();
+        await OnClose.InvokeAsync();
+    }
+
+    private void Reset()
+    {
+        step = ImportStep.Upload;
+        parseResult = null;
+        uploadError = null;
+        isImporting = false;
+        importResult = null;
+    }
+}

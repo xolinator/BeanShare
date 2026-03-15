@@ -241,24 +241,24 @@ cmd_setup() {
     echo "    Attach output was: $kc_attach_output"
   fi
 
-  # Set Keycloak OIDC secrets for web and API
+  # Set OIDC secrets for web and API
   local kc_url="https://$KC_APP.fly.dev"
 
   echo ""
-  echo "==> Setting Keycloak OIDC secrets for $WEB_APP..."
+  echo "==> Setting OIDC secrets for $WEB_APP..."
   $FLYCTL secrets set --app "$WEB_APP" \
-    "Keycloak__Authority=$kc_url/realms/beanshare" \
-    "Keycloak__ClientId=beanshare-web" \
-    "Keycloak__ClientSecret=$web_client_secret" \
+    "Oidc__Authority=$kc_url/realms/beanshare" \
+    "Oidc__ClientId=beanshare-web" \
+    "Oidc__ClientSecret=$web_client_secret" \
     "ApiBaseUrl=https://$API_APP.fly.dev" \
     --stage
 
-  echo "==> Setting Keycloak OIDC secrets for $API_APP..."
+  echo "==> Setting OIDC secrets for $API_APP..."
   $FLYCTL secrets set --app "$API_APP" \
-    "Keycloak__Authority=$kc_url/realms/beanshare" \
-    "Keycloak__Audience=beanshare-api" \
-    "Keycloak__ClientId=beanshare-api" \
-    "Keycloak__ClientSecret=$api_client_secret" \
+    "Oidc__Authority=$kc_url/realms/beanshare" \
+    "Oidc__Audience=beanshare-api" \
+    "Oidc__ClientId=beanshare-api" \
+    "Oidc__ClientSecret=$api_client_secret" \
     --stage
 
   echo ""

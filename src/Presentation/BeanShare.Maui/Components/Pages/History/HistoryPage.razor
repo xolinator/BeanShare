@@ -6,7 +6,7 @@
 @inject IAlertService AlertService
 
 <div class="container mt-4">
-    <h3 class="mb-4">My Consumption History</h3>
+    <h3 class="mb-4">Consumption History</h3>
 
     @if (isLoading)
     {
@@ -23,9 +23,9 @@
             <div class="card-body">
                 <h5 class="card-title">Filters</h5>
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label">Space</label>
-                        <select class="form-select" @bind="selectedSpaceId">
+                        <select class="form-select" @bind="selectedSpaceId" @bind:after="OnSpaceChanged">
                             <option value="">All Spaces</option>
                             @foreach (var space in spaces)
                             {
@@ -33,11 +33,24 @@
                             }
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    @if (!string.IsNullOrEmpty(selectedSpaceId) && spaceMembers != null && spaceMembers.Any())
+                    {
+                        <div class="col-md-3">
+                            <label class="form-label">Member</label>
+                            <select class="form-select" @bind="selectedMemberUserId">
+                                <option value="">All Members</option>
+                                @foreach (var member in spaceMembers)
+                                {
+                                    <option value="@member.UserId">@member.UserName</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    <div class="col-md-2">
                         <label class="form-label">Start Date</label>
                         <input type="date" class="form-control" @bind="startDate" />
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">End Date</label>
                         <input type="date" class="form-control" @bind="endDate" />
                     </div>
@@ -54,27 +67,27 @@
                 <div class="card-body">
                     <h5 class="card-title">Summary</h5>
                     <div class="row">
-                        <div class="col-md-3">
-                            <div class="text-center p-3">
-                                <h2 class="text-primary mb-0">@history.Summary.TotalEntries</h2>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center p-2">
+                                <h3 class="text-primary mb-0">@history.Summary.TotalEntries</h3>
                                 <small class="text-muted">Total Entries</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="text-center p-3">
-                                <h2 class="text-success mb-0">@history.Summary.TotalGrams g</h2>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center p-2">
+                                <h3 class="text-success mb-0">@history.Summary.TotalGrams g</h3>
                                 <small class="text-muted">Total Coffee</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="text-center p-3">
-                                <h2 class="text-info mb-0">@history.Summary.UniqueDays</h2>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center p-2">
+                                <h3 class="text-info mb-0">@history.Summary.UniqueDays</h3>
                                 <small class="text-muted">Days Active</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="text-center p-3">
-                                <h2 class="text-warning mb-0">@history.Summary.AverageGramsPerDay.ToString("F1") g</h2>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center p-2">
+                                <h3 class="text-warning mb-0">@history.Summary.AverageGramsPerDay.ToString("F1") g</h3>
                                 <small class="text-muted">Avg/Day</small>
                             </div>
                         </div>
@@ -85,43 +98,42 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Consumption Timeline</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Space</th>
-                                    <th>Product</th>
-                                    <th>Amount</th>
-                                    <th>Est. Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in history.Items)
-                                {
-                                    <tr>
-                                        <td>@item.ConsumedAt.ToString("MMM dd, yyyy HH:mm")</td>
-                                        <td>@item.SpaceName</td>
-                                        <td>
-                                            <div>@item.ProductName</div>
-                                            <small class="text-muted">@item.ProductBrand</small>
-                                        </td>
-                                        <td><strong>@item.QuantityGrams g</strong></td>
-                                        <td>
-                                            @if (item.EstimatedCost.HasValue)
-                                            {
-                                                <span>@item.EstimatedCost.Value.ToString("C2")</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">N/A</span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    @foreach (var item in history.Items)
+                    {
+                        <div class="card mb-2" style="border-left: 3px solid var(--bs-primary, #4169E1);">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div style="min-width: 0; flex: 1;">
+                                        <div class="fw-bold" style="font-size: 0.9rem;">@item.ProductName</div>
+                                        <small class="text-muted">@item.ProductBrand &middot; @item.ProductType</small>
+                                    </div>
+                                    <div class="text-end ms-2" style="white-space: nowrap;">
+                                        <div class="fw-bold">@item.QuantityGrams g</div>
+                                        @if (item.EstimatedCost.HasValue)
+                                        {
+                                            <small class="text-success">@item.EstimatedCost.Value.ToString("C2")</small>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                    <small class="text-muted">
+                                        @item.ConsumedAt.ToString("MMM dd, HH:mm") &middot; @item.UserName &middot; @item.SpaceName
+                                    </small>
+                                    @if (item.CanEdit)
+                                    {
+                                        <div style="white-space: nowrap;">
+                                            <button class="btn btn-sm btn-link p-0 text-primary" @onclick="() => StartEdit(item)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-link p-0 text-danger ms-2" @onclick="() => ConfirmDelete(item)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
 
                     @{
                         var totalPages = (int)Math.Ceiling((double)history.TotalCount / history.PageSize);
@@ -166,14 +178,93 @@
     }
 </div>
 
+@if (showEditModal && editItem != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" @onclick="CancelEdit">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Consumption</h5>
+                    <button type="button" class="btn-close" @onclick="CancelEdit"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Product Name</label>
+                        <input type="text" class="form-control" @bind="editProductName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Brand</label>
+                        <input type="text" class="form-control" @bind="editProductBrand" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" @bind="editProductType">
+                            <option value="Espresso">Espresso</option>
+                            <option value="Filter">Filter</option>
+                            <option value="Instant">Instant</option>
+                            <option value="Decaf">Decaf</option>
+                            <option value="Specialty">Specialty</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantity (grams)</label>
+                        <input type="number" class="form-control" @bind="editQuantity" min="1" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Consumed At</label>
+                        <input type="datetime-local" class="form-control" @bind="editConsumedAt" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveEdit">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showDeleteConfirm)
+{
+    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" @onclick="CancelDelete">
+        <div class="modal-dialog modal-sm modal-dialog-centered" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete consumption?</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button class="btn btn-danger" @onclick="ExecuteDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private bool isLoading = true;
     private ConsumptionHistoryDto? history;
     private List<SpaceSummaryDto> spaces = new();
+    private IReadOnlyList<MembershipDto>? spaceMembers;
     private string? selectedSpaceId;
+    private string? selectedMemberUserId;
     private DateTime? startDate;
     private DateTime? endDate;
     private int currentPage = 1;
+
+    private bool showEditModal;
+    private ConsumptionHistoryItemDto? editItem;
+    private string editProductName = "";
+    private string editProductBrand = "";
+    private string editProductType = "Espresso";
+    private decimal editQuantity;
+    private DateTime editConsumedAt;
+    private bool showDeleteConfirm;
+    private ConsumptionHistoryItemDto? deleteTarget;
 
     protected override async Task OnInitializedAsync()
     {
@@ -194,18 +285,43 @@
         }
     }
 
+    private async Task OnSpaceChanged()
+    {
+        selectedMemberUserId = null;
+        spaceMembers = null;
+
+        if (!string.IsNullOrEmpty(selectedSpaceId) && Guid.TryParse(selectedSpaceId, out var spaceGuid))
+        {
+            try
+            {
+                var spaceDetail = await SpacesService.GetSpaceByIdAsync(spaceGuid);
+                if (spaceDetail?.Members != null)
+                {
+                    spaceMembers = spaceDetail.Members;
+                }
+            }
+            catch (Exception ex)
+            {
+                await AlertService.ShowAlertAsync("Error", $"Failed to load members: {ex.Message}");
+            }
+        }
+    }
+
     private async Task LoadHistory()
     {
         isLoading = true;
         try
         {
             Guid? spaceId = null;
-            if (!string.IsNullOrEmpty(selectedSpaceId))
+            if (!string.IsNullOrEmpty(selectedSpaceId) && Guid.TryParse(selectedSpaceId, out var parsedSpaceId))
             {
-                if (Guid.TryParse(selectedSpaceId, out var parsedSpaceId))
-                {
-                    spaceId = parsedSpaceId;
-                }
+                spaceId = parsedSpaceId;
+            }
+
+            Guid? memberUserId = null;
+            if (!string.IsNullOrEmpty(selectedMemberUserId) && Guid.TryParse(selectedMemberUserId, out var parsedMemberId))
+            {
+                memberUserId = parsedMemberId;
             }
 
             history = await ConsumptionService.GetUserHistoryAsync(
@@ -214,7 +330,8 @@
                 endDate: endDate,
                 billingPeriodId: null,
                 pageNumber: currentPage,
-                pageSize: 20
+                pageSize: 20,
+                memberUserId: memberUserId
             );
         }
         catch (Exception ex)
@@ -237,5 +354,81 @@
     {
         currentPage = page;
         await LoadHistory();
+    }
+
+    private void StartEdit(ConsumptionHistoryItemDto item)
+    {
+        editItem = item;
+        editProductName = item.ProductName;
+        editProductBrand = item.ProductBrand;
+        editProductType = item.ProductType;
+        editQuantity = item.QuantityGrams;
+        editConsumedAt = item.ConsumedAt;
+        showEditModal = true;
+    }
+
+    private void CancelEdit()
+    {
+        showEditModal = false;
+        editItem = null;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editItem == null) return;
+
+        var success = await ConsumptionService.UpdateConsumptionAsync(
+            editItem.Id,
+            editItem.SpaceId,
+            editProductName,
+            editProductBrand,
+            editProductType,
+            editQuantity,
+            editConsumedAt);
+
+        if (success)
+        {
+            await AlertService.ShowAlertAsync("Success", "Consumption updated successfully!");
+            showEditModal = false;
+            editItem = null;
+            await LoadHistory();
+        }
+        else
+        {
+            await AlertService.ShowAlertAsync("Error", "Failed to update consumption.");
+        }
+    }
+
+    private void ConfirmDelete(ConsumptionHistoryItemDto item)
+    {
+        deleteTarget = item;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (deleteTarget == null) return;
+
+        var success = await ConsumptionService.DeleteConsumptionAsync(deleteTarget.Id, deleteTarget.SpaceId);
+
+        if (success)
+        {
+            await AlertService.ShowAlertAsync("Success", "Consumption deleted successfully!");
+            showDeleteConfirm = false;
+            deleteTarget = null;
+            await LoadHistory();
+        }
+        else
+        {
+            await AlertService.ShowAlertAsync("Error", "Failed to delete consumption.");
+            showDeleteConfirm = false;
+            deleteTarget = null;
+        }
     }
 }

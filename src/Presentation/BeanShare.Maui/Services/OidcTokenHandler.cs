@@ -12,20 +12,20 @@ public class OidcTokenHandler
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger _logger;
-    private readonly string _keycloakClientId;
+    private readonly string _oidcClientId;
     private readonly string _callbackUrl;
     private readonly string _tokenEndpoint;
 
     public OidcTokenHandler(
         HttpClient httpClient,
         ILogger logger,
-        string keycloakClientId,
+        string oidcClientId,
         string callbackUrl,
         string tokenEndpoint)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _keycloakClientId = keycloakClientId;
+        _oidcClientId = oidcClientId;
         _callbackUrl = callbackUrl;
         _tokenEndpoint = tokenEndpoint;
     }
@@ -42,7 +42,7 @@ public class OidcTokenHandler
             var tokenRequest = new Dictionary<string, string>
             {
                 ["grant_type"] = "authorization_code",
-                ["client_id"] = _keycloakClientId,
+                ["client_id"] = _oidcClientId,
                 ["code"] = code,
                 ["redirect_uri"] = _callbackUrl,
                 ["code_verifier"] = codeVerifier
@@ -58,7 +58,7 @@ public class OidcTokenHandler
                 return new AuthResult(false, null, "Failed to exchange authorization code for tokens.");
             }
 
-            var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>();
+            var tokenResponse = await response.Content.ReadFromJsonAsync<OidcTokenResponse>();
             if (tokenResponse == null)
             {
                 _logger.LogError("Failed to parse token response");
@@ -114,7 +114,7 @@ public class OidcTokenHandler
             var tokenRequest = new Dictionary<string, string>
             {
                 ["grant_type"] = "refresh_token",
-                ["client_id"] = _keycloakClientId,
+                ["client_id"] = _oidcClientId,
                 ["refresh_token"] = refreshToken
             };
 
@@ -127,7 +127,7 @@ public class OidcTokenHandler
                 return false;
             }
 
-            var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>();
+            var tokenResponse = await response.Content.ReadFromJsonAsync<OidcTokenResponse>();
             if (tokenResponse == null)
             {
                 return false;
@@ -202,7 +202,7 @@ public class OidcTokenHandler
         }
     }
 
-    private async Task StoreTokensAsync(KeycloakTokenResponse tokenResponse)
+    private async Task StoreTokensAsync(OidcTokenResponse tokenResponse)
     {
         var tcs = new TaskCompletionSource<bool>();
 
@@ -264,7 +264,7 @@ public class OidcTokenHandler
         }
     }
 
-    internal class KeycloakTokenResponse
+    internal class OidcTokenResponse
     {
         [JsonPropertyName("access_token")]
         public string AccessToken { get; set; } = string.Empty;

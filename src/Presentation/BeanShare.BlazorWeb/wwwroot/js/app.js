@@ -39,5 +39,16 @@ window.beanshare = {
     clickElement: function (id) {
         var el = document.getElementById(id);
         if (el) el.click();
+    },
+    downloadCsv: function (filename, content) {
+        var blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 };

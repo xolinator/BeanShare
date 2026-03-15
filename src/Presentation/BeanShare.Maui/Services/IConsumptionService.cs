@@ -14,5 +14,9 @@ public interface IConsumptionService
         DateTime? endDate = null,
         Guid? billingPeriodId = null,
         int pageNumber = 1,
-        int pageSize = 20);
+        int pageSize = 20,
+        Guid? memberUserId = null);
+    Task<ImportConsumptionCsvResult?> ImportCsvAsync(Guid spaceId, IReadOnlyList<ImportConsumptionCsvRow> rows);
+    Task<bool> UpdateConsumptionAsync(Guid id, Guid spaceId, string productName, string productBrand, string productType, decimal quantityGrams, DateTime consumedAt);
+    Task<bool> DeleteConsumptionAsync(Guid id, Guid spaceId);
 }

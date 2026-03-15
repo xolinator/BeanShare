@@ -169,8 +169,28 @@ public sealed class CoffeeStock : AggregateRoot
         return GetCurrentStock(product).IsPositive;
     }
 
-    public int ProductVarietyCount => _stockLevels.Count(sl => sl.CurrentStock.IsPositive);
+    public void ArchiveStockLevel(Guid stockLevelId, IClock clock)
+    {
+        var stockLevel = _stockLevels.FirstOrDefault(sl => sl.Id == stockLevelId);
+        if (stockLevel == null)
+            throw new ArgumentException($"Stock level {stockLevelId} not found", nameof(stockLevelId));
+
+        stockLevel.Archive(clock);
+        UpdatedAt = clock.UtcNow;
+    }
+
+    public void UnarchiveStockLevel(Guid stockLevelId, IClock clock)
+    {
+        var stockLevel = _stockLevels.FirstOrDefault(sl => sl.Id == stockLevelId);
+        if (stockLevel == null)
+            throw new ArgumentException($"Stock level {stockLevelId} not found", nameof(stockLevelId));
+
+        stockLevel.Unarchive(clock);
+        UpdatedAt = clock.UtcNow;
+    }
+
+    public int ProductVarietyCount => _stockLevels.Count(sl => sl.CurrentStock.IsPositive && !sl.IsArchived);
 
     public Weight TotalCurrentStock => Weight.FromGrams(
-        _stockLevels.Sum(sl => sl.CurrentStock.Grams));
+        _stockLevels.Where(sl => !sl.IsArchived).Sum(sl => sl.CurrentStock.Grams));
 }

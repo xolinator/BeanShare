@@ -21,6 +21,12 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
         await _context.Consumptions.AddAsync(consumption, cancellationToken);
     }
 
+    public async Task<ConsumptionEntry?> GetByIdAsync(ConsumptionEntryId id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Consumptions
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+    }
+
     public async Task<IEnumerable<ConsumptionEntry>> GetBySpaceIdAsync(SpaceId spaceId, CancellationToken cancellationToken = default)
     {
         var specification = new ConsumptionBySpaceSpecification(spaceId);
@@ -40,5 +46,17 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
             .Where(specification.Criteria)
             .OrderByDescending(c => c.ConsumedAt)
             .ToListAsync(cancellationToken);
+    }
+
+    public Task UpdateAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default)
+    {
+        _context.Consumptions.Update(consumption);
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default)
+    {
+        _context.Consumptions.Remove(consumption);
+        return Task.CompletedTask;
     }
 }
