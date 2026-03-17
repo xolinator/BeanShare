@@ -13,27 +13,65 @@ public sealed class CsvConsumptionParserTests
     }
 
     [Fact]
-    public void Parse_ValidCsv_ReturnsAllRowsWithNoErrors()
+    public void Parse_ValidPivotCsv_ExpandsToCorrectRows()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            john@example.com,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30
-            jane@example.com,Pike Place,Starbucks,Filter,20,2026-01-15 10:00
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,2026-01-06,2026-01-07
+            john@example.com,Super Crema,Lavazza,Espresso,28,,14
+            john@example.com,Classico,illy,Espresso,,16,
             """;
 
         var result = _parser.Parse(ToStream(csv));
 
-        result.Rows.Should().HaveCount(2);
+        result.Rows.Should().HaveCount(3);
         result.Errors.Should().BeEmpty();
-        result.ValidRows.Should().HaveCount(2);
+        result.ValidRows.Should().HaveCount(3);
         result.InvalidRows.Should().BeEmpty();
 
         result.Rows[0].Email.Should().Be("john@example.com");
         result.Rows[0].ProductName.Should().Be("Super Crema");
         result.Rows[0].ProductBrand.Should().Be("Lavazza");
         result.Rows[0].ProductType.Should().Be("Espresso");
+        result.Rows[0].QuantityGrams.Should().Be(28m);
+        result.Rows[0].ConsumedAt.Should().Be(new DateTime(2026, 1, 5, 12, 0, 0, DateTimeKind.Utc));
+
+        result.Rows[1].QuantityGrams.Should().Be(14m);
+        result.Rows[1].ConsumedAt.Should().Be(new DateTime(2026, 1, 7, 12, 0, 0, DateTimeKind.Utc));
+
+        result.Rows[2].Email.Should().Be("john@example.com");
+        result.Rows[2].ProductName.Should().Be("Classico");
+        result.Rows[2].QuantityGrams.Should().Be(16m);
+        result.Rows[2].ConsumedAt.Should().Be(new DateTime(2026, 1, 6, 12, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public void Parse_EmptyCellsAreSkipped()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,2026-01-06,2026-01-07
+            a@b.com,Coffee,Brand,Espresso,,18,
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().HaveCount(1);
+        result.Errors.Should().BeEmpty();
         result.Rows[0].QuantityGrams.Should().Be(18m);
-        result.Rows[0].ConsumedAt.Year.Should().Be(2026);
+        result.Rows[0].ConsumedAt.Should().Be(new DateTime(2026, 1, 6, 12, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public void Parse_ZeroCellsAreSkipped()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,2026-01-06
+            a@b.com,Coffee,Brand,Espresso,0,-5
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().BeEmpty();
+        result.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -51,7 +89,7 @@ public sealed class CsvConsumptionParserTests
     [Fact]
     public void Parse_HeaderOnly_ReturnsNoRowsNoErrors()
     {
-        var csv = "Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt";
+        var csv = "Email,ProductName,ProductBrand,ProductType,2026-01-05";
 
         var result = _parser.Parse(ToStream(csv));
 
@@ -60,44 +98,86 @@ public sealed class CsvConsumptionParserTests
     }
 
     [Fact]
-    public void Parse_InvalidQuantity_ReturnsError()
+    public void Parse_TooFewColumns_ReturnsError()
     {
-        var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            john@example.com,Super Crema,Lavazza,Espresso,not-a-number,2026-01-15 09:30
-            """;
+        var csv = "Email,ProductName,ProductBrand,ProductType";
 
         var result = _parser.Parse(ToStream(csv));
 
-        result.Rows.Should().HaveCount(1);
-        result.Errors.Should().ContainSingle();
-        result.Errors[0].Field.Should().Be("QuantityGrams");
-        result.Errors[0].RowNumber.Should().Be(1);
-        result.ValidRows.Should().BeEmpty();
-        result.InvalidRows.Should().HaveCount(1);
+        result.Rows.Should().BeEmpty();
+        result.Errors.Should().HaveCount(1);
+        result.Errors[0].Message.Should().Contain("date column");
     }
 
     [Fact]
-    public void Parse_InvalidDate_ReturnsError()
+    public void Parse_WrongFixedColumnName_ReturnsError()
+    {
+        var csv = "Name,ProductName,ProductBrand,ProductType,2026-01-05";
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().BeEmpty();
+        result.Errors.Should().HaveCount(1);
+        result.Errors[0].Field.Should().Be("Header");
+        result.Errors[0].Message.Should().Contain("Email");
+    }
+
+    [Fact]
+    public void Parse_InvalidDateColumnHeader_ReturnsHeaderError()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            john@example.com,Super Crema,Lavazza,Espresso,18,not-a-date
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,not-a-date,2026-01-07
+            a@b.com,Coffee,Brand,Espresso,18,,14
             """;
 
         var result = _parser.Parse(ToStream(csv));
 
-        result.Rows.Should().HaveCount(1);
-        result.Errors.Should().ContainSingle();
-        result.Errors[0].Field.Should().Be("ConsumedAt");
+        result.Rows.Should().HaveCount(2);
+        result.Errors.Should().HaveCount(1);
+        result.Errors[0].RowNumber.Should().Be(0);
+        result.Errors[0].Field.Should().Be("not-a-date");
+    }
+
+    [Fact]
+    public void Parse_AllDateColumnsInvalid_ReturnsNoValidDateColumnsError()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,bad-date,also-bad
+            a@b.com,Coffee,Brand,Espresso,18,14
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().BeEmpty();
+        result.Errors.Should().Contain(e => e.Message.Contains("No valid date columns"));
+    }
+
+    [Fact]
+    public void Parse_InvalidQuantityInCell_ReturnsError()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,2026-01-06
+            a@b.com,Coffee,Brand,Espresso,abc,18
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().HaveCount(2);
+        result.ValidRows.Should().HaveCount(1);
+        result.InvalidRows.Should().HaveCount(1);
+
+        var error = result.Errors.First(e => e.RowNumber > 0);
+        error.Field.Should().Be("2026-01-05");
+        error.Message.Should().Contain("abc");
+        error.Message.Should().Contain("not a valid number");
     }
 
     [Fact]
     public void Parse_InvalidCoffeeType_ReturnsError()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            john@example.com,Super Crema,Lavazza,Mocha,18,2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            a@b.com,Coffee,Brand,Mocha,18
             """;
 
         var result = _parser.Parse(ToStream(csv));
@@ -112,8 +192,8 @@ public sealed class CsvConsumptionParserTests
     public void Parse_MissingEmail_ReturnsError()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            ,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            ,Coffee,Brand,Espresso,18
             """;
 
         var result = _parser.Parse(ToStream(csv));
@@ -127,8 +207,8 @@ public sealed class CsvConsumptionParserTests
     public void Parse_InvalidEmailFormat_ReturnsError()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            not-an-email,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            not-an-email,Coffee,Brand,Espresso,18
             """;
 
         var result = _parser.Parse(ToStream(csv));
@@ -139,28 +219,72 @@ public sealed class CsvConsumptionParserTests
     }
 
     [Fact]
-    public void Parse_ZeroQuantity_ReturnsError()
+    public void Parse_MissingProductName_ReturnsError()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            john@example.com,Super Crema,Lavazza,Espresso,0,2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            a@b.com,,Brand,Espresso,18
             """;
 
         var result = _parser.Parse(ToStream(csv));
 
         result.Errors.Should().ContainSingle();
-        result.Errors[0].Field.Should().Be("QuantityGrams");
-        result.Errors[0].Message.Should().Contain("greater than 0");
+        result.Errors[0].Field.Should().Be("ProductName");
+    }
+
+    [Fact]
+    public void Parse_MissingProductBrand_ReturnsError()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            a@b.com,Coffee,,Espresso,18
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Errors.Should().ContainSingle();
+        result.Errors[0].Field.Should().Be("ProductBrand");
+    }
+
+    [Fact]
+    public void Parse_SingleDateColumn_Works()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            a@b.com,Coffee,Brand,Espresso,18
+            b@c.com,Tea,Brand2,Filter,20
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().HaveCount(2);
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Parse_MixedDateFormats_InHeaders()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,06/01/2026
+            a@b.com,Coffee,Brand,Espresso,18,20
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().HaveCount(2);
+        result.Errors.Should().BeEmpty();
+        result.Rows[0].ConsumedAt.Should().Be(new DateTime(2026, 1, 5, 12, 0, 0, DateTimeKind.Utc));
+        result.Rows[1].ConsumedAt.Should().Be(new DateTime(2026, 1, 6, 12, 0, 0, DateTimeKind.Utc));
     }
 
     [Fact]
     public void Parse_MixedValidAndInvalid_PartitionsCorrectly()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            john@example.com,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30
-            bad-email,Missing Brand,,Filter,20,2026-01-15 10:00
-            jane@example.com,Pike Place,Starbucks,Filter,20,2026-01-15 10:00
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,2026-01-06
+            john@example.com,Super Crema,Lavazza,Espresso,18,
+            bad-email,Missing Brand,,Filter,,20
+            jane@example.com,Pike Place,Starbucks,Filter,20,
             """;
 
         var result = _parser.Parse(ToStream(csv));
@@ -168,35 +292,14 @@ public sealed class CsvConsumptionParserTests
         result.Rows.Should().HaveCount(3);
         result.ValidRows.Should().HaveCount(2);
         result.InvalidRows.Should().HaveCount(1);
-        result.InvalidRows[0].RowNumber.Should().Be(2);
-    }
-
-    [Fact]
-    public void Parse_MultipleDateFormats_AllParsed()
-    {
-        var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            a@b.com,Coffee,Brand,Espresso,18,2026-01-15 09:30
-            a@b.com,Coffee,Brand,Espresso,18,2026-01-15 09:30:00
-            a@b.com,Coffee,Brand,Espresso,18,2026-01-15T09:30:00
-            a@b.com,Coffee,Brand,Espresso,18,2026-01-15T09:30
-            a@b.com,Coffee,Brand,Espresso,18,2026-01-15
-            a@b.com,Coffee,Brand,Espresso,18,15/01/2026 09:30
-            a@b.com,Coffee,Brand,Espresso,18,15/01/2026
-            """;
-
-        var result = _parser.Parse(ToStream(csv));
-
-        result.Rows.Should().HaveCount(7);
-        result.Errors.Should().BeEmpty();
     }
 
     [Fact]
     public void Parse_TrimsWhitespace_FromFields()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-              john@example.com  ,  Super Crema  ,  Lavazza  ,  Espresso  ,  18  ,  2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+              john@example.com  ,  Super Crema  ,  Lavazza  ,  Espresso  ,  18
             """;
 
         var result = _parser.Parse(ToStream(csv));
@@ -212,12 +315,12 @@ public sealed class CsvConsumptionParserTests
     public void Parse_CoffeeTypeCaseInsensitive_Accepted()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            a@b.com,Coffee,Brand,espresso,18,2026-01-15 09:30
-            a@b.com,Coffee,Brand,FILTER,18,2026-01-15 09:30
-            a@b.com,Coffee,Brand,Instant,18,2026-01-15 09:30
-            a@b.com,Coffee,Brand,decaf,18,2026-01-15 09:30
-            a@b.com,Coffee,Brand,Specialty,18,2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            a@b.com,Coffee,Brand,espresso,18
+            a@b.com,Coffee,Brand,FILTER,18
+            a@b.com,Coffee,Brand,Instant,18
+            a@b.com,Coffee,Brand,decaf,18
+            a@b.com,Coffee,Brand,Specialty,18
             """;
 
         var result = _parser.Parse(ToStream(csv));
@@ -227,11 +330,11 @@ public sealed class CsvConsumptionParserTests
     }
 
     [Fact]
-    public void Parse_DecimalQuantity_ParsedCorrectly()
+    public void Parse_DecimalQuantityInCell_ParsedCorrectly()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            a@b.com,Coffee,Brand,Espresso,18.5,2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            a@b.com,Coffee,Brand,Espresso,18.5
             """;
 
         var result = _parser.Parse(ToStream(csv));
@@ -242,34 +345,35 @@ public sealed class CsvConsumptionParserTests
     }
 
     [Fact]
-    public void Parse_MissingProductName_ReturnsError()
+    public void Parse_RowNumbersAreSequentialAfterExpansion()
     {
         var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            a@b.com,,Brand,Espresso,18,2026-01-15 09:30
+            Email,ProductName,ProductBrand,ProductType,2026-01-05,2026-01-06
+            a@b.com,Coffee,Brand,Espresso,18,20
+            b@c.com,Tea,Brand2,Filter,15,25
             """;
 
         var result = _parser.Parse(ToStream(csv));
 
-        result.Errors.Should().ContainSingle();
-        result.Errors[0].Field.Should().Be("ProductName");
-    }
-
-    [Fact]
-    public void Parse_RowNumbersAreSequential()
-    {
-        var csv = """
-            Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-            a@b.com,Coffee,Brand,Espresso,18,2026-01-15 09:30
-            b@c.com,Coffee,Brand,Filter,20,2026-01-15 10:00
-            c@d.com,Coffee,Brand,Instant,15,2026-01-15 11:00
-            """;
-
-        var result = _parser.Parse(ToStream(csv));
-
-        result.Rows.Should().HaveCount(3);
+        result.Rows.Should().HaveCount(4);
         result.Rows[0].RowNumber.Should().Be(1);
         result.Rows[1].RowNumber.Should().Be(2);
         result.Rows[2].RowNumber.Should().Be(3);
+        result.Rows[3].RowNumber.Should().Be(4);
+    }
+
+    [Fact]
+    public void Parse_ConsumedAt_IsNoonUtc()
+    {
+        var csv = """
+            Email,ProductName,ProductBrand,ProductType,2026-01-05
+            a@b.com,Coffee,Brand,Espresso,18
+            """;
+
+        var result = _parser.Parse(ToStream(csv));
+
+        result.Rows.Should().HaveCount(1);
+        result.Rows[0].ConsumedAt.Hour.Should().Be(12);
+        result.Rows[0].ConsumedAt.Minute.Should().Be(0);
     }
 }

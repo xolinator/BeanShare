@@ -25,7 +25,7 @@
                     <div style="border: 2px dashed var(--bs-border); border-radius: 0.75rem; padding: 2rem; text-align: center; margin-bottom: 1rem;">
                         <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--bs-primary); margin-bottom: 0.5rem; display: block;">cloud_upload</span>
                         <p style="font-weight: 600; margin-bottom: 0.5rem;">Choose a CSV file</p>
-                        <p style="color: var(--bs-text-subtle); font-size: 0.8rem; margin-bottom: 1rem;">Max 1000 rows, .csv format</p>
+                        <p style="color: var(--bs-text-subtle); font-size: 0.8rem; margin-bottom: 1rem;">Max 1000 expanded entries, .csv format</p>
                         <InputFile OnChange="HandleFileSelected" accept=".csv,text/csv,text/comma-separated-values,application/csv" style="display: inline-block;" />
                     </div>
 
@@ -38,11 +38,13 @@
                     }
 
                     <div style="background: var(--bs-gray-100); border-radius: 0.5rem; padding: 1rem; font-size: 0.8rem;">
-                        <p style="font-weight: 600; margin-bottom: 0.5rem;">CSV Format:</p>
-                        <code style="display: block; background: white; padding: 0.5rem; border-radius: 0.25rem; overflow-x: auto; white-space: pre; font-size: 0.75rem;">Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt
-john.smith@beanshare.dev,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30</code>
+                        <p style="font-weight: 600; margin-bottom: 0.5rem;">CSV Format (date-column pivot):</p>
+                        <code style="display: block; background: white; padding: 0.5rem; border-radius: 0.25rem; overflow-x: auto; white-space: pre; font-size: 0.75rem;">Email,ProductName,ProductBrand,ProductType,2026-01-15,2026-01-16,2026-01-17
+john.smith@beanshare.dev,Super Crema,Lavazza,Espresso,18,,14
+jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
                         <p style="margin-top: 0.5rem; color: var(--bs-text-subtle);">
-                            ProductType: Espresso, Filter, Instant, Decaf, or Specialty
+                            ProductType: Espresso, Filter, Instant, Decaf, or Specialty.
+                            Each date column header is yyyy-MM-dd. Cell values = grams consumed (empty = none).
                         </p>
                     </div>
                 </div>
@@ -267,7 +269,13 @@ john.smith@beanshare.dev,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30</code>
 
     private async Task DownloadTemplate()
     {
-        var csv = "Email,ProductName,ProductBrand,ProductType,QuantityGrams,ConsumedAt\njohn.smith@example.com,Super Crema,Lavazza,Espresso,18,2026-01-15 09:30\njane.doe@example.com,Pike Place,Starbucks,Filter,20,2026-01-15 10:00";
+        var today = DateTime.UtcNow;
+        var d1 = today.AddDays(-2).ToString("yyyy-MM-dd");
+        var d2 = today.AddDays(-1).ToString("yyyy-MM-dd");
+        var d3 = today.ToString("yyyy-MM-dd");
+        var csv = $"Email,ProductName,ProductBrand,ProductType,{d1},{d2},{d3}\n" +
+                  $"john.smith@example.com,Super Crema,Lavazza,Espresso,18,,14\n" +
+                  $"jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20";
         await JSRuntime.InvokeVoidAsync("beanshare.downloadCsv", "consumption_import_template.csv", csv);
     }
 
