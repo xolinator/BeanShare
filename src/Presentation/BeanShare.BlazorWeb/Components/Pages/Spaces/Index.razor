@@ -7,12 +7,15 @@
 @using BeanShare.Application.Features.CoffeeStock.Dtos
 @using BeanShare.Application.Features.Presets.Queries
 @using BeanShare.Application.Features.Consumption.Commands
+@using BeanShare.Application.Features.ActiveQrCodes.Queries
 @using BeanShare.SharedUi.Components.Consumption.Models
+@using BeanShare.SharedUi.Services
 @using Microsoft.AspNetCore.Authorization
 @using BeanShare.Application.Abstractions
 @attribute [Authorize]
 @inject IMediator Mediator
 @inject NavigationManager Navigation
+@inject IQrCodeService QrCodeService
 @inject IUserContext UserContext
 
 <PageTitle>My Spaces - BeanShare</PageTitle>
@@ -48,7 +51,7 @@
 
 @if (spaces.Any())
 {
-    <button class="quick-consumption-fab" @onclick="OpenQuickConsumption" title="Log Coffee">
+    <button class="quick-consumption-fab" @onclick="OpenQuickConsumption" title="Log Coffee" aria-label="Log coffee consumption">
         <span class="material-symbols-outlined">coffee</span>
     </button>
 }
@@ -71,7 +74,12 @@
     OnSpaceSelected="HandleQuickConsumptionSpaceSelected"
     OnSubmit="HandleQuickConsumptionSubmit"
     OnCancel="CloseQuickConsumption"
+    OnScanQr="HandleQuickScanQr"
     CurrentUserId="@UserContext.CurrentUserId.Value" />
+
+<QrScannerModal IsVisible="@showQuickQrScanner"
+               OnScanned="HandleQuickQrScanned"
+               OnClose="@(() => showQuickQrScanner = false)" />
 
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
@@ -89,6 +97,7 @@
     private bool showCreateModal;
     private bool showJoinModal;
     private bool showQuickConsumptionModal;
+    private bool showQuickQrScanner;
     private bool showToast;
     private bool isToastError;
     private string toastTitle = "";
@@ -302,6 +311,43 @@
         {
             ShowToast(true, "Error", $"Failed to log consumption: {ex.Message}");
         }
+    }
+
+    private void HandleQuickScanQr()
+    {
+        showQuickConsumptionModal = false;
+        showQuickQrScanner = true;
+    }
+
+    private async Task HandleQuickQrScanned(QrConsumptionPayload payload)
+    {
+        showQuickQrScanner = false;
+
+        if (payload.Version >= 2 && payload.QrCodeId.HasValue)
+        {
+            try
+            {
+                var result = await Mediator.Send(new ResolveActiveQrCodeQuery(payload.QrCodeId.Value));
+                if (result.IsSuccess)
+                {
+                    var dto = result.Value;
+                    Navigation.NavigateTo($"/spaces/{dto.SpaceId}/consumption?qrCodeId={payload.QrCodeId}");
+                    return;
+                }
+
+                ShowToast(true, "Error", "Could not resolve QR code. It may have been deactivated.");
+            }
+            catch
+            {
+                ShowToast(true, "Error", "Failed to resolve QR code.");
+            }
+        }
+        else
+        {
+            Navigation.NavigateTo($"/spaces/{payload.SpaceId}/consumption");
+        }
+
+        StateHasChanged();
     }
 
     private void ShowToast(bool isError, string title, string message)

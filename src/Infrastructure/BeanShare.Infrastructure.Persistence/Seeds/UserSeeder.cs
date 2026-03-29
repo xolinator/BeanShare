@@ -10,11 +10,18 @@ public class UserSeeder : IDataSeeder
 
     public async Task SeedAsync(BeanShareDbContext context, CancellationToken cancellationToken = default)
     {
-        if (await context.Set<User>().AnyAsync(cancellationToken))
+        var seedUsers = GetSeedUsers();
+        var seedIds = seedUsers.Select(u => u.Id).ToList();
+        var existingIds = await context.Set<User>()
+            .Where(u => seedIds.Contains(u.Id))
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
+
+        var missing = seedUsers.Where(u => !existingIds.Contains(u.Id)).ToList();
+        if (!missing.Any())
             return;
 
-        var users = GetSeedUsers();
-        await context.Set<User>().AddRangeAsync(users, cancellationToken);
+        await context.Set<User>().AddRangeAsync(missing, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
 

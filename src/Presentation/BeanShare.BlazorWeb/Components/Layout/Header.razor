@@ -70,7 +70,7 @@
                             }
                             else
                             {
-                                @GetInitials(userName)
+                                @userName.GetInitials()
                             }
                         </div>
                         <span class="header-user-name">@userName</span>
@@ -289,15 +289,6 @@
     private void Logout()
     {
         Navigation.NavigateTo("/logout", forceLoad: true);
-    }
-
-    private string GetInitials(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return "U";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        return name[0].ToString().ToUpper();
     }
 
     public class BreadcrumbItem

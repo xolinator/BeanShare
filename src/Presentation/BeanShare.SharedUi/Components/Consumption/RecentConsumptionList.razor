@@ -1,5 +1,8 @@
 <div>
-    <h2 class="bs-font-bold" style="margin: 0 0 1rem 0; font-size: 1.125rem;">Recent Logs</h2>
+    @if (!HideHeader)
+    {
+        <h2 class="bs-font-bold" style="margin: 0 0 1rem 0; font-size: 1.125rem;">Recent Logs</h2>
+    }
 
     @if (IsLoading)
     {
@@ -118,6 +121,9 @@
 
     [Parameter]
     public EventCallback<Guid> OnDelete { get; set; }
+
+    [Parameter]
+    public bool HideHeader { get; set; }
 
     private Guid? editingId;
     private string editProductName = "";

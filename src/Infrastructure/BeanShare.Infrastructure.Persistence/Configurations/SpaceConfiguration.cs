@@ -70,6 +70,9 @@ public sealed class SpaceConfiguration : IEntityTypeConfiguration<Space>
 
             memberBuilder.Property(m => m.JoinedAt)
                 .IsRequired();
+
+            memberBuilder.HasIndex("UserId")
+                .HasDatabaseName("IX_SpaceMemberships_UserId");
         });
 
         builder.Navigation(s => s.Members)

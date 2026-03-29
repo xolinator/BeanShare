@@ -15,19 +15,22 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
     private readonly IUserRepository _userRepository;
     private readonly IUserContext _userContext;
     private readonly IMapper _mapper;
+    private readonly IClock _clock;
 
     public GetSpaceStockQueryHandler(
         ICoffeeStockRepository coffeeStockRepository,
         ISpaceRepository spaceRepository,
         IUserRepository userRepository,
         IUserContext userContext,
-        IMapper mapper)
+        IMapper mapper,
+        IClock clock)
     {
         _coffeeStockRepository = coffeeStockRepository;
         _spaceRepository = spaceRepository;
         _userRepository = userRepository;
         _userContext = userContext;
         _mapper = mapper;
+        _clock = clock;
     }
 
     public async Task<Result<CoffeeStockDto>> Handle(GetSpaceStockQuery query, CancellationToken cancellationToken)
@@ -55,8 +58,8 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
             {
                 Id = Guid.Empty,
                 SpaceId = query.SpaceId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = _clock.UtcNow,
+                UpdatedAt = _clock.UtcNow,
                 PurchaseCount = 0,
                 ProductVarietyCount = 0,
                 TotalCurrentStockGrams = 0,

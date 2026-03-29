@@ -77,6 +77,7 @@ public class OidcTokenHandler
             }
 
             await SyncUserWithApiAsync(tokenResponse.AccessToken);
+            await FetchAndUpdateDatabaseUserIdAsync(tokenResponse.AccessToken);
 
             _httpClient.DefaultRequestHeaders.Remove("Authorization");
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
@@ -237,6 +238,44 @@ public class OidcTokenHandler
         });
 
         await tcs.Task;
+    }
+
+    public async Task FetchAndUpdateDatabaseUserIdAsync(string accessToken)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.BaseAddress = _httpClient.BaseAddress;
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+
+            var response = await httpClient.GetAsync("/api/me");
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if (json.TryGetProperty("UserId", out var userIdProp) &&
+                    Guid.TryParse(userIdProp.GetString(), out var dbUserId))
+                {
+                    var email = json.TryGetProperty("Email", out var emailProp) ? emailProp.GetString() ?? "" : "";
+                    var tcs = new TaskCompletionSource<bool>();
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        try
+                        {
+                            await SecureStorage.Default.SetAsync("user_id", dbUserId.ToString());
+                            tcs.SetResult(true);
+                        }
+                        catch (Exception ex) { tcs.SetException(ex); }
+                    });
+                    await tcs.Task;
+                    UserContextStub.SetUser(dbUserId, email);
+                    _logger.LogInformation("Updated user_id to database ID: {UserId}", dbUserId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch database user ID from /api/me (non-fatal)");
+        }
     }
 
     private async Task SyncUserWithApiAsync(string accessToken)

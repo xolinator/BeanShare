@@ -1,4 +1,5 @@
 using BeanShare.Application.Features.Consumption.Dtos;
+using BeanShare.Domain.Common;
 using BeanShare.Domain.ValueObjects;
 using FluentValidation;
 
@@ -7,9 +8,11 @@ namespace BeanShare.Application.Features.Consumption.Commands;
 public sealed class ImportConsumptionCsvValidator : AbstractValidator<ImportConsumptionCsvCommand>
 {
     private const int MaxRows = 1000;
+    private readonly IClock _clock;
 
-    public ImportConsumptionCsvValidator()
+    public ImportConsumptionCsvValidator(IClock clock)
     {
+        _clock = clock;
         RuleFor(x => x.SpaceId)
             .NotEmpty()
             .WithMessage("SpaceId is required");
@@ -20,13 +23,16 @@ public sealed class ImportConsumptionCsvValidator : AbstractValidator<ImportCons
             .Must(rows => rows.Count <= MaxRows)
             .WithMessage($"CSV file cannot contain more than {MaxRows} rows");
 
-        RuleForEach(x => x.Rows).SetValidator(new ImportRowValidator());
+        RuleForEach(x => x.Rows).SetValidator(new ImportRowValidator(_clock));
     }
 
     private sealed class ImportRowValidator : AbstractValidator<ImportConsumptionCsvRow>
     {
-        public ImportRowValidator()
+        private readonly IClock _clock;
+
+        public ImportRowValidator(IClock clock)
         {
+            _clock = clock;
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("Email is required")
                 .EmailAddress().WithMessage("Invalid email format");
@@ -48,7 +54,7 @@ public sealed class ImportConsumptionCsvValidator : AbstractValidator<ImportCons
                 .GreaterThan(0).WithMessage("Must be greater than 0");
 
             RuleFor(x => x.ConsumedAt)
-                .LessThanOrEqualTo(DateTime.UtcNow.AddMinutes(5))
+                .Must(date => date <= _clock.UtcNow.AddMinutes(5))
                 .WithMessage("Date cannot be in the future");
         }
     }

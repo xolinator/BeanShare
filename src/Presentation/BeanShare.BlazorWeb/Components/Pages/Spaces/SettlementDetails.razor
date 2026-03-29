@@ -3,7 +3,7 @@
 @using MediatR
 @using BeanShare.Application.Features.Settlement.Queries.GetSettlementById
 @using BeanShare.Application.Features.Settlement.Commands.SendSettlementEmails
-@using BeanShare.Application.Features.Settlements.Commands.ConfirmPayment
+@using BeanShare.Application.Features.Settlement.Commands.ConfirmPayment
 @using BeanShare.Application.Features.Settlement.Dtos
 @using BeanShare.Application.Features.Spaces.Queries
 @using BeanShare.Domain.ValueObjects
@@ -307,7 +307,7 @@
             if (result.IsSuccess)
             {
                 ShowToast(false, "Success", "Payment confirmed successfully");
-                await LoadSettlement(); // Reload to get updated data
+                await LoadSettlement();
             }
             else
             {

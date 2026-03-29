@@ -12,6 +12,8 @@ namespace BeanShare.Application.Features.Consumption.Queries;
 public sealed class GetRecentConsumptionsQueryHandler
     : IRequestHandler<GetRecentConsumptionsQuery, Result<GetRecentConsumptionsResult>>
 {
+    private const int RecentEntriesLimit = 20;
+
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly ISpaceRepository _spaceRepository;
@@ -57,11 +59,9 @@ public sealed class GetRecentConsumptionsQueryHandler
             return Result<GetRecentConsumptionsResult>.Failure(Error.InsufficientSpacePrivileges("view consumptions"));
         }
 
-        var allEntries = await _consumptionRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
-        var recentRaw = allEntries
-            .OrderByDescending(e => e.ConsumedAt)
-            .Take(20)
-            .ToList();
+        UserId? forUserId = request.ForUserId.HasValue ? new UserId(request.ForUserId.Value) : null;
+        var recentRaw = await _consumptionRepository.GetRecentBySpaceIdAsync(
+            spaceId, RecentEntriesLimit, forUserId, cancellationToken);
 
         var userIds = recentRaw.Select(e => e.UserId).Distinct().ToList();
         var userNames = new Dictionary<UserId, string>();
@@ -97,6 +97,8 @@ public sealed class GetRecentConsumptionsQueryHandler
             })
             .ToList();
 
+        var allEntries = await _consumptionRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
+
         var today = _clock.UtcNow.Date;
         var myEntriesToday = allEntries
             .Where(e => e.UserId == userId && e.ConsumedAt.Date == today)
@@ -104,7 +106,6 @@ public sealed class GetRecentConsumptionsQueryHandler
 
         var myCupsToday = myEntriesToday.Count;
 
-        // Calculate actual total cost from user's consumption using weighted average cost per gram
         var myAllEntries = allEntries.Where(e => e.UserId == userId).ToList();
         var myTotalGrams = myAllEntries.Sum(e => e.Quantity.Grams);
         var myTotalCost = 0m;

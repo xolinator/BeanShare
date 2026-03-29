@@ -1,6 +1,6 @@
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.Admin.Presets.Dtos;
-using BeanShare.Domain.Repositories;
+using BeanShare.Application.Abstractions;
 using MediatR;
 
 namespace BeanShare.Application.Features.Admin.Presets.Queries;

@@ -43,9 +43,9 @@
             {
                 <div class="bs-form-group">
                     <label class="bs-label">Log for</label>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: var(--bs-gray-50); border-radius: 0.5rem; max-height: 10rem; overflow-y: auto;">
+                    <div role="group" aria-label="Select members to log coffee for" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: var(--bs-gray-50); border-radius: 0.5rem; max-height: 10rem; overflow-y: auto;">
                         <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
-                            <input type="checkbox" checked="@logForMyself" @onchange="ToggleMyself" />
+                            <input type="checkbox" checked="@logForMyself" @onchange="ToggleMyself" aria-label="Log for myself" />
                             <span style="font-weight: 500;">Myself</span>
                         </label>
                         @foreach (var member in SpaceMembers.Where(m => !CurrentUserId.HasValue || m.UserId != CurrentUserId.Value))

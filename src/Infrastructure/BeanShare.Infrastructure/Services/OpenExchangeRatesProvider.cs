@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using BeanShare.Application.Abstractions;
+using BeanShare.Domain.Common;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -10,15 +11,18 @@ public sealed class OpenExchangeRatesProvider : IExchangeRateProvider
     private readonly HttpClient _httpClient;
     private readonly OpenExchangeRatesOptions _options;
     private readonly ILogger<OpenExchangeRatesProvider> _logger;
+    private readonly IClock _clock;
 
     public OpenExchangeRatesProvider(
         HttpClient httpClient,
         IOptions<OpenExchangeRatesOptions> options,
-        ILogger<OpenExchangeRatesProvider> logger)
+        ILogger<OpenExchangeRatesProvider> logger,
+        IClock clock)
     {
         _httpClient = httpClient;
         _options = options.Value;
         _logger = logger;
+        _clock = clock;
     }
 
     /// <summary>
@@ -55,7 +59,7 @@ public sealed class OpenExchangeRatesProvider : IExchangeRateProvider
         if (string.IsNullOrWhiteSpace(_options.AppId))
         {
             _logger.LogInformation("OpenExchangeRates AppId not configured, using fallback constant rates");
-            return new ExchangeRatesResult(true, "USD", FallbackRates, DateTime.UtcNow);
+            return new ExchangeRatesResult(true, "USD", FallbackRates, _clock.UtcNow);
         }
 
         try
@@ -65,12 +69,12 @@ public sealed class OpenExchangeRatesProvider : IExchangeRateProvider
 
             if (response is null)
             {
-                return ExchangeRatesResult.Failure("Empty response from API");
+                return ExchangeRatesResult.Failure("Empty response from API", _clock.UtcNow);
             }
 
             if (response.Rates is null || response.Rates.Count == 0)
             {
-                return ExchangeRatesResult.Failure("No exchange rates in API response");
+                return ExchangeRatesResult.Failure("No exchange rates in API response", _clock.UtcNow);
             }
 
             var timestamp = DateTimeOffset.FromUnixTimeSeconds(response.Timestamp).UtcDateTime;
@@ -86,12 +90,12 @@ public sealed class OpenExchangeRatesProvider : IExchangeRateProvider
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "HTTP error fetching exchange rates");
-            return ExchangeRatesResult.Failure($"HTTP error: {ex.Message}");
+            return ExchangeRatesResult.Failure($"HTTP error: {ex.Message}", _clock.UtcNow);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch exchange rates");
-            return ExchangeRatesResult.Failure(ex.Message);
+            return ExchangeRatesResult.Failure(ex.Message, _clock.UtcNow);
         }
     }
 }

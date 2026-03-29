@@ -12,6 +12,6 @@ public sealed record ExchangeRatesResult(
     DateTime Timestamp,
     string? ErrorMessage = null)
 {
-    public static ExchangeRatesResult Failure(string errorMessage) =>
-        new(false, "USD", new Dictionary<string, decimal>(), DateTime.UtcNow, errorMessage);
+    public static ExchangeRatesResult Failure(string errorMessage, DateTime timestamp) =>
+        new(false, "USD", new Dictionary<string, decimal>(), timestamp, errorMessage);
 }

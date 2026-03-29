@@ -56,4 +56,21 @@ public sealed class SpaceRepository : ISpaceRepository
         return await _context.Spaces
             .CountAsync(s => s.Members.Any(m => m.UserId == userId), cancellationToken);
     }
+
+    public async Task<Dictionary<UserId, int>> GetSpaceCountsForUsersAsync(
+        IEnumerable<UserId> userIds, CancellationToken cancellationToken = default)
+    {
+        var idList = userIds.ToList();
+        if (idList.Count == 0)
+            return new Dictionary<UserId, int>();
+
+        var counts = await _context.Spaces
+            .SelectMany(s => s.Members)
+            .Where(m => idList.Contains(m.UserId))
+            .GroupBy(m => m.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return counts.ToDictionary(x => x.UserId, x => x.Count);
+    }
 }

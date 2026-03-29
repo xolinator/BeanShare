@@ -34,20 +34,11 @@ public sealed class RegenerateInviteCodeCommandHandler : IRequestHandler<Regener
         var space = await _spaceRepository.GetSingleBySpecAsync(specification, cancellationToken);
 
         if (space == null)
-        {
             return Result<SpaceDto>.Failure(Error.SpaceNotFound(command.SpaceId));
-        }
 
-        var currentUserId = _userContext.CurrentUserId;
-        if (!space.IsAdmin(currentUserId))
-        {
-            return Result<SpaceDto>.Failure(Error.InsufficientSpacePrivileges("regenerate invite code"));
-        }
-
-        if (!space.IsActive)
-        {
-            return Result<SpaceDto>.Failure(Error.ValidationFailure(nameof(space.IsActive), "Cannot regenerate invite code for deactivated space"));
-        }
+        var validationError = EnsureCanRegenerate(space);
+        if (validationError is not null)
+            return Result<SpaceDto>.Failure(validationError.Value);
 
         var newInviteCode = await _inviteCodeGenerator.GenerateAsync(cancellationToken);
         space.RegenerateInviteCode(newInviteCode);
@@ -56,5 +47,16 @@ public sealed class RegenerateInviteCodeCommandHandler : IRequestHandler<Regener
 
         var dto = _mapper.Map<SpaceDto>(space);
         return Result<SpaceDto>.Success(dto);
+    }
+
+    private Error? EnsureCanRegenerate(Domain.Aggregates.Space.Space space)
+    {
+        if (!space.IsAdmin(_userContext.CurrentUserId))
+            return Error.InsufficientSpacePrivileges("regenerate invite code");
+
+        if (!space.IsActive)
+            return Error.ValidationFailure(nameof(space.IsActive), "Cannot regenerate invite code for deactivated space");
+
+        return null;
     }
 }

@@ -23,7 +23,8 @@ public class DatabaseSeeder
             new SpaceSeeder(),
             new CoffeeStockSeeder(),
             new ConsumptionSeeder(),
-            new BillingPeriodSeeder()
+            new BillingPeriodSeeder(),
+            new NotificationSeeder()
         };
     }
 

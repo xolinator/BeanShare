@@ -4,7 +4,6 @@ using BeanShare.Application.Features.Consumption.Dtos;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
 using BeanShare.Domain.Exceptions;
-using BeanShare.Domain.Repositories;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
 

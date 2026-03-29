@@ -57,6 +57,24 @@ public sealed class MockConsumptionRepository : IConsumptionRepository
         return Task.FromResult(entry);
     }
 
+    public Task<IReadOnlyList<ConsumptionEntry>> GetRecentBySpaceIdAsync(SpaceId spaceId, int limit, UserId? forUserId = null, CancellationToken ct = default)
+    {
+        var query = _consumptions.Values
+            .Where(c => c.SpaceId == spaceId);
+
+        if (forUserId != null)
+        {
+            query = query.Where(c => c.UserId == forUserId);
+        }
+
+        var entries = query
+            .OrderByDescending(c => c.ConsumedAt)
+            .Take(limit)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<ConsumptionEntry>>(entries);
+    }
+
     public Task<IReadOnlyList<ConsumptionEntry>> GetBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(specification);
@@ -68,6 +86,34 @@ public sealed class MockConsumptionRepository : IConsumptionRepository
             .ToList();
 
         return Task.FromResult<IReadOnlyList<ConsumptionEntry>>(entries);
+    }
+
+    public Task<(IReadOnlyList<ConsumptionEntry> Items, int TotalCount)> GetPagedBySpecAsync(ISpec<ConsumptionEntry> specification, int skip, int take, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+
+        var predicate = specification.Criteria.Compile();
+        var all = _consumptions.Values
+            .Where(predicate)
+            .OrderByDescending(c => c.ConsumedAt)
+            .ToList();
+
+        var items = all.Skip(skip).Take(take).ToList();
+        return Task.FromResult<(IReadOnlyList<ConsumptionEntry> Items, int TotalCount)>((items, all.Count));
+    }
+
+    public Task<(decimal TotalGrams, int TotalEntries, int UniqueDays)> GetSummaryBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+
+        var predicate = specification.Criteria.Compile();
+        var all = _consumptions.Values.Where(predicate).ToList();
+
+        var totalGrams = all.Sum(c => c.Quantity.Grams);
+        var totalEntries = all.Count;
+        var uniqueDays = all.Select(c => c.ConsumedAt.Date).Distinct().Count();
+
+        return Task.FromResult((totalGrams, totalEntries, uniqueDays));
     }
 
     public Task UpdateAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default)

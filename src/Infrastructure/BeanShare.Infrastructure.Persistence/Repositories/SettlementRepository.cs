@@ -40,12 +40,11 @@ public sealed class SettlementRepository : ISettlementRepository
     public async Task AddAsync(Settlement settlement, CancellationToken cancellationToken = default)
     {
         await _context.Settlements.AddAsync(settlement, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateAsync(Settlement settlement, CancellationToken cancellationToken = default)
+    public Task UpdateAsync(Settlement settlement, CancellationToken cancellationToken = default)
     {
         _context.Settlements.Update(settlement);
-        await _context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 }

@@ -11,11 +11,35 @@ public class CoffeeStockSeeder : IDataSeeder
 
     public async Task SeedAsync(BeanShareDbContext context, CancellationToken cancellationToken = default)
     {
-        if (await context.CoffeeStocks.AnyAsync(cancellationToken))
+        var allStocks = await context.CoffeeStocks
+            .Include(cs => cs.Purchases)
+            .ToListAsync(cancellationToken);
+
+        var spaces = await context.Spaces.ToListAsync(cancellationToken);
+        var spaceCurrencies = spaces.ToDictionary(s => s.Id, s => s.Currency.Code);
+
+        var wrongCurrencyStocks = allStocks
+            .Where(cs => spaceCurrencies.TryGetValue(cs.SpaceId, out var expected)
+                && cs.Purchases.Any()
+                && cs.Purchases.First().Cost.Currency != expected)
+            .ToList();
+
+        if (wrongCurrencyStocks.Any())
+        {
+            context.CoffeeStocks.RemoveRange(wrongCurrencyStocks);
+            await context.SaveChangesAsync(cancellationToken);
+            allStocks = allStocks.Except(wrongCurrencyStocks).ToList();
+        }
+
+        var seededSpaceIds = allStocks.Select(cs => cs.SpaceId).ToHashSet();
+        var clock = new FixedClock(DateTime.UtcNow);
+        var coffeeStocks = GetSeedCoffeeStocks(clock)
+            .Where(cs => !seededSpaceIds.Contains(cs.SpaceId))
+            .ToList();
+
+        if (!coffeeStocks.Any())
             return;
 
-        var clock = new FixedClock(DateTime.UtcNow);
-        var coffeeStocks = GetSeedCoffeeStocks(clock);
         await context.CoffeeStocks.AddRangeAsync(coffeeStocks, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
@@ -79,7 +103,7 @@ public class CoffeeStockSeeder : IDataSeeder
         marketingStock.AddPurchase(
             CoffeeProduct.Create("Classico", "Illy", CoffeeType.Filter),
             Weight.FromGrams(500),
-            Money.Create(18.99m, "USD"),
+            Money.Create(17.49m, "EUR"),
             "Coffee Supplier Inc",
             new UserId(new Guid("22222222-2222-2222-2222-222222222222")), // Sarah
             DateTime.UtcNow.AddDays(-25),
@@ -89,7 +113,7 @@ public class CoffeeStockSeeder : IDataSeeder
         marketingStock.AddPurchase(
             CoffeeProduct.Create("Major Dickason's Blend", "Peet's", CoffeeType.Filter),
             Weight.FromGrams(750),
-            Money.Create(22.99m, "USD"),
+            Money.Create(21.49m, "EUR"),
             "Coffee Supplier Inc",
             new UserId(new Guid("66666666-6666-6666-6666-666666666666")), // Lisa
             DateTime.UtcNow.AddDays(-12),
@@ -99,7 +123,7 @@ public class CoffeeStockSeeder : IDataSeeder
         marketingStock.AddPurchase(
             CoffeeProduct.Create("Tarrazú", "Costa Rica", CoffeeType.Specialty),
             Weight.FromGrams(500),
-            Money.Create(28.00m, "USD"),
+            Money.Create(25.90m, "EUR"),
             "Specialty Roasters",
             new UserId(new Guid("44444444-4444-4444-4444-444444444444")), // Emma
             DateTime.UtcNow.AddDays(-3),
@@ -116,7 +140,7 @@ public class CoffeeStockSeeder : IDataSeeder
         remoteStock.AddPurchase(
             CoffeeProduct.Create("Death Wish", "Death Wish Coffee", CoffeeType.Espresso),
             Weight.FromGrams(450),
-            Money.Create(19.99m, "USD"),
+            Money.Create(489m, "CZK"),
             "Online Coffee Store",
             new UserId(new Guid("33333333-3333-3333-3333-333333333333")), // Mike
             DateTime.UtcNow.AddDays(-28),
@@ -126,7 +150,7 @@ public class CoffeeStockSeeder : IDataSeeder
         remoteStock.AddPurchase(
             CoffeeProduct.Create("Breakfast Blend", "Green Mountain", CoffeeType.Filter),
             Weight.FromGrams(600),
-            Money.Create(14.99m, "USD"),
+            Money.Create(359m, "CZK"),
             "Online Coffee Store",
             new UserId(new Guid("88888888-8888-8888-8888-888888888888")), // Test User
             DateTime.UtcNow.AddDays(-15),
@@ -136,7 +160,7 @@ public class CoffeeStockSeeder : IDataSeeder
         remoteStock.AddPurchase(
             CoffeeProduct.Create("Supremo", "Colombian", CoffeeType.Filter),
             Weight.FromGrams(1000),
-            Money.Create(35.00m, "USD"),
+            Money.Create(849m, "CZK"),
             "Coffee Supplier Inc",
             new UserId(new Guid("55555555-5555-5555-5555-555555555555")), // Alex
             DateTime.UtcNow.AddDays(-7),
@@ -146,7 +170,7 @@ public class CoffeeStockSeeder : IDataSeeder
         remoteStock.AddPurchase(
             CoffeeProduct.Create("Kona Premium", "Hawaiian", CoffeeType.Specialty),
             Weight.FromGrams(250),
-            Money.Create(55.00m, "USD"),
+            Money.Create(1349m, "CZK"),
             "Premium Coffee Co",
             new UserId(new Guid("66666666-6666-6666-6666-666666666666")), // Lisa
             DateTime.UtcNow.AddDays(-2),
@@ -163,7 +187,7 @@ public class CoffeeStockSeeder : IDataSeeder
         startupStock.AddPurchase(
             CoffeeProduct.Create("Classic Roast", "Folgers", CoffeeType.Filter),
             Weight.FromGrams(920),
-            Money.Create(8.99m, "USD"),
+            Money.Create(7.29m, "GBP"),
             "Grocery Store",
             new UserId(new Guid("55555555-5555-5555-5555-555555555555")), // Alex
             DateTime.UtcNow.AddDays(-21),
@@ -173,7 +197,7 @@ public class CoffeeStockSeeder : IDataSeeder
         startupStock.AddPurchase(
             CoffeeProduct.Create("Dark Roast", "Store Brand", CoffeeType.Filter),
             Weight.FromGrams(1000),
-            Money.Create(6.99m, "USD"),
+            Money.Create(5.69m, "GBP"),
             "Grocery Store",
             new UserId(new Guid("33333333-3333-3333-3333-333333333333")), // Mike
             DateTime.UtcNow.AddDays(-8),

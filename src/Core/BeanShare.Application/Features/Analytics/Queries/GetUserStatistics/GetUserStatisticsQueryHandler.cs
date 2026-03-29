@@ -55,7 +55,8 @@ public sealed class GetUserStatisticsQueryHandler : IRequestHandler<GetUserStati
         }
 
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var startOfWeek = now.Date.AddDays(-(int)now.DayOfWeek).ToUniversalTime();
+        var daysToMonday = now.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)now.DayOfWeek - 1;
+        var startOfWeek = now.Date.AddDays(-daysToMonday).ToUniversalTime();
         var startOfDay = now.Date.ToUniversalTime();
 
         var totalCups = consumptions.Count();

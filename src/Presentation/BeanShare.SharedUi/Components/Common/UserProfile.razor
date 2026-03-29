@@ -3,7 +3,7 @@
 <AuthorizeView>
     <Authorized>
         <div class="bs-dropdown">
-            <div class="bs-user-profile" @onclick="ToggleDropdown">
+            <button type="button" class="bs-user-profile" @onclick="ToggleDropdown" aria-expanded="@isDropdownOpen" aria-haspopup="true">
                 <div class="bs-user-avatar">
                     @if (!string.IsNullOrEmpty(GetUserPicture(context)))
                     {
@@ -21,7 +21,7 @@
                 <span class="material-symbols-outlined">
                     @(isDropdownOpen ? "expand_less" : "expand_more")
                 </span>
-            </div>
+            </button>
 
             @if (isDropdownOpen)
             {

@@ -1,0 +1,64 @@
+@page "/scan/{QrCodeId}"
+@rendermode InteractiveServer
+@using MediatR
+@using BeanShare.Application.Features.ActiveQrCodes.Queries
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Scan QR - BeanShare</PageTitle>
+
+<div class="bs-container" style="padding-top: 4rem; text-align: center;">
+    @if (isLoading)
+    {
+        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-primary); display: block; margin-bottom: 1rem;">qr_code_scanner</span>
+        <h2 style="margin-bottom: 0.5rem;">Resolving QR Code...</h2>
+        <p class="bs-text-subtle">Please wait while we look up this QR code.</p>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-error); display: block; margin-bottom: 1rem;">error</span>
+        <h2 style="margin-bottom: 0.5rem;">QR Code Error</h2>
+        <p class="bs-text-subtle" style="margin-bottom: 1.5rem;">@errorMessage</p>
+        <a href="/spaces" class="bs-btn bs-btn-primary">Go to Spaces</a>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string QrCodeId { get; set; } = "";
+
+    private bool isLoading = true;
+    private string errorMessage = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Guid.TryParse(QrCodeId, out var qrId))
+        {
+            errorMessage = "Invalid QR code format.";
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var result = await Mediator.Send(new ResolveActiveQrCodeQuery(qrId));
+            if (result.IsSuccess)
+            {
+                var dto = result.Value;
+                Navigation.NavigateTo($"/spaces/{dto.SpaceId}/consumption?qrCodeId={qrId}");
+                return;
+            }
+
+            errorMessage = "This QR code could not be found or has been deactivated.";
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[BeanShare] QR resolve error: {ex.Message}");
+            errorMessage = "Failed to resolve QR code. Please try again.";
+        }
+
+        isLoading = false;
+    }
+}

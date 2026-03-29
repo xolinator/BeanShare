@@ -68,28 +68,70 @@ public static class ResultExtensions
 
     /// <summary>
     /// Maps an error code to the appropriate HTTP status code.
+    /// Error codes use UPPER_SNAKE_CASE as defined in Error.Codes.
     /// </summary>
     public static int GetStatusCode(Error error)
     {
         return error.Code switch
         {
-            "auth.unauthenticated" => (int)HttpStatusCode.Unauthorized,
-            "auth.not_member" => (int)HttpStatusCode.Forbidden,
-            "auth.not_admin" => (int)HttpStatusCode.Forbidden,
+            // 401 Unauthorized
+            Error.Codes.Unauthenticated => (int)HttpStatusCode.Unauthorized,
+            Error.Codes.Unauthorized => (int)HttpStatusCode.Unauthorized,
 
-            "auth.space_not_found" => (int)HttpStatusCode.NotFound,
-            "stock.not_found" => (int)HttpStatusCode.NotFound,
-            "stock.product_not_found" => (int)HttpStatusCode.NotFound,
-            "space.not_found" => (int)HttpStatusCode.NotFound,
-            "user.not_found" => (int)HttpStatusCode.NotFound,
+            // 403 Forbidden
+            Error.Codes.NotMember => (int)HttpStatusCode.Forbidden,
+            Error.Codes.NotAdmin => (int)HttpStatusCode.Forbidden,
+            Error.Codes.Forbidden => (int)HttpStatusCode.Forbidden,
+            Error.Codes.InsufficientPrivileges => (int)HttpStatusCode.Forbidden,
 
-            "stock.insufficient" => (int)HttpStatusCode.Conflict,
-            "stock.currency_conflict" => (int)HttpStatusCode.Conflict,
-            "space.duplicate_invite_code" => (int)HttpStatusCode.Conflict,
-            "space.already_member" => (int)HttpStatusCode.Conflict,
+            // 404 Not Found
+            Error.Codes.SpaceNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.StockNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.StockLevelNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.ProductNotFoundInStock => (int)HttpStatusCode.NotFound,
+            Error.Codes.NotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.UserNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.MemberNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.BillingPeriodNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.SettlementNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.SettlementLineNotFound => (int)HttpStatusCode.NotFound,
+            Error.Codes.NotificationNotFound => (int)HttpStatusCode.NotFound,
 
-            var code when code.StartsWith("validation.") => (int)HttpStatusCode.BadRequest,
-            var code when code.StartsWith("invariant.") => (int)HttpStatusCode.BadRequest,
+            // 409 Conflict
+            Error.Codes.InsufficientStock => (int)HttpStatusCode.Conflict,
+            Error.Codes.CurrencyConflict => (int)HttpStatusCode.Conflict,
+            Error.Codes.AlreadyMember => (int)HttpStatusCode.Conflict,
+            Error.Codes.BillingPeriodOverlap => (int)HttpStatusCode.Conflict,
+            Error.Codes.SettlementAlreadyExists => (int)HttpStatusCode.Conflict,
+            Error.Codes.PaymentAlreadyConfirmed => (int)HttpStatusCode.Conflict,
+            Error.Codes.LastAdminProtection => (int)HttpStatusCode.Conflict,
+            Error.Codes.CannotRemoveLastAdmin => (int)HttpStatusCode.Conflict,
+            Error.Codes.UnpaidSettlements => (int)HttpStatusCode.Conflict,
+
+            // 422 Unprocessable Entity (domain logic errors)
+            Error.Codes.InvalidBillingPeriodState => (int)HttpStatusCode.UnprocessableEntity,
+            Error.Codes.InvalidSettlementState => (int)HttpStatusCode.UnprocessableEntity,
+            Error.Codes.NoConsumptionsInPeriod => (int)HttpStatusCode.UnprocessableEntity,
+            Error.Codes.CannotPromoteMember => (int)HttpStatusCode.UnprocessableEntity,
+            Error.Codes.CannotDemoteMember => (int)HttpStatusCode.UnprocessableEntity,
+            Error.Codes.NoRemainingStock => (int)HttpStatusCode.UnprocessableEntity,
+            Error.Codes.DomainError => (int)HttpStatusCode.UnprocessableEntity,
+            Error.Codes.ConfirmationFailed => (int)HttpStatusCode.UnprocessableEntity,
+
+            // 400 Bad Request (validation / input errors)
+            Error.Codes.ValidationError => (int)HttpStatusCode.BadRequest,
+            Error.Codes.InvalidRequest => (int)HttpStatusCode.BadRequest,
+            Error.Codes.InvalidSpaceName => (int)HttpStatusCode.BadRequest,
+            Error.Codes.InviteCodeInvalid => (int)HttpStatusCode.BadRequest,
+            Error.Codes.InvalidCoffeeType => (int)HttpStatusCode.BadRequest,
+            Error.Codes.InvalidConsumptionTime => (int)HttpStatusCode.BadRequest,
+            Error.Codes.InvalidProductType => (int)HttpStatusCode.BadRequest,
+            Error.Codes.InvalidCurrency => (int)HttpStatusCode.BadRequest,
+            Error.Codes.CsvImportFailed => (int)HttpStatusCode.BadRequest,
+            Error.Codes.CsvImportInvalidFormat => (int)HttpStatusCode.BadRequest,
+
+            // 500 Internal Server Error
+            Error.Codes.SystemError => (int)HttpStatusCode.InternalServerError,
 
             _ => (int)HttpStatusCode.BadRequest
         };

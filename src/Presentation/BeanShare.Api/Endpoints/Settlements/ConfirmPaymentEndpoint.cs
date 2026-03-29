@@ -1,4 +1,4 @@
-using BeanShare.Application.Features.Settlements.Commands.ConfirmPayment;
+using BeanShare.Application.Features.Settlement.Commands.ConfirmPayment;
 using FastEndpoints;
 using MediatR;
 

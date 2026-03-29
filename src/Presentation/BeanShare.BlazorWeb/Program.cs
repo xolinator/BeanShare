@@ -26,6 +26,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInMemoryDatabase);
+builder.Services.AddMemoryCache();
 builder.Services.AddExchangeRates(builder.Configuration);
 builder.Services.AddCommunicationServices(builder.Configuration);
 
@@ -82,12 +83,13 @@ if (useOidc)
         {
             OnTokenValidated = async context =>
             {
-                // Extract realm roles from OIDC token (e.g. Keycloak realm_access claim)
+                // Extract roles from multiple OIDC claim formats for provider compatibility
                 if (context.Principal != null)
                 {
                     var identity = context.Principal.Identity as System.Security.Claims.ClaimsIdentity;
                     if (identity != null)
                     {
+                        // Keycloak: realm_access JSON with nested roles array
                         var realmAccessClaim = identity.FindFirst("realm_access");
                         if (realmAccessClaim != null)
                         {
@@ -109,6 +111,22 @@ if (useOidc)
                                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                                 logger.LogError(ex, "Failed to parse realm_access claim");
                             }
+                        }
+
+                        var rolesClaim = identity.FindFirst("roles");
+                        if (rolesClaim != null && rolesClaim.Value.TrimStart().StartsWith("["))
+                        {
+                            try
+                            {
+                                using var rolesDoc = System.Text.Json.JsonDocument.Parse(rolesClaim.Value);
+                                foreach (var role in rolesDoc.RootElement.EnumerateArray())
+                                {
+                                    var roleValue = role.GetString() ?? "";
+                                    identity.AddClaim(new System.Security.Claims.Claim(
+                                        System.Security.Claims.ClaimTypes.Role, roleValue));
+                                }
+                            }
+                            catch (Exception) { }
                         }
                     }
                 }
@@ -144,9 +162,8 @@ else
 
 builder.Services.AddCascadingAuthenticationState();
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"];
-if (string.IsNullOrEmpty(apiBaseUrl))
-    apiBaseUrl = "http://localhost:5247";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
+    ?? (builder.Environment.IsDevelopment() ? "http://localhost:5247" : throw new InvalidOperationException("ApiBaseUrl must be configured in production"));
 
 builder.Services.AddHttpClient("BeanShareApi", client =>
 {
@@ -156,6 +173,12 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IThemeService, ThemeService>();
+var qrCodeBaseUrl = builder.Configuration.GetValue<string>("QrCodeBaseUrl")
+    ?? (builder.Environment.IsDevelopment() ? "http://localhost:5126" : throw new InvalidOperationException("QrCodeBaseUrl must be configured in production"));
+builder.Services.AddSingleton<BeanShare.SharedUi.Services.IQrCodeService>(
+    _ => new BeanShare.SharedUi.Services.QrCodeService(qrCodeBaseUrl));
+builder.Services.AddSingleton<BeanShare.SharedUi.Services.IQrScannerService, BeanShare.SharedUi.Services.BrowserQrScannerService>();
+builder.Services.AddSingleton<BeanShare.SharedUi.Services.QrCodeResolveCache>();
 
 var app = builder.Build();
 
@@ -199,7 +222,9 @@ app.UseAuthorization();
 
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
     var seeder = new DatabaseSeeder(context, logger);
-    await seeder.SeedAsync(includeDemoData: true);
+    var includeDemoData = app.Environment.IsDevelopment()
+        || app.Configuration.GetValue<bool>("IncludeDemoData");
+    await seeder.SeedAsync(includeDemoData: includeDemoData);
 }
 
 app.UseAntiforgery();

@@ -39,13 +39,12 @@ public sealed class BillingPeriodRepository : IBillingPeriodRepository
     public async Task AddAsync(BillingPeriod billingPeriod, CancellationToken cancellationToken = default)
     {
         await _context.BillingPeriods.AddAsync(billingPeriod, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateAsync(BillingPeriod billingPeriod, CancellationToken cancellationToken = default)
+    public Task UpdateAsync(BillingPeriod billingPeriod, CancellationToken cancellationToken = default)
     {
         _context.BillingPeriods.Update(billingPeriod);
-        await _context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     public async Task<bool> HasOverlappingPeriodAsync(

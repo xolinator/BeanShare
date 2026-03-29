@@ -67,7 +67,7 @@
                         <div class="bs-flex bs-items-center bs-justify-between">
                             <div class="bs-flex bs-items-center bs-gap-3">
                                 <div class="bs-avatar">
-                                    <span>@GetInitials(consumer.UserName)</span>
+                                    <span>@consumer.UserName.GetInitials()</span>
                                 </div>
                                 <div>
                                     <p class="bs-font-medium">@consumer.UserName</p>
@@ -192,15 +192,4 @@
     [Parameter]
     public bool IsLoading { get; set; }
 
-    private string GetInitials(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return "?";
-
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
-
-        return name[0].ToString().ToUpper();
-    }
 }

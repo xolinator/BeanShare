@@ -1,4 +1,4 @@
-<div class="bs-card" style="cursor: pointer;" @onclick="() => OnSelect.InvokeAsync(SpaceId)">
+<button type="button" class="bs-card" style="cursor: pointer; width: 100%; text-align: left; border: none; background: none; padding: inherit;" @onclick="() => OnSelect.InvokeAsync(SpaceId)" aria-label="Open space @Name">
     <div class="bs-flex bs-items-center bs-gap-3">
         <div style="width: 4rem; height: 4rem; background: var(--bs-primary-light); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
             <span class="material-symbols-outlined" style="color: var(--bs-primary); font-size: 2rem;">
@@ -18,7 +18,7 @@
             chevron_right
         </span>
     </div>
-</div>
+</button>
 
 @code {
     [Parameter]

@@ -30,43 +30,21 @@ public sealed class CloseBillingPeriodHandler : IRequestHandler<CloseBillingPeri
 
     public async Task<Result> Handle(CloseBillingPeriodCommand command, CancellationToken cancellationToken)
     {
-        var currentUserId = _userContext.CurrentUserId;
         var billingPeriodId = new BillingPeriodId(command.BillingPeriodId);
 
         var billingPeriod = await _billingPeriodRepository.GetByIdAsync(billingPeriodId, cancellationToken);
         if (billingPeriod == null)
-        {
             return Result.Failure(Error.BillingPeriodNotFound(command.BillingPeriodId));
-        }
 
-        var spaceSpec = new SpaceByIdSpecification(billingPeriod.SpaceId);
-        var space = await _spaceRepository.GetSingleBySpecAsync(spaceSpec, cancellationToken);
-
-        if (space == null)
-        {
-            return Result.Failure(Error.SpaceNotFound(billingPeriod.SpaceId.Value));
-        }
-
-        if (!space.IsAdmin(currentUserId))
-        {
-            return Result.Failure(Error.InsufficientSpacePrivileges("close billing periods"));
-        }
+        var authResult = await EnsureAdminAccess(billingPeriod.SpaceId, cancellationToken);
+        if (!authResult.IsSuccess)
+            return authResult;
 
         try
         {
-            var consumptionSpec = new UnassignedConsumptionsInPeriodSpecification(
-                billingPeriod.SpaceId,
-                billingPeriod.StartDate,
-                billingPeriod.EndDate);
+            await AssignUnbilledConsumptions(billingPeriod, billingPeriodId, cancellationToken);
 
-            var periodConsumptions = await _consumptionRepository.GetBySpecAsync(consumptionSpec, cancellationToken);
-
-            foreach (var consumption in periodConsumptions)
-            {
-                consumption.AssignToBillingPeriod(billingPeriodId);
-            }
-
-            billingPeriod.Close(currentUserId, _clock);
+            billingPeriod.Close(_userContext.CurrentUserId, _clock);
             await _billingPeriodRepository.UpdateAsync(billingPeriod, cancellationToken);
 
             return Result.Success();
@@ -75,5 +53,31 @@ public sealed class CloseBillingPeriodHandler : IRequestHandler<CloseBillingPeri
         {
             return Result.Failure(Error.InvalidBillingPeriodState("close", billingPeriod.State.ToString()));
         }
+    }
+
+    private async Task<Result> EnsureAdminAccess(SpaceId spaceId, CancellationToken ct)
+    {
+        var space = await _spaceRepository.GetSingleBySpecAsync(
+            new SpaceByIdSpecification(spaceId), ct);
+
+        if (space == null)
+            return Result.Failure(Error.SpaceNotFound(spaceId.Value));
+        if (!space.IsAdmin(_userContext.CurrentUserId))
+            return Result.Failure(Error.InsufficientSpacePrivileges("close billing periods"));
+
+        return Result.Success();
+    }
+
+    private async Task AssignUnbilledConsumptions(
+        Domain.Aggregates.BillingPeriod.BillingPeriod billingPeriod,
+        BillingPeriodId billingPeriodId,
+        CancellationToken ct)
+    {
+        var spec = new UnassignedConsumptionsInPeriodSpecification(
+            billingPeriod.SpaceId, billingPeriod.StartDate, billingPeriod.EndDate);
+
+        var consumptions = await _consumptionRepository.GetBySpecAsync(spec, ct);
+        foreach (var entry in consumptions)
+            entry.AssignToBillingPeriod(billingPeriodId);
     }
 }

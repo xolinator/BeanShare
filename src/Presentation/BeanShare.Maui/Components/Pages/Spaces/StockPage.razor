@@ -1,8 +1,12 @@
 @page "/spaces/{SpaceId}/stock"
 @using BeanShare.Application.Abstractions
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.Application.Features.ActiveQrCodes.Dtos
+@using BeanShare.SharedUi.Services
 @using BeanShare.Maui.Services
 @inject ISpacesService SpacesService
 @inject IStockService StockService
+@inject IActiveQrService ActiveQrService
 @inject NavigationManager Navigation
 @inject IUserContext UserContext
 @inject IAlertService AlertService
@@ -49,6 +53,53 @@ else
 
     <div class="bs-container" style="padding: 2rem 0;">
         <div>
+            @if (stockLevels.Any())
+            {
+                <div class="bs-mb-6">
+                    <h2 class="bs-font-bold" style="margin: 0 0 1rem 0; font-size: 1.25rem;">Current Stock</h2>
+                    <div class="bs-flex bs-flex-col bs-gap-4">
+                        @foreach (var stockLevel in stockLevels)
+                        {
+                            <div class="bs-card">
+                                <div class="bs-flex bs-items-center bs-justify-between">
+                                    <div style="min-width: 0; flex: 1;">
+                                        <p class="bs-font-bold" style="margin: 0; font-size: 1rem;">@stockLevel.ProductDisplayName</p>
+                                        <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">@stockLevel.ProductType</p>
+                                    </div>
+                                    <div class="bs-flex bs-items-center bs-gap-3">
+                                        <div style="text-align: right;">
+                                            <p class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">@stockLevel.CurrentStockGrams g</p>
+                                            <p class="bs-text-subtle" style="margin: 0; font-size: 0.75rem;">@stockLevel.ConsumptionPercentage.ToString("F0")% consumed</p>
+                                        </div>
+                                        @if (stockLevel.CurrentStockGrams > 0)
+                                        {
+                                            <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                                                    @onclick="@(() => ShowQrModal(stockLevel))"
+                                                    title="Generate QR code for this product">
+                                                <span class="material-symbols-outlined" style="font-size: 1rem;">qr_code_2</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                                <div style="margin-top: 0.75rem;">
+                                    <div style="background: var(--bs-gray-200); border-radius: 9999px; height: 0.5rem; overflow: hidden;">
+                                        <div style="background: var(--bs-primary); height: 100%; width: @(stockLevel.ConsumptionPercentage.ToString("F0"))%; transition: width 0.3s;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <ActiveQrCodesSection ActiveQrCodes="@activeQrCodes"
+                                 StockLevels="@stockLevels"
+                                 IsLoading="@isLoadingActiveQrs"
+                                 OnReassign="HandleReassignQr"
+                                 OnDeactivate="HandleDeactivateQr"
+                                 OnShowQr="HandleShowExistingQr"
+                                 SpaceName="@spaceName" />
+
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
                            CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
@@ -71,6 +122,14 @@ else
                  OnCancel="@(() => showAddPurchaseModal = false)"
                  CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
+<QrCodeModal IsVisible="@showQrModal"
+            StockLevel="@selectedQrStockLevel"
+            SpaceId="@(Guid.TryParse(SpaceId, out var sid) ? sid : Guid.Empty)"
+            SpaceName="@spaceName"
+            OnClose="HandleQrModalClose"
+            OnCreate="HandleQrCreate"
+            CreatedQrCodeId="@createdQrCodeId" />
+
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
        Title="@toastTitle"
@@ -88,8 +147,14 @@ else
     private bool isLoadingStock;
 
     private List<StockPurchaseDto> purchases = new();
+    private List<StockLevelDto> stockLevels = new();
 
     private bool showAddPurchaseModal;
+    private bool showQrModal;
+    private StockLevelDto? selectedQrStockLevel;
+    private List<ActiveQrCodeDto> activeQrCodes = new();
+    private bool isLoadingActiveQrs;
+    private Guid? createdQrCodeId;
     private bool showToast;
     private bool isToastError;
     private string toastTitle = "";
@@ -105,7 +170,7 @@ else
                 return;
             }
             await LoadSpace();
-            await LoadStock();
+            await Task.WhenAll(LoadStock(), LoadActiveQrCodes());
         }
     }
 
@@ -149,6 +214,7 @@ else
             if (stockData != null)
             {
                 purchases = stockData.RecentPurchases.ToList();
+                stockLevels = stockData.StockLevels?.ToList() ?? new();
             }
         }
         catch (Exception ex)
@@ -216,6 +282,158 @@ else
         {
             await Clipboard.Default.SetTextAsync(space.InviteCode);
             await AlertService.ShowAlertAsync("Copied", "Invite code copied to clipboard!");
+        }
+    }
+
+    private void ShowQrModal(StockLevelDto stockLevel)
+    {
+        selectedQrStockLevel = stockLevel;
+        showQrModal = true;
+    }
+
+    private async Task LoadActiveQrCodes()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid)) return;
+
+        isLoadingActiveQrs = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ActiveQrService.GetActiveQrCodesAsync(spaceGuid);
+            if (result != null)
+            {
+                activeQrCodes = result;
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load QR codes: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingActiveQrs = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleQrCreate(QrCodeModal.QrCodeCreateModel model)
+    {
+        if (selectedQrStockLevel == null || !Guid.TryParse(SpaceId, out var spaceGuid)) return;
+
+        try
+        {
+            var result = await ActiveQrService.CreateActiveQrCodeAsync(
+                spaceGuid,
+                model.Label,
+                selectedQrStockLevel.ProductName,
+                selectedQrStockLevel.ProductBrand,
+                selectedQrStockLevel.ProductType,
+                model.RecipeName,
+                model.DefaultGrams);
+
+            if (result != null)
+            {
+                createdQrCodeId = result.Id;
+                await LoadActiveQrCodes();
+                StateHasChanged();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to create QR code.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to create QR code: {ex.Message}");
+        }
+    }
+
+    private void HandleQrModalClose()
+    {
+        showQrModal = false;
+        selectedQrStockLevel = null;
+        createdQrCodeId = null;
+    }
+
+    private async Task HandleReassignQr(ActiveQrCodesSection.ReassignModel model)
+    {
+        try
+        {
+            var result = await ActiveQrService.ReassignActiveQrCodeAsync(
+                model.QrCodeId,
+                model.ProductName,
+                model.ProductBrand,
+                model.ProductType,
+                model.RecipeName,
+                model.DefaultGrams);
+
+            if (result != null)
+            {
+                ShowToast(false, "Success", "QR code reassigned successfully!");
+                await LoadActiveQrCodes();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to reassign QR code.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to reassign: {ex.Message}");
+        }
+    }
+
+    private async Task HandleDeactivateQr(Guid qrCodeId)
+    {
+        try
+        {
+            var success = await ActiveQrService.DeactivateActiveQrCodeAsync(qrCodeId);
+            if (success)
+            {
+                ShowToast(false, "Success", "QR code deactivated.");
+                await LoadActiveQrCodes();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to deactivate QR code.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to deactivate: {ex.Message}");
+        }
+    }
+
+    private void HandleShowExistingQr(Guid qrCodeId)
+    {
+        var activeQr = activeQrCodes.FirstOrDefault(q => q.Id == qrCodeId);
+        if (activeQr != null)
+        {
+            selectedQrStockLevel = stockLevels.FirstOrDefault(s =>
+                s.ProductName == activeQr.ProductName &&
+                s.ProductBrand == activeQr.ProductBrand);
+
+            if (selectedQrStockLevel == null)
+            {
+                selectedQrStockLevel = new StockLevelDto
+                {
+                    Id = Guid.Empty,
+                    ProductName = activeQr.ProductName,
+                    ProductBrand = activeQr.ProductBrand,
+                    ProductType = activeQr.ProductType,
+                    ProductDisplayName = activeQr.ProductDisplayName,
+                    TotalPurchasedGrams = 0,
+                    TotalConsumedGrams = 0,
+                    CurrentStockGrams = 0,
+                    ConsumptionPercentage = 0,
+                    IsArchived = false,
+                    UpdatedAt = DateTime.UtcNow
+                };
+            }
+
+            createdQrCodeId = qrCodeId;
+            showQrModal = true;
         }
     }
 

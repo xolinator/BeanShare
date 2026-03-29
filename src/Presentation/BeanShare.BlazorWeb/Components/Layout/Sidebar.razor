@@ -113,7 +113,7 @@
                             }
                             else
                             {
-                                @GetInitials(userName)
+                                @userName.GetInitials()
                             }
                         </div>
                         <div class="sidebar-user-info">
@@ -146,9 +146,6 @@
             userName = authState.User.Identity.Name ?? "User";
             userEmail = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
             userPictureUrl = authState.User.FindFirst("picture")?.Value;
-
-            // TODO: Load recent spaces from API
-            // recentSpaces = await LoadRecentSpaces();
         }
     }
 
@@ -196,15 +193,6 @@
     private void Logout()
     {
         Navigation.NavigateTo("/logout", forceLoad: true);
-    }
-
-    private string GetInitials(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return "U";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        return name[0].ToString().ToUpper();
     }
 
     private class SpaceInfo

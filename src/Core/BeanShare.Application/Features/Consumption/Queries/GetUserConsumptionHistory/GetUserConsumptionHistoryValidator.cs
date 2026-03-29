@@ -1,11 +1,15 @@
+using BeanShare.Domain.Common;
 using FluentValidation;
 
 namespace BeanShare.Application.Features.Consumption.Queries.GetUserConsumptionHistory;
 
 public sealed class GetUserConsumptionHistoryValidator : AbstractValidator<GetUserConsumptionHistoryQuery>
 {
-    public GetUserConsumptionHistoryValidator()
+    private readonly IClock _clock;
+
+    public GetUserConsumptionHistoryValidator(IClock clock)
     {
+        _clock = clock;
         RuleFor(x => x.PageNumber)
             .GreaterThanOrEqualTo(1)
             .WithMessage($"{nameof(GetUserConsumptionHistoryQuery.PageNumber)} must be greater than or equal to 1");
@@ -24,7 +28,7 @@ public sealed class GetUserConsumptionHistoryValidator : AbstractValidator<GetUs
         When(x => x.EndDate.HasValue, () =>
         {
             RuleFor(x => x.EndDate)
-                .LessThanOrEqualTo(DateTime.UtcNow.AddDays(1))
+                .Must(date => date <= _clock.UtcNow.AddDays(1))
                 .WithMessage($"{nameof(GetUserConsumptionHistoryQuery.EndDate)} cannot be in the future");
         });
     }

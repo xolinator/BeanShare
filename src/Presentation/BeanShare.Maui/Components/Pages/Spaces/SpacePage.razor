@@ -321,9 +321,26 @@ else
 
     private async Task HandleTabChange(string newTab)
     {
+        switch (newTab)
+        {
+            case "consumption":
+                Navigation.NavigateTo($"/spaces/{SpaceId}/consumption");
+                return;
+            case "stock":
+                Navigation.NavigateTo($"/spaces/{SpaceId}/stock");
+                return;
+            case "billing":
+                Navigation.NavigateTo($"/spaces/{SpaceId}/billing");
+                return;
+            case "settlements":
+                Navigation.NavigateTo($"/spaces/{SpaceId}/settlements");
+                return;
+            case "presets":
+                Navigation.NavigateTo($"/spaces/{SpaceId}/presets");
+                return;
+        }
+
         activeTab = newTab;
-        isLoadingStock = (newTab == "stock");
-        isLoadingConsumption = (newTab == "consumption");
         isLoadingAnalytics = (newTab == "analytics");
         StateHasChanged();
         await LoadTabData();

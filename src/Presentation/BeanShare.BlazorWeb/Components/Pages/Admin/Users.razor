@@ -87,7 +87,7 @@
                                     }
                                     else
                                     {
-                                        @GetInitials(user.Name)
+                                        @user.Name.GetInitials()
                                     }
                                 </div>
                                 <div class="user-info">
@@ -347,12 +347,4 @@
         showToast = true;
     }
 
-    private string GetInitials(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return "U";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        return name[0].ToString().ToUpper();
-    }
 }

@@ -4,7 +4,6 @@ using BeanShare.Application.Features.Consumption.Commands;
 using BeanShare.Domain.Aggregates.CoffeeStock;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
-using BeanShare.Domain.Repositories;
 using BeanShare.Domain.ValueObjects;
 using FluentAssertions;
 using NSubstitute;

@@ -10,7 +10,10 @@ public interface IConsumptionRepository
     Task AddAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default);
     Task<ConsumptionEntry?> GetByIdAsync(ConsumptionEntryId id, CancellationToken cancellationToken = default);
     Task<IEnumerable<ConsumptionEntry>> GetBySpaceIdAsync(SpaceId spaceId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ConsumptionEntry>> GetRecentBySpaceIdAsync(SpaceId spaceId, int limit, UserId? forUserId = null, CancellationToken ct = default);
     Task<IReadOnlyList<ConsumptionEntry>> GetBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<ConsumptionEntry> Items, int TotalCount)> GetPagedBySpecAsync(ISpec<ConsumptionEntry> specification, int skip, int take, CancellationToken cancellationToken = default);
+    Task<(decimal TotalGrams, int TotalEntries, int UniqueDays)> GetSummaryBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default);
     Task UpdateAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default);
     Task RemoveAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default);
 }

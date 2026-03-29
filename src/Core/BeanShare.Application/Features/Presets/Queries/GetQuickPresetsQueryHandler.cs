@@ -2,7 +2,6 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Domain.Aggregates.Space;
 using BeanShare.Domain.Entities;
-using BeanShare.Domain.Repositories;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
 

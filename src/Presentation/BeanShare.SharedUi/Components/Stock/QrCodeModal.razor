@@ -1,0 +1,232 @@
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.SharedUi.Services
+@using Microsoft.JSInterop
+@inject IQrCodeService QrCodeService
+@inject IJSRuntime JSRuntime
+
+@if (IsVisible && StockLevel != null)
+{
+    <div class="bs-modal-backdrop" @onclick="HandleBackdropClick">
+        <div class="bs-modal" role="dialog" aria-label="Generate QR code" aria-modal="true" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true" style="max-width: 24rem;">
+            <div class="bs-modal-header bs-flex bs-items-center bs-justify-between">
+                <h3 class="bs-modal-title" style="margin: 0;">Generate QR Code</h3>
+                <button class="bs-btn-icon" aria-label="Close" @onclick="Close" style="background: transparent; border: none; cursor: pointer;">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div style="text-align: center; padding: 1rem 0;">
+                <p class="bs-font-bold" style="margin: 0; font-size: 1.125rem;">@StockLevel.ProductDisplayName</p>
+                <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">@StockLevel.ProductType</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(qrDataUri))
+            {
+                <!-- QR code has been generated (Active QR was created) -->
+                <div style="text-align: center; padding: 0 0 1rem 0;">
+                    <img src="@qrDataUri" alt="QR Code for @StockLevel.ProductDisplayName"
+                         style="max-width: 220px; margin: 0 auto 1rem; display: block;" />
+                    <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0;">
+                        <span class="material-symbols-outlined" style="font-size: 0.875rem; vertical-align: middle;">label</span>
+                        @label
+                    </p>
+                </div>
+
+                <div class="bs-modal-footer" style="display: flex; justify-content: center; gap: 0.5rem;">
+                    <button class="bs-btn bs-btn-secondary" @onclick="DownloadPng">
+                        <span class="material-symbols-outlined" style="font-size: 1.125rem; vertical-align: middle; margin-right: 0.25rem;">download</span>
+                        Download
+                    </button>
+                    <button class="bs-btn bs-btn-secondary" @onclick="PrintQr">
+                        <span class="material-symbols-outlined" style="font-size: 1.125rem; vertical-align: middle; margin-right: 0.25rem;">print</span>
+                        Print
+                    </button>
+                </div>
+            }
+            else
+            {
+                <!-- Configuration form -->
+                <div style="padding: 0 0 1rem 0;">
+                    <div class="bs-form-group" style="margin-bottom: 1rem;">
+                        <label class="bs-label">Label</label>
+                        <input type="text" class="bs-input" placeholder="e.g., Kitchen, Meeting room, Break area"
+                               @bind="label" @bind:event="oninput" maxlength="50" />
+                    </div>
+
+                    <div class="bs-form-group" style="margin-bottom: 1rem;">
+                        <label class="bs-label">Default Recipe</label>
+                        <select class="bs-input" @bind="selectedRecipe" @bind:after="OnRecipeChanged">
+                            <option value="UserChooses">User chooses when scanning</option>
+                            <option value="Espresso">Espresso (8g)</option>
+                            <option value="Double Espresso">Double Espresso (16g)</option>
+                            <option value="Filter Coffee">Filter Coffee (15g)</option>
+                            <option value="Pour Over">Pour Over (18g)</option>
+                            <option value="French Press">French Press (12g)</option>
+                            <option value="Cold Brew">Cold Brew (20g)</option>
+                            <option value="Custom">Custom...</option>
+                        </select>
+                    </div>
+
+                    @if (selectedRecipe == "UserChooses")
+                    {
+                        <div style="background: var(--bs-gray-50); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.8rem; color: var(--bs-text-subtle);">
+                            <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">info</span>
+                            Users will select their recipe and grams when they scan this QR code.
+                        </div>
+                    }
+                    else if (selectedRecipe == "Custom")
+                    {
+                        <div class="bs-form-group" style="margin-bottom: 1rem;">
+                            <label class="bs-label">Default Grams</label>
+                            <input type="number" class="bs-input" min="1" max="500"
+                                   @bind="customGrams" @bind:event="oninput" />
+                        </div>
+                    }
+                </div>
+
+                <div class="bs-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button class="bs-btn bs-btn-secondary" @onclick="Close">Cancel</button>
+                    <button class="bs-btn bs-btn-primary" @onclick="HandleGenerate" disabled="@isGenerating">
+                        @if (isGenerating)
+                        {
+                            <span>Creating...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined" style="font-size: 1.125rem; vertical-align: middle; margin-right: 0.25rem;">qr_code_2</span>
+                            <span>Generate QR</span>
+                        }
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public StockLevelDto? StockLevel { get; set; }
+
+    [Parameter]
+    public Guid SpaceId { get; set; }
+
+    [Parameter]
+    public string SpaceName { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<QrCodeCreateModel> OnCreate { get; set; }
+
+    [Parameter]
+    public Guid? CreatedQrCodeId { get; set; }
+
+    private string label = "";
+    private string selectedRecipe = "Espresso";
+    private int customGrams = 10;
+    private string qrDataUri = "";
+    private bool isGenerating;
+    private bool _initialized;
+
+    public sealed class QrCodeCreateModel
+    {
+        public string Label { get; set; } = "";
+        public string RecipeName { get; set; } = "";
+        public int DefaultGrams { get; set; }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible && StockLevel != null && !_initialized && string.IsNullOrEmpty(qrDataUri))
+        {
+            _initialized = true;
+            label = "";
+            selectedRecipe = StockLevel.ProductType switch
+            {
+                "Espresso" => "Espresso",
+                "Filter" => "Filter Coffee",
+                "Instant" => "Espresso",
+                "Decaf" => "Espresso",
+                "Specialty" => "Pour Over",
+                _ => "Espresso"
+            };
+        }
+
+        if (IsVisible && CreatedQrCodeId.HasValue && CreatedQrCodeId.Value != Guid.Empty && string.IsNullOrEmpty(qrDataUri))
+        {
+            qrDataUri = QrCodeService.GenerateQrCodeBase64ForActiveQr(CreatedQrCodeId.Value);
+            isGenerating = false;
+        }
+
+        if (!IsVisible)
+        {
+            qrDataUri = "";
+            label = "";
+            selectedRecipe = "Espresso";
+            customGrams = 10;
+            isGenerating = false;
+            _initialized = false;
+        }
+    }
+
+    private void OnRecipeChanged()
+    {
+    }
+
+    private int GetGramsForRecipe(string recipe) => recipe switch
+    {
+        "UserChooses" => 0,
+        "Custom" => customGrams > 0 ? customGrams : 10,
+        _ => CoffeeRecipeDefaults.GetGrams(recipe)
+    };
+
+    private async Task HandleGenerate()
+    {
+        if (StockLevel == null) return;
+        if (string.IsNullOrWhiteSpace(label)) label = "QR - " + StockLevel.ProductDisplayName;
+
+        isGenerating = true;
+        StateHasChanged();
+
+        var grams = GetGramsForRecipe(selectedRecipe);
+        var recipeName = selectedRecipe == "UserChooses" ? "" : (selectedRecipe == "Custom" ? "Custom" : selectedRecipe);
+
+        await OnCreate.InvokeAsync(new QrCodeCreateModel
+        {
+            Label = label.Trim(),
+            RecipeName = recipeName,
+            DefaultGrams = grams
+        });
+    }
+
+    private async Task DownloadPng()
+    {
+        if (string.IsNullOrEmpty(qrDataUri)) return;
+        var fileName = $"BeanShare-QR-{StockLevel?.ProductName?.Replace(" ", "-") ?? "code"}.png";
+        await JSRuntime.InvokeVoidAsync("beanshareQr.downloadPng", qrDataUri, fileName);
+    }
+
+    private async Task PrintQr()
+    {
+        if (string.IsNullOrEmpty(qrDataUri)) return;
+        var labelText = StockLevel?.ProductDisplayName ?? "Coffee";
+        await JSRuntime.InvokeVoidAsync("beanshareQr.printQr", qrDataUri, labelText, SpaceName);
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        qrDataUri = "";
+        label = "";
+        isGenerating = false;
+        await OnClose.InvokeAsync();
+    }
+}

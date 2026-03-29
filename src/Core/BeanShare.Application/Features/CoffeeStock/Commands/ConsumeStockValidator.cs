@@ -1,3 +1,4 @@
+using BeanShare.Domain.ValueObjects;
 using FluentValidation;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;

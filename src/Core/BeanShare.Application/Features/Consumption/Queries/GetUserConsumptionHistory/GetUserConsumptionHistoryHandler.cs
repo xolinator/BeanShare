@@ -52,11 +52,12 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
             ));
         }
 
-        var allConsumptions = new List<Domain.Entities.ConsumptionEntry>();
         var spaces = new Dictionary<SpaceId, Domain.Aggregates.Space.Space>();
 
         var isSpaceWideQuery = query.SpaceId.HasValue && !query.MemberUserId.HasValue;
         var isSpecificMemberQuery = query.SpaceId.HasValue && query.MemberUserId.HasValue;
+
+        var specs = new List<ISpec<Domain.Entities.ConsumptionEntry>>();
 
         foreach (var space in userSpaces)
         {
@@ -77,27 +78,13 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
                     ? new UserId(query.MemberUserId.Value)
                     : null;
 
-                var spaceSpec = new ConsumptionsBySpaceAndDateRangeSpecification(
-                    space.Id,
-                    targetUserId,
-                    query.StartDate,
-                    query.EndDate,
-                    billingPeriodId);
-
-                var spaceConsumptions = await _consumptionRepository.GetBySpecAsync(spaceSpec, cancellationToken);
-                allConsumptions.AddRange(spaceConsumptions);
+                specs.Add(new ConsumptionsBySpaceAndDateRangeSpecification(
+                    space.Id, targetUserId, query.StartDate, query.EndDate, billingPeriodId));
             }
             else
             {
-                var consumptionSpec = new ConsumptionsByUserAndDateRangeSpecification(
-                    currentUserId,
-                    space.Id,
-                    query.StartDate,
-                    query.EndDate,
-                    billingPeriodId);
-
-                var userConsumptions = await _consumptionRepository.GetBySpecAsync(consumptionSpec, cancellationToken);
-                allConsumptions.AddRange(userConsumptions);
+                specs.Add(new ConsumptionsByUserAndDateRangeSpecification(
+                    currentUserId, space.Id, query.StartDate, query.EndDate, billingPeriodId));
             }
         }
 
@@ -115,14 +102,34 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
             return Result<ConsumptionHistoryDto>.Failure(Error.InsufficientSpacePrivileges("view consumption history"));
         }
 
-        var totalCount = allConsumptions.Count;
-
         var skip = (query.PageNumber - 1) * query.PageSize;
-        var paginatedConsumptions = allConsumptions
-            .OrderByDescending(c => c.ConsumedAt)
-            .Skip(skip)
-            .Take(query.PageSize)
-            .ToList();
+        int totalCount;
+        List<Domain.Entities.ConsumptionEntry> paginatedConsumptions;
+
+        if (specs.Count == 1)
+        {
+            var (pagedItems, count) = await _consumptionRepository.GetPagedBySpecAsync(
+                specs[0], skip, query.PageSize, cancellationToken);
+            totalCount = count;
+            paginatedConsumptions = pagedItems.ToList();
+        }
+        else
+        {
+ 
+            var allConsumptions = new List<Domain.Entities.ConsumptionEntry>();
+            foreach (var spec in specs)
+            {
+                var spaceConsumptions = await _consumptionRepository.GetBySpecAsync(spec, cancellationToken);
+                allConsumptions.AddRange(spaceConsumptions);
+            }
+
+            totalCount = allConsumptions.Count;
+            paginatedConsumptions = allConsumptions
+                .OrderByDescending(c => c.ConsumedAt)
+                .Skip(skip)
+                .Take(query.PageSize)
+                .ToList();
+        }
 
         var userIds = paginatedConsumptions.Select(c => c.UserId).Distinct().ToList();
         var userNames = new Dictionary<UserId, string>();
@@ -191,16 +198,23 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
             ));
         }
 
-        var totalGrams = allConsumptions.Sum(c => c.Quantity.Grams);
-        var totalEntries = allConsumptions.Count;
-        var uniqueDays = allConsumptions.Select(c => c.ConsumedAt.Date).Distinct().Count();
+        var allForSummary = new List<Domain.Entities.ConsumptionEntry>();
+        foreach (var spec in specs)
+        {
+            var entries = await _consumptionRepository.GetBySpecAsync(spec, cancellationToken);
+            allForSummary.AddRange(entries);
+        }
+
+        var totalGrams = allForSummary.Sum(c => c.Quantity.Grams);
+        var totalEntries = allForSummary.Count;
+        var uniqueDays = allForSummary.Select(c => c.ConsumedAt.Date).Distinct().Count();
         var averagePerDay = uniqueDays > 0 ? totalGrams / uniqueDays : 0;
 
-        var consumptionByType = allConsumptions
+        var consumptionByType = allForSummary
             .GroupBy(c => c.Product.Type.ToString())
             .ToDictionary(g => g.Key, g => g.Count());
 
-        var consumptionGramsBySpace = allConsumptions
+        var consumptionGramsBySpace = allForSummary
             .GroupBy(c => c.SpaceId)
             .Select(g => new {
                 SpaceName = spaces.TryGetValue(g.Key, out var s) ? s.Name : "Unknown",

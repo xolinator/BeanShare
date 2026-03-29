@@ -12,9 +12,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="wwwroot\images\qr-logo.png" LogicalName="BeanShare.SharedUi.qr-logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CsvHelper" Version="33.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0-preview.7.25380.108" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.0-preview.7.25380.108" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
   </ItemGroup>
 
   <ItemGroup>

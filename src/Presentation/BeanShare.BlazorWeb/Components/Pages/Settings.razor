@@ -23,17 +23,9 @@
                 <span class="material-symbols-outlined">palette</span>
                 Appearance
             </button>
-            <button class="@GetNavClass("notifications")" @onclick='() => SetActiveTab("notifications")'>
-                <span class="material-symbols-outlined">notifications</span>
-                Notifications
-            </button>
             <button class="@GetNavClass("privacy")" @onclick='() => SetActiveTab("privacy")'>
                 <span class="material-symbols-outlined">lock</span>
                 Privacy & Security
-            </button>
-            <button class="@GetNavClass("advanced")" @onclick='() => SetActiveTab("advanced")'>
-                <span class="material-symbols-outlined">settings</span>
-                Advanced
             </button>
         </div>
 
@@ -78,59 +70,6 @@
                     </div>
                     break;
 
-                case "notifications":
-                    <div class="panel-content">
-                        <h2>Notifications</h2>
-                        <p class="panel-description">Control when and how you receive notifications</p>
-
-                        <div class="setting-group">
-                            <h3>Email Notifications</h3>
-                            <div class="toggle-list">
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>New Coffee Added</label>
-                                        <p>When someone adds coffee to your space</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="notifyNewCoffee" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Low Stock Alert</label>
-                                        <p>When coffee stock is running low</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="notifyLowStock" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Space Invitations</label>
-                                        <p>When you're invited to join a space</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="notifyInvitations" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div>
-                                        <label>Weekly Summary</label>
-                                        <p>Weekly coffee consumption report</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" @bind="notifyWeeklySummary" />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    break;
-
                 case "privacy":
                     <div class="panel-content">
                         <h2>Privacy & Security</h2>
@@ -152,77 +91,13 @@
                                         <div style="width: 24px; height: 24px; border-radius: 50%; background: #4285f4; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">G</div>
                                         <span>Google</span>
                                     </div>
-                                    <button class="btn-secondary" disabled title="OAuth integration coming soon">Connect</button>
-                                </div>
-                                <div class="account-item">
-                                    <div class="account-info">
-                                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #1877f2; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">f</div>
-                                        <span>Facebook</span>
-                                    </div>
-                                    <button class="btn-secondary" disabled title="OAuth integration coming soon">Connect</button>
+                                    <span style="color: var(--bs-text-subtle); font-size: 0.875rem;">Connected via Keycloak</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     break;
 
-                case "advanced":
-                    <div class="panel-content">
-                        <h2>Advanced Settings</h2>
-                        <p class="panel-description">Advanced configuration options</p>
-
-                        <div class="setting-group">
-                            <h3>Language & Region</h3>
-                            <div class="input-group">
-                                <label>Language</label>
-                                <select @bind="language">
-                                    <option value="en">English</option>
-                                    <option value="de">Deutsch</option>
-                                    <option value="fr">Français</option>
-                                    <option value="es">Español</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Time Zone</label>
-                                <select @bind="timeZone">
-                                    <option value="UTC">UTC</option>
-                                    <option value="EST">Eastern Time</option>
-                                    <option value="CST">Central Time</option>
-                                    <option value="PST">Pacific Time</option>
-                                    <option value="CET">Central European Time</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Date Format</label>
-                                <select @bind="dateFormat">
-                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="setting-group">
-                            <h3>Data & Storage</h3>
-                            <div class="storage-info">
-                                <div class="storage-bar">
-                                    <div class="storage-used" style="width: 35%"></div>
-                                </div>
-                                <p>350 MB of 1 GB used</p>
-                            </div>
-                            <button class="btn-secondary" disabled title="Feature coming soon">Clear Cache</button>
-                        </div>
-
-                        <div class="setting-group">
-                            <h3>Export Data</h3>
-                            <p>Download all your BeanShare data</p>
-                            <button class="btn-secondary" disabled title="Feature coming soon">
-                                <span class="material-symbols-outlined">download</span>
-                                Export as JSON
-                            </button>
-                        </div>
-                    </div>
-                    break;
             }
 
             <div class="panel-footer">

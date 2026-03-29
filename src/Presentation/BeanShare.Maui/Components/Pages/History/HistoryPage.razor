@@ -5,245 +5,121 @@
 @inject ISpacesService SpacesService
 @inject IAlertService AlertService
 
-<div class="container mt-4">
-    <h3 class="mb-4">Consumption History</h3>
+<div class="bs-container" style="padding: 1rem 0;">
+    <h2 class="bs-font-bold" style="margin: 0 0 1rem; font-size: 1.25rem;">Consumption History</h2>
 
     @if (isLoading)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading history...</p>
-        </div>
+        <BeanShare.SharedUi.Components.Common.LoadingSpinner Message="Loading history..." />
     }
     else
     {
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Filters</h5>
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Space</label>
-                        <select class="form-select" @bind="selectedSpaceId" @bind:after="OnSpaceChanged">
-                            <option value="">All Spaces</option>
-                            @foreach (var space in spaces)
+        <div class="bs-card" style="margin-bottom: 1rem;">
+            <div class="bs-flex bs-flex-col bs-gap-3">
+                <div>
+                    <label style="display: block; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--bs-text-subtle);">Space</label>
+                    <select class="bs-input" @bind="selectedSpaceId" @bind:after="OnSpaceChanged">
+                        <option value="">All Spaces</option>
+                        @foreach (var space in spaces)
+                        {
+                            <option value="@space.Id">@space.Name</option>
+                        }
+                    </select>
+                </div>
+                @if (!string.IsNullOrEmpty(selectedSpaceId) && spaceMembers != null && spaceMembers.Any())
+                {
+                    <div>
+                        <label style="display: block; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--bs-text-subtle);">Member</label>
+                        <select class="bs-input" @bind="selectedMemberUserId">
+                            <option value="">All Members</option>
+                            @foreach (var member in spaceMembers)
                             {
-                                <option value="@space.Id">@space.Name</option>
+                                <option value="@member.UserId">@member.UserName</option>
                             }
                         </select>
                     </div>
-                    @if (!string.IsNullOrEmpty(selectedSpaceId) && spaceMembers != null && spaceMembers.Any())
-                    {
-                        <div class="col-md-3">
-                            <label class="form-label">Member</label>
-                            <select class="form-select" @bind="selectedMemberUserId">
-                                <option value="">All Members</option>
-                                @foreach (var member in spaceMembers)
-                                {
-                                    <option value="@member.UserId">@member.UserName</option>
-                                }
-                            </select>
-                        </div>
-                    }
-                    <div class="col-md-2">
-                        <label class="form-label">Start Date</label>
-                        <input type="date" class="form-control" @bind="startDate" />
+                }
+                <div class="bs-flex bs-gap-2">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--bs-text-subtle);">From</label>
+                        <input type="date" class="bs-input" @bind="startDate" />
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label">End Date</label>
-                        <input type="date" class="form-control" @bind="endDate" />
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-primary w-100" @onclick="ApplyFilters">Apply</button>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--bs-text-subtle);">To</label>
+                        <input type="date" class="bs-input" @bind="endDate" />
                     </div>
                 </div>
+                <button class="bs-btn bs-btn-primary" @onclick="ApplyFilters">Apply Filters</button>
             </div>
         </div>
 
         @if (history != null && history.Items.Any())
         {
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Summary</h5>
-                    <div class="row">
-                        <div class="col-6 col-md-3">
-                            <div class="text-center p-2">
-                                <h3 class="text-primary mb-0">@history.Summary.TotalEntries</h3>
-                                <small class="text-muted">Total Entries</small>
+            <div class="bs-flex bs-gap-2" style="margin-bottom: 1rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 5rem; text-align: center; padding: 0.5rem; background: var(--bs-gray-100); border-radius: 0.5rem;">
+                    <div class="bs-font-bold" style="color: var(--bs-primary);">@history.Summary.TotalEntries</div>
+                    <div style="font-size: 0.6875rem; color: var(--bs-text-subtle);">Entries</div>
+                </div>
+                <div style="flex: 1; min-width: 5rem; text-align: center; padding: 0.5rem; background: var(--bs-gray-100); border-radius: 0.5rem;">
+                    <div class="bs-font-bold" style="color: var(--bs-success);">@history.Summary.TotalGrams g</div>
+                    <div style="font-size: 0.6875rem; color: var(--bs-text-subtle);">Coffee</div>
+                </div>
+                <div style="flex: 1; min-width: 5rem; text-align: center; padding: 0.5rem; background: var(--bs-gray-100); border-radius: 0.5rem;">
+                    <div class="bs-font-bold">@history.Summary.UniqueDays</div>
+                    <div style="font-size: 0.6875rem; color: var(--bs-text-subtle);">Days</div>
+                </div>
+                <div style="flex: 1; min-width: 5rem; text-align: center; padding: 0.5rem; background: var(--bs-gray-100); border-radius: 0.5rem;">
+                    <div class="bs-font-bold">@history.Summary.AverageGramsPerDay.ToString("F1") g</div>
+                    <div style="font-size: 0.6875rem; color: var(--bs-text-subtle);">Avg/Day</div>
+                </div>
+            </div>
+
+            <div class="bs-flex bs-flex-col bs-gap-2">
+                @foreach (var item in history.Items)
+                {
+                    <div class="bs-card" style="border-left: 3px solid var(--bs-primary); padding: 0.75rem;">
+                        <div class="bs-flex bs-justify-between bs-items-start">
+                            <div style="min-width: 0; flex: 1;">
+                                <div class="bs-font-bold" style="font-size: 0.9rem;">@item.ProductName</div>
+                                <div style="font-size: 0.75rem; color: var(--bs-text-subtle);">@item.ProductBrand &middot; @item.ProductType</div>
+                            </div>
+                            <div style="text-align: right; white-space: nowrap; margin-left: 0.5rem;">
+                                <div class="bs-font-bold">@item.QuantityGrams g</div>
+                                @if (item.EstimatedCost.HasValue)
+                                {
+                                    <div style="font-size: 0.8125rem; color: var(--bs-success);">@item.EstimatedCost.Value.ToString("N2") @item.Currency</div>
+                                }
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="text-center p-2">
-                                <h3 class="text-success mb-0">@history.Summary.TotalGrams g</h3>
-                                <small class="text-muted">Total Coffee</small>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="text-center p-2">
-                                <h3 class="text-info mb-0">@history.Summary.UniqueDays</h3>
-                                <small class="text-muted">Days Active</small>
-                            </div>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <div class="text-center p-2">
-                                <h3 class="text-warning mb-0">@history.Summary.AverageGramsPerDay.ToString("F1") g</h3>
-                                <small class="text-muted">Avg/Day</small>
-                            </div>
+                        <div style="font-size: 0.75rem; color: var(--bs-text-subtle); margin-top: 0.25rem;">
+                            @item.ConsumedAt.ToString("MMM dd, HH:mm") &middot; @item.UserName &middot; @item.SpaceName
                         </div>
                     </div>
-                </div>
+                }
             </div>
 
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Consumption Timeline</h5>
-                    @foreach (var item in history.Items)
-                    {
-                        <div class="card mb-2" style="border-left: 3px solid var(--bs-primary, #4169E1);">
-                            <div class="card-body p-2">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div style="min-width: 0; flex: 1;">
-                                        <div class="fw-bold" style="font-size: 0.9rem;">@item.ProductName</div>
-                                        <small class="text-muted">@item.ProductBrand &middot; @item.ProductType</small>
-                                    </div>
-                                    <div class="text-end ms-2" style="white-space: nowrap;">
-                                        <div class="fw-bold">@item.QuantityGrams g</div>
-                                        @if (item.EstimatedCost.HasValue)
-                                        {
-                                            <small class="text-success">@item.EstimatedCost.Value.ToString("C2")</small>
-                                        }
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-1">
-                                    <small class="text-muted">
-                                        @item.ConsumedAt.ToString("MMM dd, HH:mm") &middot; @item.UserName &middot; @item.SpaceName
-                                    </small>
-                                    @if (item.CanEdit)
-                                    {
-                                        <div style="white-space: nowrap;">
-                                            <button class="btn btn-sm btn-link p-0 text-primary" @onclick="() => StartEdit(item)">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-link p-0 text-danger ms-2" @onclick="() => ConfirmDelete(item)">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    @{
-                        var totalPages = (int)Math.Ceiling((double)history.TotalCount / history.PageSize);
-                    }
-                    @if (totalPages > 1)
-                    {
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div>
-                                <small class="text-muted">
-                                    Showing @((history.PageNumber - 1) * history.PageSize + 1) to @Math.Min(history.PageNumber * history.PageSize, history.TotalCount) of @history.TotalCount entries
-                                </small>
-                            </div>
-                            <nav>
-                                <ul class="pagination pagination-sm mb-0">
-                                    <li class="page-item @(history.PageNumber == 1 ? "disabled" : "")">
-                                        <button class="page-link" @onclick="() => ChangePage(history.PageNumber - 1)">Previous</button>
-                                    </li>
-                                    @for (int i = 1; i <= totalPages; i++)
-                                    {
-                                        var pageNum = i;
-                                        <li class="page-item @(history.PageNumber == pageNum ? "active" : "")">
-                                            <button class="page-link" @onclick="() => ChangePage(pageNum)">@pageNum</button>
-                                        </li>
-                                    }
-                                    <li class="page-item @(history.PageNumber == totalPages ? "disabled" : "")">
-                                        <button class="page-link" @onclick="() => ChangePage(history.PageNumber + 1)">Next</button>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </div>
-                    }
+            @if (history.TotalCount > history.PageSize)
+            {
+                <div class="bs-flex bs-justify-between bs-items-center" style="margin-top: 1rem;">
+                    <span style="font-size: 0.75rem; color: var(--bs-text-subtle);">
+                        @((history.PageNumber - 1) * history.PageSize + 1)–@Math.Min(history.PageNumber * history.PageSize, history.TotalCount) of @history.TotalCount
+                    </span>
+                    <div class="bs-flex bs-gap-2">
+                        <button class="bs-btn bs-btn-sm bs-btn-secondary" disabled="@(history.PageNumber == 1)" @onclick="() => ChangePage(history.PageNumber - 1)">Prev</button>
+                        <button class="bs-btn bs-btn-sm bs-btn-secondary" disabled="@(history.PageNumber * history.PageSize >= history.TotalCount)" @onclick="() => ChangePage(history.PageNumber + 1)">Next</button>
+                    </div>
                 </div>
-            </div>
+            }
         }
         else
         {
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                No consumption history found. Start logging your coffee consumption!
+            <div class="bs-card" style="text-align: center; padding: 2rem;">
+                <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-text-subtle); display: block; margin-bottom: 0.75rem;">history</span>
+                <p style="margin: 0; color: var(--bs-text-subtle);">No consumption history found. Start logging your coffee!</p>
             </div>
         }
     }
 </div>
-
-@if (showEditModal && editItem != null)
-{
-    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" @onclick="CancelEdit">
-        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Consumption</h5>
-                    <button type="button" class="btn-close" @onclick="CancelEdit"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Product Name</label>
-                        <input type="text" class="form-control" @bind="editProductName" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Brand</label>
-                        <input type="text" class="form-control" @bind="editProductBrand" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Type</label>
-                        <select class="form-select" @bind="editProductType">
-                            <option value="Espresso">Espresso</option>
-                            <option value="Filter">Filter</option>
-                            <option value="Instant">Instant</option>
-                            <option value="Decaf">Decaf</option>
-                            <option value="Specialty">Specialty</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Quantity (grams)</label>
-                        <input type="number" class="form-control" @bind="editQuantity" min="1" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Consumed At</label>
-                        <input type="datetime-local" class="form-control" @bind="editConsumedAt" />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
-                    <button class="btn btn-primary" @onclick="SaveEdit">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-@if (showDeleteConfirm)
-{
-    <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" @onclick="CancelDelete">
-        <div class="modal-dialog modal-sm modal-dialog-centered" @onclick:stopPropagation="true">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Delete consumption?</h5>
-                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
-                </div>
-                <div class="modal-body">
-                    <p>This action cannot be undone.</p>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
-                    <button class="btn btn-danger" @onclick="ExecuteDelete">Delete</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
 
 @code {
     private bool isLoading = true;
@@ -255,16 +131,6 @@
     private DateTime? startDate;
     private DateTime? endDate;
     private int currentPage = 1;
-
-    private bool showEditModal;
-    private ConsumptionHistoryItemDto? editItem;
-    private string editProductName = "";
-    private string editProductBrand = "";
-    private string editProductType = "Espresso";
-    private decimal editQuantity;
-    private DateTime editConsumedAt;
-    private bool showDeleteConfirm;
-    private ConsumptionHistoryItemDto? deleteTarget;
 
     protected override async Task OnInitializedAsync()
     {
@@ -295,15 +161,9 @@
             try
             {
                 var spaceDetail = await SpacesService.GetSpaceByIdAsync(spaceGuid);
-                if (spaceDetail?.Members != null)
-                {
-                    spaceMembers = spaceDetail.Members;
-                }
+                spaceMembers = spaceDetail?.Members;
             }
-            catch (Exception ex)
-            {
-                await AlertService.ShowAlertAsync("Error", $"Failed to load members: {ex.Message}");
-            }
+            catch { }
         }
     }
 
@@ -312,27 +172,16 @@
         isLoading = true;
         try
         {
-            Guid? spaceId = null;
-            if (!string.IsNullOrEmpty(selectedSpaceId) && Guid.TryParse(selectedSpaceId, out var parsedSpaceId))
-            {
-                spaceId = parsedSpaceId;
-            }
-
-            Guid? memberUserId = null;
-            if (!string.IsNullOrEmpty(selectedMemberUserId) && Guid.TryParse(selectedMemberUserId, out var parsedMemberId))
-            {
-                memberUserId = parsedMemberId;
-            }
+            Guid? spaceId = !string.IsNullOrEmpty(selectedSpaceId) && Guid.TryParse(selectedSpaceId, out var sid) ? sid : null;
+            Guid? memberUserId = !string.IsNullOrEmpty(selectedMemberUserId) && Guid.TryParse(selectedMemberUserId, out var mid) ? mid : null;
 
             history = await ConsumptionService.GetUserHistoryAsync(
                 spaceId: spaceId,
                 startDate: startDate,
                 endDate: endDate,
-                billingPeriodId: null,
                 pageNumber: currentPage,
                 pageSize: 20,
-                memberUserId: memberUserId
-            );
+                memberUserId: memberUserId);
         }
         catch (Exception ex)
         {
@@ -354,81 +203,5 @@
     {
         currentPage = page;
         await LoadHistory();
-    }
-
-    private void StartEdit(ConsumptionHistoryItemDto item)
-    {
-        editItem = item;
-        editProductName = item.ProductName;
-        editProductBrand = item.ProductBrand;
-        editProductType = item.ProductType;
-        editQuantity = item.QuantityGrams;
-        editConsumedAt = item.ConsumedAt;
-        showEditModal = true;
-    }
-
-    private void CancelEdit()
-    {
-        showEditModal = false;
-        editItem = null;
-    }
-
-    private async Task SaveEdit()
-    {
-        if (editItem == null) return;
-
-        var success = await ConsumptionService.UpdateConsumptionAsync(
-            editItem.Id,
-            editItem.SpaceId,
-            editProductName,
-            editProductBrand,
-            editProductType,
-            editQuantity,
-            editConsumedAt);
-
-        if (success)
-        {
-            await AlertService.ShowAlertAsync("Success", "Consumption updated successfully!");
-            showEditModal = false;
-            editItem = null;
-            await LoadHistory();
-        }
-        else
-        {
-            await AlertService.ShowAlertAsync("Error", "Failed to update consumption.");
-        }
-    }
-
-    private void ConfirmDelete(ConsumptionHistoryItemDto item)
-    {
-        deleteTarget = item;
-        showDeleteConfirm = true;
-    }
-
-    private void CancelDelete()
-    {
-        showDeleteConfirm = false;
-        deleteTarget = null;
-    }
-
-    private async Task ExecuteDelete()
-    {
-        if (deleteTarget == null) return;
-
-        var success = await ConsumptionService.DeleteConsumptionAsync(deleteTarget.Id, deleteTarget.SpaceId);
-
-        if (success)
-        {
-            await AlertService.ShowAlertAsync("Success", "Consumption deleted successfully!");
-            showDeleteConfirm = false;
-            deleteTarget = null;
-            await LoadHistory();
-        }
-        else
-        {
-            await AlertService.ShowAlertAsync("Error", "Failed to delete consumption.");
-            showDeleteConfirm = false;
-            deleteTarget = null;
-        }
     }
 }

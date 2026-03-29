@@ -5,6 +5,9 @@
 @using BeanShare.Application.Features.CoffeeStock.Queries
 @using BeanShare.Application.Features.CoffeeStock.Commands
 @using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.Application.Features.ActiveQrCodes.Queries
+@using BeanShare.Application.Features.ActiveQrCodes.Commands
+@using BeanShare.Application.Features.ActiveQrCodes.Dtos
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @using BeanShare.Application.Abstractions
@@ -73,6 +76,14 @@ else
                                             <p class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">@stockLevel.CurrentStockGrams g</p>
                                             <p class="bs-text-subtle" style="margin: 0; font-size: 0.75rem;">@stockLevel.ConsumptionPercentage.ToString("F0")% consumed</p>
                                         </div>
+                                        @if (stockLevel.CurrentStockGrams > 0)
+                                        {
+                                            <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                                                    @onclick="@(() => ShowQrModal(stockLevel))"
+                                                    title="Generate QR code for this product">
+                                                <span class="material-symbols-outlined" style="font-size: 1rem;">qr_code_2</span>
+                                            </button>
+                                        }
                                         @if (isAdmin && stockLevel.CurrentStockGrams > 0)
                                         {
                                             <button class="bs-btn bs-btn-secondary bs-btn-sm"
@@ -101,6 +112,14 @@ else
                     </div>
                 </div>
             }
+
+            <ActiveQrCodesSection ActiveQrCodes="@activeQrCodes"
+                                 StockLevels="@stockLevels"
+                                 IsLoading="@isLoadingActiveQrs"
+                                 OnReassign="HandleReassignQr"
+                                 OnDeactivate="HandleDeactivateQr"
+                                 OnShowQr="HandleShowExistingQr"
+                                 SpaceName="@spaceName" />
 
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
@@ -169,6 +188,14 @@ else
     </div>
 }
 
+<QrCodeModal IsVisible="@showQrModal"
+            StockLevel="@selectedQrStockLevel"
+            SpaceId="@(Guid.TryParse(SpaceId, out var sid) ? sid : Guid.Empty)"
+            SpaceName="@spaceName"
+            OnClose="HandleQrModalClose"
+            OnCreate="HandleQrCreate"
+            CreatedQrCodeId="@createdQrCodeId" />
+
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
        Title="@toastTitle"
@@ -193,6 +220,11 @@ else
     private bool isSplitting;
     private StockLevelDto? selectedStockLevel;
     private string splitReason = "";
+    private bool showQrModal;
+    private StockLevelDto? selectedQrStockLevel;
+    private List<ActiveQrCodeDto> activeQrCodes = new();
+    private bool isLoadingActiveQrs;
+    private Guid? createdQrCodeId;
 
     private bool showToast;
     private bool isToastError;
@@ -208,6 +240,7 @@ else
         {
             await LoadSpace();
             await LoadStock();
+            await LoadActiveQrCodes();
         }
         finally
         {
@@ -338,6 +371,153 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to archive: {ex.Message}");
+        }
+    }
+
+    private async Task LoadActiveQrCodes()
+    {
+        isLoadingActiveQrs = true;
+        try
+        {
+            var result = await Mediator.Send(new GetActiveQrCodesQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                activeQrCodes = result.Value.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load QR codes: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingActiveQrs = false;
+        }
+    }
+
+    private void ShowQrModal(StockLevelDto stockLevel)
+    {
+        selectedQrStockLevel = stockLevel;
+        showQrModal = true;
+    }
+
+    private void HandleQrModalClose()
+    {
+        showQrModal = false;
+        selectedQrStockLevel = null;
+        createdQrCodeId = null;
+    }
+
+    private async Task HandleQrCreate(QrCodeModal.QrCodeCreateModel model)
+    {
+        if (selectedQrStockLevel == null) return;
+
+        try
+        {
+            var result = await Mediator.Send(new CreateActiveQrCodeCommand(
+                Guid.Parse(SpaceId),
+                model.Label,
+                selectedQrStockLevel.ProductName,
+                selectedQrStockLevel.ProductBrand,
+                selectedQrStockLevel.ProductType,
+                model.RecipeName,
+                model.DefaultGrams));
+
+            if (result.IsSuccess)
+            {
+                createdQrCodeId = result.Value.Id;
+                await LoadActiveQrCodes();
+                StateHasChanged();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to create QR code: {ex.Message}");
+        }
+    }
+
+    private async Task HandleReassignQr(ActiveQrCodesSection.ReassignModel model)
+    {
+        try
+        {
+            var result = await Mediator.Send(new ReassignActiveQrCodeCommand(
+                model.QrCodeId,
+                model.ProductName,
+                model.ProductBrand,
+                model.ProductType,
+                model.RecipeName,
+                model.DefaultGrams));
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "QR code reassigned successfully!");
+                await LoadActiveQrCodes();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to reassign QR code: {ex.Message}");
+        }
+    }
+
+    private async Task HandleDeactivateQr(Guid qrCodeId)
+    {
+        try
+        {
+            var result = await Mediator.Send(new DeactivateActiveQrCodeCommand(qrCodeId));
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "QR code deactivated.");
+                await LoadActiveQrCodes();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to deactivate QR code: {ex.Message}");
+        }
+    }
+
+    private void HandleShowExistingQr(Guid qrCodeId)
+    {
+        var activeQr = activeQrCodes.FirstOrDefault(q => q.Id == qrCodeId);
+        if (activeQr != null)
+        {
+            selectedQrStockLevel = stockLevels.FirstOrDefault(s =>
+                s.ProductName == activeQr.ProductName &&
+                s.ProductBrand == activeQr.ProductBrand);
+            if (selectedQrStockLevel == null)
+            {
+                selectedQrStockLevel = new StockLevelDto
+                {
+                    Id = Guid.Empty,
+                    ProductName = activeQr.ProductName,
+                    ProductBrand = activeQr.ProductBrand,
+                    ProductType = activeQr.ProductType,
+                    ProductDisplayName = activeQr.ProductDisplayName,
+                    TotalPurchasedGrams = 0,
+                    TotalConsumedGrams = 0,
+                    CurrentStockGrams = 0,
+                    ConsumptionPercentage = 0,
+                    IsArchived = false,
+                    UpdatedAt = DateTime.UtcNow
+                };
+            }
+
+            createdQrCodeId = qrCodeId;
+            showQrModal = true;
         }
     }
 

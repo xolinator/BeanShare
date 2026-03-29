@@ -8,21 +8,37 @@ namespace BeanShare.Maui.Services;
 public class ConsumptionService : IConsumptionService
 {
     private readonly HttpClient _httpClient;
+    private readonly ApiResponseCache _cache;
 
-    public ConsumptionService(HttpClient httpClient)
+    public ConsumptionService(HttpClient httpClient, ApiResponseCache cache)
     {
         _httpClient = httpClient;
+        _cache = cache;
     }
 
-    public async Task<GetRecentConsumptionsResult?> GetRecentConsumptionsAsync(Guid spaceId)
+    public async Task<GetRecentConsumptionsResult?> GetRecentConsumptionsAsync(Guid spaceId, Guid? forUserId = null)
     {
+        var cacheKey = $"consumption:{spaceId}:{forUserId}";
+        var fresh = _cache.Get<GetRecentConsumptionsResult>(cacheKey);
+        if (fresh != null)
+            return fresh;
+
+        var stale = _cache.GetStale<GetRecentConsumptionsResult>(cacheKey);
+
         try
         {
-            return await _httpClient.GetFromJsonAsync<GetRecentConsumptionsResult>($"/api/spaces/{spaceId}/consumption");
+            var url = $"/api/spaces/{spaceId}/consumption";
+            if (forUserId.HasValue)
+                url += $"?forUserId={forUserId.Value}";
+
+            var result = await _httpClient.GetFromJsonAsync<GetRecentConsumptionsResult>(url);
+            if (result != null)
+                _cache.Set(cacheKey, result, TimeSpan.FromSeconds(15));
+            return result;
         }
         catch
         {
-            return null;
+            return stale;
         }
     }
 
@@ -48,6 +64,8 @@ public class ConsumptionService : IConsumptionService
             };
 
             var response = await _httpClient.PostAsJsonAsync("/api/consumptions", request);
+            if (response.IsSuccessStatusCode)
+                _cache.Invalidate("consumption:");
             return response.IsSuccessStatusCode;
         }
         catch
@@ -104,6 +122,8 @@ public class ConsumptionService : IConsumptionService
             };
 
             var response = await _httpClient.PutAsJsonAsync($"/api/consumptions/{id}", request);
+            if (response.IsSuccessStatusCode)
+                _cache.Invalidate("consumption:");
             return response.IsSuccessStatusCode;
         }
         catch
@@ -117,6 +137,8 @@ public class ConsumptionService : IConsumptionService
         try
         {
             var response = await _httpClient.DeleteAsync($"/api/consumptions/{id}?spaceId={spaceId}");
+            if (response.IsSuccessStatusCode)
+                _cache.Invalidate("consumption:");
             return response.IsSuccessStatusCode;
         }
         catch

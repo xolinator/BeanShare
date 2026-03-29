@@ -1,6 +1,7 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.Billing.Dtos;
+using BeanShare.Domain.Common;
 using BeanShare.Domain.Enums;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
@@ -13,17 +14,20 @@ public sealed class GetSpaceBillingPeriodsHandler : IRequestHandler<GetSpaceBill
     private readonly ISpaceRepository _spaceRepository;
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly IUserContext _userContext;
+    private readonly IClock _clock;
 
     public GetSpaceBillingPeriodsHandler(
         IBillingPeriodRepository billingPeriodRepository,
         ISpaceRepository spaceRepository,
         IConsumptionRepository consumptionRepository,
-        IUserContext userContext)
+        IUserContext userContext,
+        IClock clock)
     {
         _billingPeriodRepository = billingPeriodRepository;
         _spaceRepository = spaceRepository;
         _consumptionRepository = consumptionRepository;
         _userContext = userContext;
+        _clock = clock;
     }
 
     public async Task<Result<List<BillingPeriodSummaryDto>>> Handle(
@@ -60,7 +64,7 @@ public sealed class GetSpaceBillingPeriodsHandler : IRequestHandler<GetSpaceBill
                 .ToList();
 
             var daysRemaining = period.State == BillingState.Open
-                ? Math.Max(0, (int)(period.EndDate - DateTime.UtcNow).TotalDays)
+                ? Math.Max(0, (int)(period.EndDate - _clock.UtcNow).TotalDays)
                 : 0;
 
             summaries.Add(new BillingPeriodSummaryDto(

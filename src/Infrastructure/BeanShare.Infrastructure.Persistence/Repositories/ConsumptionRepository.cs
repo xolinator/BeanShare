@@ -37,6 +37,23 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ConsumptionEntry>> GetRecentBySpaceIdAsync(SpaceId spaceId, int limit, UserId? forUserId = null, CancellationToken ct = default)
+    {
+        var query = _context.Consumptions
+            .AsNoTracking()
+            .Where(c => c.SpaceId == spaceId);
+
+        if (forUserId != null)
+        {
+            query = query.Where(c => c.UserId == forUserId);
+        }
+
+        return await query
+            .OrderByDescending(c => c.ConsumedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<ConsumptionEntry>> GetBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(specification);
@@ -46,6 +63,46 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
             .Where(specification.Criteria)
             .OrderByDescending(c => c.ConsumedAt)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<ConsumptionEntry> Items, int TotalCount)> GetPagedBySpecAsync(ISpec<ConsumptionEntry> specification, int skip, int take, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+
+        var baseQuery = _context.Consumptions
+            .AsNoTracking()
+            .Where(specification.Criteria);
+
+        var totalCount = await baseQuery.CountAsync(cancellationToken);
+
+        var items = await baseQuery
+            .OrderByDescending(c => c.ConsumedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<(decimal TotalGrams, int TotalEntries, int UniqueDays)> GetSummaryBySpecAsync(ISpec<ConsumptionEntry> specification, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+
+        var baseQuery = _context.Consumptions
+            .AsNoTracking()
+            .Where(specification.Criteria);
+
+        var totalEntries = await baseQuery.CountAsync(cancellationToken);
+
+        if (totalEntries == 0)
+        {
+            return (0, 0, 0);
+        }
+
+        var totalGrams = await baseQuery.SumAsync(c => c.Quantity.Grams, cancellationToken);
+        var uniqueDays = await baseQuery.Select(c => c.ConsumedAt.Date).Distinct().CountAsync(cancellationToken);
+
+        return (totalGrams, totalEntries, uniqueDays);
     }
 
     public Task UpdateAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default)

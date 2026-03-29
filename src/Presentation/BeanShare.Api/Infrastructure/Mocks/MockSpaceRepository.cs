@@ -69,4 +69,15 @@ public sealed class MockSpaceRepository : ISpaceRepository
         var count = _spaces.Count(s => s.Members.Any(m => m.UserId == userId));
         return Task.FromResult(count);
     }
+
+    public Task<Dictionary<UserId, int>> GetSpaceCountsForUsersAsync(
+        IEnumerable<UserId> userIds, CancellationToken ct = default)
+    {
+        var idSet = userIds.ToHashSet();
+        var result = _spaces
+            .SelectMany(s => s.Members.Where(m => idSet.Contains(m.UserId)).Select(m => m.UserId))
+            .GroupBy(id => id)
+            .ToDictionary(g => g.Key, g => g.Count());
+        return Task.FromResult(result);
+    }
 }

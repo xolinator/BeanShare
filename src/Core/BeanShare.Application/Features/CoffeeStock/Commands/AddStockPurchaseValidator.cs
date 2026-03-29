@@ -1,11 +1,16 @@
+using BeanShare.Domain.Common;
+using BeanShare.Domain.ValueObjects;
 using FluentValidation;
 
 namespace BeanShare.Application.Features.CoffeeStock.Commands;
 
 public sealed class AddStockPurchaseValidator : AbstractValidator<AddStockPurchaseCommand>
 {
-    public AddStockPurchaseValidator()
+    private readonly IClock _clock;
+
+    public AddStockPurchaseValidator(IClock clock)
     {
+        _clock = clock;
         RuleFor(x => x.SpaceId)
             .NotEmpty()
             .WithMessage($"{nameof(AddStockPurchaseCommand.SpaceId)} is required");
@@ -55,7 +60,7 @@ public sealed class AddStockPurchaseValidator : AbstractValidator<AddStockPurcha
         RuleFor(x => x.PurchasedAt)
             .NotEmpty()
             .WithMessage($"{nameof(AddStockPurchaseCommand.PurchasedAt)} is required")
-            .LessThanOrEqualTo(DateTime.UtcNow.AddDays(1))
+            .Must(date => date <= _clock.UtcNow.AddDays(1))
             .WithMessage($"{nameof(AddStockPurchaseCommand.PurchasedAt)} cannot be in the future");
     }
 
@@ -63,13 +68,4 @@ public sealed class AddStockPurchaseValidator : AbstractValidator<AddStockPurcha
     {
         return Enum.TryParse<CoffeeType>(coffeeType, out _);
     }
-}
-
-public enum CoffeeType
-{
-    Espresso = 1,
-    Filter = 2,
-    Instant = 3,
-    Decaf = 4,
-    Specialty = 5
 }

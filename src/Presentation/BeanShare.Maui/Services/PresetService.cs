@@ -7,21 +7,32 @@ namespace BeanShare.Maui.Services;
 public class PresetService : IPresetService
 {
     private readonly HttpClient _httpClient;
+    private readonly ApiResponseCache _cache;
 
-    public PresetService(HttpClient httpClient)
+    public PresetService(HttpClient httpClient, ApiResponseCache cache)
     {
         _httpClient = httpClient;
+        _cache = cache;
     }
 
     public async Task<List<PresetOption>> GetQuickPresetsAsync(Guid spaceId)
     {
+        var cacheKey = $"presets:{spaceId}";
+        var cached = _cache.Get<List<PresetOption>>(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
         try
         {
             var response = await _httpClient.GetFromJsonAsync<GetQuickPresetsResponse>($"/api/spaces/{spaceId}/quick-presets");
             if (response?.Presets == null)
+            {
                 return new List<PresetOption>();
+            }
 
-            return response.Presets.Select(p => new PresetOption
+            var presets = response.Presets.Select(p => new PresetOption
             {
                 GlobalPresetId = p.GlobalPresetId,
                 SpacePresetId = p.SpacePresetId,
@@ -34,6 +45,9 @@ public class PresetService : IPresetService
                 IsGlobal = p.IsGlobal,
                 DisplayOrder = p.DisplayOrder
             }).ToList();
+
+            _cache.Set(cacheKey, presets, TimeSpan.FromSeconds(45));
+            return presets;
         }
         catch
         {

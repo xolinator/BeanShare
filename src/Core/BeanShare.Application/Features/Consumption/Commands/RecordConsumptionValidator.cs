@@ -1,15 +1,17 @@
-using FluentValidation;
+using BeanShare.Domain.Common;
 using BeanShare.Domain.ValueObjects;
+using FluentValidation;
 
 namespace BeanShare.Application.Features.Consumption.Commands;
 
-// NOTE: Error messages use property names - might want to make these more user-friendly later
 public sealed class RecordConsumptionValidator : AbstractValidator<RecordConsumptionCommand>
 {
     private const int ClockSkewToleranceMinutes = 5;
+    private readonly IClock _clock;
 
-    public RecordConsumptionValidator()
+    public RecordConsumptionValidator(IClock clock)
     {
+        _clock = clock;
         RuleFor(x => x.SpaceId)
             .NotEmpty()
             .WithMessage($"{nameof(RecordConsumptionCommand.SpaceId)} is required");
@@ -37,7 +39,7 @@ public sealed class RecordConsumptionValidator : AbstractValidator<RecordConsump
             .WithMessage($"{nameof(RecordConsumptionCommand.QuantityGrams)} must be positive");
 
         RuleFor(x => x.ConsumedAt)
-            .LessThanOrEqualTo(DateTime.UtcNow.AddMinutes(ClockSkewToleranceMinutes))
+            .Must(date => date <= _clock.UtcNow.AddMinutes(ClockSkewToleranceMinutes))
             .When(x => x.ConsumedAt.HasValue)
             .WithMessage($"{nameof(RecordConsumptionCommand.ConsumedAt)} cannot be in the future");
     }

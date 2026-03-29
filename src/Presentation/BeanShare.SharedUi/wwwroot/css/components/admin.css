@@ -82,14 +82,6 @@
     padding-left: 2.5rem;
 }
 
-.loading-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 3rem;
-    color: var(--bs-text-subtle);
-}
 
 .loading-spinner {
     width: 24px;
@@ -226,7 +218,7 @@
 
 .status-inactive {
     background: rgba(239, 68, 68, 0.1);
-    color: #dc2626;
+    color: var(--bs-error);
 }
 
 .actions-cell {
@@ -377,14 +369,14 @@
 
 .action-btn-full.demote:hover {
     background: rgba(245, 158, 11, 0.1);
-    border-color: #f59e0b;
-    color: #d97706;
+    border-color: var(--bs-warning);
+    color: var(--bs-warning-dark);
 }
 
 .action-btn-full.deactivate:hover {
     background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
-    color: #dc2626;
+    border-color: var(--bs-error);
+    color: var(--bs-error);
 }
 
 .action-btn-full.reactivate:hover {
@@ -444,7 +436,7 @@
 }
 
 .detail-value.deactivated {
-    color: #dc2626;
+    color: var(--bs-error);
 }
 
 .memberships-list {
@@ -569,7 +561,7 @@
 
 .preset-status.inactive {
     background: rgba(239, 68, 68, 0.1);
-    color: #dc2626;
+    color: var(--bs-error);
 }
 
 .preset-name {
@@ -743,7 +735,7 @@
 }
 
 .logout-card {
-    background: white;
+    background: var(--bs-surface);
     border-radius: 16px;
     padding: 3rem 2rem;
     text-align: center;
@@ -757,7 +749,7 @@
 
 .logout-spinner span {
     font-size: 48px;
-    color: #4169E1;
+    color: var(--bs-primary);
 }
 
 .spinning {
@@ -830,7 +822,7 @@
     }
 
     .users-table {
-        min-width: 900px;
+        min-width: 600px;
     }
 }
 

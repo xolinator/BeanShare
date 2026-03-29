@@ -4,6 +4,7 @@
 @using BeanShare.Application.Features.Consumption.Dtos
 @using BeanShare.Application.Features.Presets.Queries
 @using BeanShare.Application.Abstractions
+@using BeanShare.SharedUi.Services
 @using BeanShare.Maui.Services
 @inject ISpacesService SpacesService
 @inject IConsumptionService ConsumptionService
@@ -12,6 +13,9 @@
 @inject IUserContext UserContext
 @inject NavigationManager Navigation
 @inject IAlertService AlertService
+@inject IActiveQrService ActiveQrService
+@inject QrCodeResolveCache QrResolveCache
+@inject SpaceDashboardService DashboardService
 
 <PageTitle>Consumption - @spaceName - BeanShare</PageTitle>
 
@@ -60,15 +64,19 @@ else
                             RemainingStockGrams="@remainingStock"
                             CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
-            @if (isCurrentUserAdmin)
-            {
-                <div class="bs-flex bs-justify-end">
+            <div class="bs-flex bs-justify-between bs-items-center" style="flex-wrap: wrap; gap: 0.5rem;">
+                <button class="bs-btn" style="background: var(--bs-primary-light, #e0e7ff); color: var(--bs-primary); font-size: 0.875rem; gap: 0.375rem;" @onclick="() => showQrScanner = true">
+                    <span class="material-symbols-outlined" style="font-size: 1.125rem;">qr_code_scanner</span>
+                    Scan QR
+                </button>
+                @if (isCurrentUserAdmin)
+                {
                     <button class="bs-btn" style="background: var(--bs-gray-100); color: var(--bs-text); font-size: 0.875rem; gap: 0.375rem;" @onclick="() => showCsvImport = true">
                         <span class="material-symbols-outlined" style="font-size: 1.125rem;">upload_file</span>
                         Import CSV
                     </button>
-                </div>
-            }
+                }
+            </div>
 
             <ConsumptionForm OnSubmit="HandleLogConsumption"
                            StockProducts="@stockProducts"
@@ -77,10 +85,28 @@ else
                            SpaceMembers="@space?.Members?.ToList()"
                            CurrentUserId="@UserContext.CurrentUserId.Value" />
 
-            <RecentConsumptionList RecentLogs="@recentConsumptions"
-                                  IsLoading="@isLoadingConsumption"
-                                  OnEdit="HandleEditConsumption"
-                                  OnDelete="HandleDeleteConsumption" />
+            <div>
+                <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 0.75rem;">
+                    <h2 class="bs-font-bold" style="margin: 0; font-size: 1.125rem;">Recent Logs</h2>
+                    <div class="bs-filter-toggle">
+                        <button type="button"
+                                class="bs-btn bs-btn-sm bs-filter-toggle-btn @(showOnlyMine ? "" : "bs-btn-primary")"
+                                @onclick="() => SetRecentFilter(false)">
+                            Everyone
+                        </button>
+                        <button type="button"
+                                class="bs-btn bs-btn-sm bs-filter-toggle-btn @(showOnlyMine ? "bs-btn-primary" : "")"
+                                @onclick="() => SetRecentFilter(true)">
+                            Just Me
+                        </button>
+                    </div>
+                </div>
+                <RecentConsumptionList RecentLogs="@recentConsumptions"
+                                      IsLoading="@isLoadingConsumption"
+                                      OnEdit="HandleEditConsumption"
+                                      OnDelete="HandleDeleteConsumption"
+                                      HideHeader="true" />
+            </div>
         </div>
     </div>
 }
@@ -90,6 +116,41 @@ else
                OnImport="HandleCsvImport"
                ImportResult="@csvImportResult"
                OnClose="HandleCsvImportClose" />
+
+<QrScannerModal IsVisible="@showQrScanner"
+               OnScanned="HandleQrScanned"
+               OnClose="@(() => showQrScanner = false)" />
+
+<QrConsumptionConfirmModal IsVisible="@showQrConfirm"
+                          Payload="@scannedPayload"
+                          SpaceMembers="@space?.Members?.ToList()"
+                          CurrentUserId="@UserContext.CurrentUserId.Value"
+                          QuickPresets="@quickPresets"
+                          OnConfirm="HandleQrConsumptionConfirm"
+                          OnCancel="@(() => { showQrConfirm = false; scannedPayload = null; })" />
+
+@if (qrResolutionFailed)
+{
+    <div class="bs-toast-banner bs-toast-banner--error">
+        <span class="material-symbols-outlined" style="color: #dc2626;">wifi_off</span>
+        <div style="flex: 1;">
+            <p style="margin: 0; font-size: 0.875rem; font-weight: 600; color: #991b1b;">Could not resolve QR code</p>
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #b91c1c;">Check your connection and try again.</p>
+        </div>
+        <button class="bs-btn bs-btn-sm bs-btn-primary" @onclick="RetryQrResolution" style="white-space: nowrap;">Retry</button>
+        <button class="bs-btn-icon" @onclick="DismissQrRetry" style="background: transparent; border: none; cursor: pointer; padding: 0;">
+            <span class="material-symbols-outlined" style="font-size: 1.125rem; color: #991b1b;">close</span>
+        </button>
+    </div>
+}
+
+@if (usingCachedQrData && showQrConfirm)
+{
+    <div class="bs-toast-banner bs-toast-banner--warning">
+        <span class="material-symbols-outlined" style="color: #a16207; font-size: 1.125rem;">cached</span>
+        <p style="margin: 0; font-size: 0.75rem; color: #854d0e;">Using cached data — product info may be outdated.</p>
+    </div>
+}
 
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
@@ -121,6 +182,13 @@ else
     private bool showCsvImport;
     private ImportConsumptionCsvResult? csvImportResult;
     private bool isCurrentUserAdmin;
+    private bool showOnlyMine;
+    private bool showQrScanner;
+    private bool showQrConfirm;
+    private QrConsumptionPayload? scannedPayload;
+    private bool qrResolutionFailed;
+    private QrConsumptionPayload? pendingQrPayload;
+    private bool usingCachedQrData;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -131,11 +199,69 @@ else
                 Navigation.NavigateTo("/spaces");
                 return;
             }
-            await LoadSpace();
-            await LoadStock();
-            await LoadConsumption();
-            await LoadQuickPresets();
+
+            var dashboard = await DashboardService.GetDashboardAsync(spaceGuid);
+            if (dashboard?.Space != null)
+            {
+                ApplyDashboardData(dashboard);
+            }
+            else
+            {
+                await LoadSpace();
+                await Task.WhenAll(LoadStock(), LoadConsumption(), LoadQuickPresets());
+            }
+
             await LoadPresetIfProvided();
+        }
+    }
+
+    private void ApplyDashboardData(SpaceDashboardData dashboard)
+    {
+        if (dashboard.Space != null)
+        {
+            space = new SpaceDto
+            {
+                Id = dashboard.Space.Id,
+                Name = dashboard.Space.Name,
+                CurrencyCode = dashboard.Space.CurrencyCode,
+                InviteCode = dashboard.Space.InviteCode,
+                IsActive = dashboard.Space.IsActive,
+                MemberCount = dashboard.Space.MemberCount,
+                CreatedAt = dashboard.Space.CreatedAt,
+                CreatedBy = Guid.Empty,
+                Members = dashboard.Space.Members
+            };
+
+            var currentUserId = UserContext.CurrentUserId.Value;
+            isCurrentUserAdmin = space.Members?.Any(m => m.UserId == currentUserId && m.Role == "Admin") ?? false;
+        }
+
+        if (dashboard.Stock?.StockLevels != null)
+            stockProducts = dashboard.Stock.StockLevels;
+
+        if (dashboard.Consumption != null)
+        {
+            recentConsumptions = dashboard.Consumption.Entries.ToList();
+            myCupsToday = dashboard.Consumption.MyCupsToday;
+            myTotalCost = dashboard.Consumption.MyTotalCost;
+            remainingStock = dashboard.Consumption.RemainingStockGrams;
+        }
+
+        if (dashboard.Presets?.Presets != null)
+        {
+            quickPresets = dashboard.Presets.Presets.Select(p => new PresetOption
+            {
+                GlobalPresetId = p.GlobalPresetId,
+                SpacePresetId = p.SpacePresetId,
+                Name = p.Name,
+                CoffeeType = p.CoffeeType,
+                Preparation = p.Preparation,
+                Grams = (int)p.DefaultGrams,
+                Description = p.Description,
+                IsFavorite = p.IsFavorite,
+                IsGlobal = p.IsGlobal,
+                DisplayOrder = p.DisplayOrder
+            }).ToList();
         }
     }
 
@@ -215,7 +341,8 @@ else
 
         try
         {
-            var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(spaceGuid);
+            Guid? filterUserId = showOnlyMine ? UserContext.CurrentUserId.Value : null;
+            var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(spaceGuid, filterUserId);
             if (consumptionData != null)
             {
                 recentConsumptions = consumptionData.Entries.ToList();
@@ -233,6 +360,13 @@ else
             isLoadingConsumption = false;
             StateHasChanged();
         }
+    }
+
+    private async Task SetRecentFilter(bool onlyMine)
+    {
+        if (showOnlyMine == onlyMine) return;
+        showOnlyMine = onlyMine;
+        await LoadConsumption();
     }
 
     private async Task LoadStock()
@@ -330,6 +464,8 @@ else
                     ? "Consumption logged successfully!"
                     : $"Logged consumption for {successCount} members!";
                 ShowToast(false, "Success", msg);
+                if (Guid.TryParse(SpaceId, out var sid))
+                    DashboardService.InvalidateDashboard(sid);
                 await LoadConsumption();
                 await LoadStock();
                 StateHasChanged();
@@ -442,6 +578,94 @@ else
         {
             ShowToast(true, "Error", $"Failed to delete consumption: {ex.Message}");
         }
+    }
+
+    private async Task HandleQrScanned(QrConsumptionPayload payload)
+    {
+        showQrScanner = false;
+        usingCachedQrData = false;
+
+        if (payload.Version >= 2 && payload.QrCodeId.HasValue)
+        {
+            var resolved = await TryResolveQrCode(payload);
+            if (!resolved) return;
+        }
+
+        scannedPayload = payload;
+        showQrConfirm = true;
+        StateHasChanged();
+    }
+
+    private async Task<bool> TryResolveQrCode(QrConsumptionPayload payload)
+    {
+        try
+        {
+            var resolved = await ActiveQrService.ResolveActiveQrCodeAsync(payload.QrCodeId!.Value);
+            if (resolved != null)
+            {
+                payload.SpaceId = resolved.SpaceId;
+                payload.ProductName = resolved.ProductName;
+                payload.ProductBrand = resolved.ProductBrand;
+                payload.ProductType = resolved.ProductType;
+                payload.DefaultGrams = resolved.DefaultGrams;
+                payload.QrLabel = resolved.Label;
+                QrResolveCache.Store(payload.QrCodeId.Value, payload);
+                return true;
+            }
+
+            ShowToast(true, "Error", "Could not resolve QR code. It may have been deactivated.");
+            StateHasChanged();
+            return false;
+        }
+        catch
+        {
+            var cached = QrResolveCache.TryGet(payload.QrCodeId!.Value);
+            if (cached != null)
+            {
+                payload.SpaceId = cached.SpaceId;
+                payload.ProductName = cached.ProductName;
+                payload.ProductBrand = cached.ProductBrand;
+                payload.ProductType = cached.ProductType;
+                payload.DefaultGrams = cached.DefaultGrams;
+                payload.QrLabel = cached.QrLabel;
+                usingCachedQrData = true;
+                return true;
+            }
+
+            pendingQrPayload = payload;
+            qrResolutionFailed = true;
+            StateHasChanged();
+            return false;
+        }
+    }
+
+    private async Task RetryQrResolution()
+    {
+        if (pendingQrPayload == null) return;
+        qrResolutionFailed = false;
+        var payload = pendingQrPayload;
+        pendingQrPayload = null;
+
+        if (await TryResolveQrCode(payload))
+        {
+            scannedPayload = payload;
+            showQrConfirm = true;
+            StateHasChanged();
+        }
+    }
+
+    private void DismissQrRetry()
+    {
+        qrResolutionFailed = false;
+        pendingQrPayload = null;
+    }
+
+    private async Task HandleQrConsumptionConfirm(ConsumptionFormModel model)
+    {
+        showQrConfirm = false;
+        scannedPayload = null;
+        usingCachedQrData = false;
+        await HandleLogConsumption(model);
     }
 
     private void ShowToast(bool isError, string title, string message)

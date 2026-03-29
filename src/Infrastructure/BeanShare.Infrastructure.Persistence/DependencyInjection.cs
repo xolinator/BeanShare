@@ -1,6 +1,5 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Services;
-using BeanShare.Domain.Repositories;
 using BeanShare.Infrastructure.Persistence.Repositories;
 using BeanShare.Infrastructure.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
@@ -42,9 +41,11 @@ public static class DependencyInjection
         services.AddScoped<IUserPresetFavoriteRepository, UserPresetFavoriteRepository>();
         services.AddScoped<IExchangeRateRepository, ExchangeRateRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IActiveQrCodeRepository, ActiveQrCodeRepository>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
         services.AddScoped<ICostCalculationService, CostCalculationService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
         return services;
     }

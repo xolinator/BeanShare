@@ -7,7 +7,7 @@
 @if (IsVisible)
 {
     <div class="bs-modal-backdrop" @onclick="Cancel">
-        <div class="bs-modal" style="max-width: 56rem; width: 95vw;" @onclick:stopPropagation="true">
+        <div class="bs-modal" role="dialog" aria-label="Import consumption data" aria-modal="true" style="max-width: 56rem; width: 95vw;" @onclick:stopPropagation="true">
             <div class="bs-modal-header">
                 <h3 class="bs-modal-title">
                     <span class="material-symbols-outlined" style="vertical-align: middle;">upload_file</span>

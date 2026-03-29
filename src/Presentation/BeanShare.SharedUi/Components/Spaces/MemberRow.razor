@@ -2,7 +2,7 @@
     <div class="bs-flex bs-items-center bs-justify-between">
         <div class="bs-flex bs-items-center bs-gap-3" style="min-width: 0; flex: 1;">
             <div style="width: 3rem; height: 3rem; min-width: 3rem; background: @(IsAdmin ? "var(--bs-primary-light)" : "var(--bs-gray-200)"); border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; color: @(IsAdmin ? "var(--bs-primary)" : "var(--bs-gray-700)");">
-                @GetInitials()
+                @Name.GetInitials()
             </div>
             <div style="min-width: 0;">
                 <p class="bs-font-bold" style="margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@Name</p>
@@ -16,6 +16,7 @@
                 <div style="position: relative;">
                     <button class="bs-btn-sm"
                             style="width: 2rem; height: 2rem; padding: 0; background: transparent; border: none; cursor: pointer;"
+                            aria-label="Member actions"
                             @onclick="ToggleMenu">
                         <span class="material-symbols-outlined bs-text-subtle">more_vert</span>
                     </button>
@@ -99,15 +100,6 @@
 
     private bool isMenuOpen;
     private bool IsAdmin => Role == "Admin";
-
-    private string GetInitials()
-    {
-        if (string.IsNullOrEmpty(Name)) return "??";
-        var parts = Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        return Name.Length >= 2 ? Name.Substring(0, 2).ToUpper() : Name.ToUpper();
-    }
 
     private void ToggleMenu()
     {

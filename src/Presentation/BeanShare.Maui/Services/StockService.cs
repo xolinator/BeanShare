@@ -6,21 +6,33 @@ namespace BeanShare.Maui.Services;
 public class StockService : IStockService
 {
     private readonly HttpClient _httpClient;
+    private readonly ApiResponseCache _cache;
 
-    public StockService(HttpClient httpClient)
+    public StockService(HttpClient httpClient, ApiResponseCache cache)
     {
         _httpClient = httpClient;
+        _cache = cache;
     }
 
     public async Task<CoffeeStockDto?> GetSpaceStockAsync(Guid spaceId)
     {
+        var cacheKey = $"stock:{spaceId}";
+        var cached = _cache.Get<CoffeeStockDto>(cacheKey);
+        if (cached != null)
+            return cached;
+
+        var stale = _cache.GetStale<CoffeeStockDto>(cacheKey);
+
         try
         {
-            return await _httpClient.GetFromJsonAsync<CoffeeStockDto>($"/api/spaces/{spaceId}/stock");
+            var result = await _httpClient.GetFromJsonAsync<CoffeeStockDto>($"/api/spaces/{spaceId}/stock");
+            if (result != null)
+                _cache.Set(cacheKey, result);
+            return result;
         }
         catch
         {
-            return null;
+            return stale;
         }
     }
 
@@ -41,6 +53,10 @@ public class StockService : IStockService
             };
 
             var response = await _httpClient.PostAsJsonAsync($"/api/spaces/{spaceId}/stock/purchases", request);
+            if (response.IsSuccessStatusCode)
+            {
+                _cache.Invalidate("stock:");
+            }
             return response.IsSuccessStatusCode;
         }
         catch

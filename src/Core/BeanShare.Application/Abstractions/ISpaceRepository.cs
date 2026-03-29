@@ -13,4 +13,5 @@ public interface ISpaceRepository
     Task AddAsync(Space space, CancellationToken cancellationToken = default);
     Task UpdateAsync(Space space, CancellationToken cancellationToken = default);
     Task<int> GetUserSpaceCountAsync(UserId userId, CancellationToken cancellationToken = default);
+    Task<Dictionary<UserId, int>> GetSpaceCountsForUsersAsync(IEnumerable<UserId> userIds, CancellationToken cancellationToken = default);
 }

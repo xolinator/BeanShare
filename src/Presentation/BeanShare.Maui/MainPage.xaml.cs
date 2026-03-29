@@ -14,6 +14,7 @@ public partial class MainPage : ContentPage
 			System.Diagnostics.Debug.WriteLine("[BeanShare] InitializeComponent completed");
 
 			blazorWebView.BlazorWebViewInitializing += OnBlazorWebViewInitializing;
+			blazorWebView.BlazorWebViewInitialized += OnBlazorWebViewInitialized;
 			blazorWebView.UrlLoading += OnUrlLoading;
 
 			System.Diagnostics.Debug.WriteLine("[BeanShare] MainPage constructor completed");
@@ -48,5 +49,14 @@ public partial class MainPage : ContentPage
 	{
 		System.Diagnostics.Debug.WriteLine("[BeanShare] BlazorWebView Initialized!");
 		System.Diagnostics.Debug.WriteLine($"[BeanShare] WebView: {e.WebView}");
+
+#if ANDROID
+		if (e.WebView is Android.Webkit.WebView androidWebView)
+		{
+			androidWebView.Settings.MediaPlaybackRequiresUserGesture = false;
+			androidWebView.SetWebChromeClient(new Platforms.Android.CameraWebChromeClient(androidWebView.WebChromeClient));
+			System.Diagnostics.Debug.WriteLine("[BeanShare] Camera WebChromeClient configured");
+		}
+#endif
 	}
 }

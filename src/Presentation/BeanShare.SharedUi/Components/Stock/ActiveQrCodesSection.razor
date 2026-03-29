@@ -1,0 +1,280 @@
+@using BeanShare.Application.Features.ActiveQrCodes.Dtos
+@using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.SharedUi.Services
+@using Microsoft.JSInterop
+@inject IQrCodeService QrCodeService
+@inject IJSRuntime JSRuntime
+
+@if (IsLoading)
+{
+    <div class="bs-mb-6">
+        <h2 class="bs-font-bold" style="margin: 0 0 1rem 0; font-size: 1.25rem;">Active QR Codes</h2>
+        <div class="bs-flex bs-flex-col bs-gap-4">
+            @for (int i = 0; i < 3; i++)
+            {
+                <div class="bs-card">
+                    <div class="bs-flex bs-items-center bs-justify-between">
+                        <div style="flex: 1;">
+                            <div class="bs-skeleton" style="height: 1rem; width: 40%; margin-bottom: 0.5rem;"></div>
+                            <div class="bs-skeleton" style="height: 0.875rem; width: 60%; margin-bottom: 0.25rem;"></div>
+                            <div class="bs-skeleton" style="height: 0.75rem; width: 30%;"></div>
+                        </div>
+                        <div class="bs-flex bs-gap-2">
+                            <div class="bs-skeleton" style="width: 2rem; height: 2rem; border-radius: 0.375rem;"></div>
+                            <div class="bs-skeleton" style="width: 2rem; height: 2rem; border-radius: 0.375rem;"></div>
+                            <div class="bs-skeleton" style="width: 2rem; height: 2rem; border-radius: 0.375rem;"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+else if (ActiveQrCodes == null || !ActiveQrCodes.Any())
+{
+    <div class="bs-mb-6">
+        <h2 class="bs-font-bold" style="margin: 0 0 1rem 0; font-size: 1.25rem;">Active QR Codes</h2>
+        <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem;">No active QR codes. Generate one from a stock item above.</p>
+    </div>
+}
+else
+{
+    <div class="bs-mb-6">
+        <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
+            <h2 class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">Active QR Codes</h2>
+            @if (ActiveQrCodes.Count > 1)
+            {
+                <button class="bs-btn bs-btn-secondary bs-btn-sm" style="gap: 0.375rem;" @onclick="HandlePrintAll">
+                    <span class="material-symbols-outlined" style="font-size: 1rem;">print</span>
+                    Print All
+                </button>
+            }
+        </div>
+        <div class="bs-flex bs-flex-col bs-gap-4">
+            @foreach (var qr in ActiveQrCodes)
+            {
+                <div class="bs-card">
+                    @if (reassigningQrId == qr.Id)
+                    {
+                        <!-- Inline reassign form -->
+                        <div>
+                            <p class="bs-font-bold" style="margin: 0 0 0.75rem 0; font-size: 1rem;">
+                                Reassign: @qr.Label
+                            </p>
+
+                            <div class="bs-form-group" style="margin-bottom: 0.75rem;">
+                                <label class="bs-label">Product</label>
+                                <select class="bs-input" @bind="reassignSelectedProductIndex" @bind:after="OnReassignProductChanged">
+                                    <option value="-1">Select a product...</option>
+                                    @if (StockLevels != null)
+                                    {
+                                        @for (int i = 0; i < StockLevels.Count; i++)
+                                        {
+                                            var stock = StockLevels[i];
+                                            <option value="@i">@stock.ProductDisplayName (@stock.ProductType)</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="bs-form-group" style="margin-bottom: 0.75rem;">
+                                <label class="bs-label">Default Recipe</label>
+                                <select class="bs-input" @bind="reassignRecipe" @bind:after="OnReassignRecipeChanged">
+                                    <option value="UserChooses">User chooses when scanning</option>
+                                    <option value="Espresso">Espresso (8g)</option>
+                                    <option value="Double Espresso">Double Espresso (16g)</option>
+                                    <option value="Filter Coffee">Filter Coffee (15g)</option>
+                                    <option value="Pour Over">Pour Over (18g)</option>
+                                    <option value="French Press">French Press (12g)</option>
+                                    <option value="Cold Brew">Cold Brew (20g)</option>
+                                    <option value="Custom">Custom...</option>
+                                </select>
+                            </div>
+
+                            @if (reassignRecipe == "Custom")
+                            {
+                                <div class="bs-form-group" style="margin-bottom: 0.75rem;">
+                                    <label class="bs-label">Default Grams</label>
+                                    <input type="number" class="bs-input" min="1" max="500"
+                                           @bind="reassignCustomGrams" @bind:event="oninput" />
+                                </div>
+                            }
+
+                            <div class="bs-flex bs-gap-2" style="justify-content: flex-end;">
+                                <button class="bs-btn bs-btn-secondary bs-btn-sm" @onclick="CancelReassign">
+                                    Cancel
+                                </button>
+                                <button class="bs-btn bs-btn-primary bs-btn-sm"
+                                        disabled="@(reassignSelectedProductIndex < 0)"
+                                        @onclick="@(() => HandleReassign(qr.Id))">
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Normal display -->
+                        <div class="bs-flex bs-items-center bs-justify-between">
+                            <div style="min-width: 0; flex: 1;">
+                                <p class="bs-font-bold" style="margin: 0; font-size: 1rem;">@qr.Label</p>
+                                <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">@qr.ProductDisplayName</p>
+                                <p class="bs-text-subtle" style="margin: 0.125rem 0 0 0; font-size: 0.75rem;">
+                                    @if (qr.DefaultGrams == 0)
+                                    {
+                                        <span style="color: var(--bs-primary);">User chooses recipe</span>
+                                    }
+                                    else
+                                    {
+                                        @qr.RecipeName @:&middot; @(qr.DefaultGrams)g
+                                    }
+                                </p>
+                            </div>
+                            <div class="bs-flex bs-items-center bs-gap-2">
+                                <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                                        @onclick="@(() => OnShowQr.InvokeAsync(qr.Id))"
+                                        title="Show QR code"
+                                        aria-label="Show QR code">
+                                    <span class="material-symbols-outlined" style="font-size: 1rem;">qr_code_2</span>
+                                </button>
+                                <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                                        @onclick="@(() => StartReassign(qr))"
+                                        title="Reassign to different product"
+                                        aria-label="Reassign to different product">
+                                    <span class="material-symbols-outlined" style="font-size: 1rem;">swap_horiz</span>
+                                </button>
+                                @if (qr.IsActive)
+                                {
+                                    <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                                            @onclick="@(() => OnDeactivate.InvokeAsync(qr.Id))"
+                                            title="Deactivate QR code"
+                                            aria-label="Deactivate QR code"
+                                            style="color: var(--bs-error);">
+                                        <span class="material-symbols-outlined" style="font-size: 1rem;">delete</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<ActiveQrCodeDto> ActiveQrCodes { get; set; } = new();
+
+    [Parameter]
+    public List<StockLevelDto> StockLevels { get; set; } = new();
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public EventCallback<ReassignModel> OnReassign { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDeactivate { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnShowQr { get; set; }
+
+    [Parameter]
+    public string SpaceName { get; set; } = "";
+
+    private Guid? reassigningQrId;
+    private int reassignSelectedProductIndex = -1;
+    private string reassignRecipe = "Espresso";
+    private int reassignCustomGrams = 10;
+
+    public sealed class ReassignModel
+    {
+        public Guid QrCodeId { get; set; }
+        public string ProductName { get; set; } = "";
+        public string ProductBrand { get; set; } = "";
+        public string ProductType { get; set; } = "";
+        public string RecipeName { get; set; } = "";
+        public int DefaultGrams { get; set; }
+    }
+
+    private void StartReassign(ActiveQrCodeDto qr)
+    {
+        reassigningQrId = qr.Id;
+        reassignSelectedProductIndex = -1;
+        reassignRecipe = qr.DefaultGrams == 0 ? "UserChooses" : qr.RecipeName;
+        reassignCustomGrams = qr.DefaultGrams;
+
+        if (StockLevels != null)
+        {
+            for (int i = 0; i < StockLevels.Count; i++)
+            {
+                if (StockLevels[i].ProductName == qr.ProductName
+                    && StockLevels[i].ProductBrand == qr.ProductBrand
+                    && StockLevels[i].ProductType == qr.ProductType)
+                {
+                    reassignSelectedProductIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    private void CancelReassign()
+    {
+        reassigningQrId = null;
+        reassignSelectedProductIndex = -1;
+        reassignRecipe = "Espresso";
+        reassignCustomGrams = 10;
+    }
+
+    private void OnReassignProductChanged()
+    {
+    }
+
+    private void OnReassignRecipeChanged()
+    {
+    }
+
+    private int GetGramsForRecipe(string recipe) => recipe switch
+    {
+        "UserChooses" => 0,
+        "Custom" => reassignCustomGrams > 0 ? reassignCustomGrams : 10,
+        _ => CoffeeRecipeDefaults.GetGrams(recipe)
+    };
+
+    private async Task HandleReassign(Guid qrCodeId)
+    {
+        if (reassignSelectedProductIndex < 0 || StockLevels == null || reassignSelectedProductIndex >= StockLevels.Count)
+            return;
+
+        var selectedProduct = StockLevels[reassignSelectedProductIndex];
+        var recipeName = reassignRecipe == "UserChooses" ? "" : (reassignRecipe == "Custom" ? "Custom" : reassignRecipe);
+        var grams = GetGramsForRecipe(reassignRecipe);
+
+        await OnReassign.InvokeAsync(new ReassignModel
+        {
+            QrCodeId = qrCodeId,
+            ProductName = selectedProduct.ProductName,
+            ProductBrand = selectedProduct.ProductBrand,
+            ProductType = selectedProduct.ProductType,
+            RecipeName = recipeName,
+            DefaultGrams = grams
+        });
+
+        CancelReassign();
+    }
+
+    private async Task HandlePrintAll()
+    {
+        var qrCodes = ActiveQrCodes.Select(qr => new
+        {
+            base64 = QrCodeService.GenerateQrCodeBase64ForActiveQr(qr.Id),
+            label = qr.Label,
+            product = qr.ProductDisplayName
+        }).ToArray();
+
+        await JSRuntime.InvokeVoidAsync("beanshareQr.printAllQr", qrCodes, SpaceName);
+    }
+}

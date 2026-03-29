@@ -332,10 +332,6 @@
         padding-top: env(safe-area-inset-top);
     }
 
-    .header-content {
-        margin-top: env(safe-area-inset-top);
-    }
-
     .menu-dropdown {
         top: calc(56px + env(safe-area-inset-top));
     }

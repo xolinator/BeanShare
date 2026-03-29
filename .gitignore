@@ -69,6 +69,7 @@ coverage/
 *.apk
 *.aab
 *.ipa
+build-maui/
 
 # Claude Code temp files
 tmpclaude-*
@@ -127,6 +128,11 @@ scripts/dev-setup.sh
 scripts/deploy.sh
 scripts/setup-kc.js
 scripts/setup-keycloak.sh
+
+# Fly.io deployment scripts (platform-specific)
+deploy/deploy.sh
+deploy/setup-keycloak-fly.sh
+deploy/fly-*.toml
 
 # Ad-hoc test scripts (not the .NET integration tests)
 tests/*.js

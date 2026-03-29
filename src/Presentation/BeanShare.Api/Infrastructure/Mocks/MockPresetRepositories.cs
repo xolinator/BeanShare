@@ -4,7 +4,6 @@ using BeanShare.Application.Features.Settlement.Dtos;
 using BeanShare.Application.Services;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
-using BeanShare.Domain.Repositories;
 using BeanShare.Domain.ValueObjects;
 using BeanShare.Domain.Enums;
 using BeanShare.Infrastructure.Services.Documents;

@@ -1,5 +1,5 @@
 using BeanShare.Domain.Entities;
-using BeanShare.Domain.Repositories;
+using BeanShare.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeanShare.Infrastructure.Persistence.Repositories;

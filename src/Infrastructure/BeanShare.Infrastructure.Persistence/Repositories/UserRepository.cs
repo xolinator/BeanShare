@@ -6,14 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BeanShare.Infrastructure.Persistence.Repositories;
 
-public sealed class UserRepository : IUserRepository
+public sealed class UserRepository(BeanShareDbContext context) : IUserRepository
 {
-    private readonly BeanShareDbContext _context;
-
-    public UserRepository(BeanShareDbContext context)
-    {
-        _context = context;
-    }
+    private readonly BeanShareDbContext _context = context;
 
     public async Task<User?> GetByIdAsync(UserId id, CancellationToken ct = default)
     {

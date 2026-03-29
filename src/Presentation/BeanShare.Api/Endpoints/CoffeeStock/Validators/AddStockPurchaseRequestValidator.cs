@@ -1,4 +1,5 @@
 using BeanShare.Contracts.CoffeeStock;
+using BeanShare.Domain.ValueObjects;
 using FastEndpoints;
 using FluentValidation;
 
@@ -80,13 +81,4 @@ public sealed class AddStockPurchaseRequestValidator : Validator<AddStockPurchas
         var validCurrencies = new[] { "USD", "EUR", "GBP", "CAD", "AUD", "CHF", "JPY" };
         return validCurrencies.Contains(currency?.ToUpperInvariant());
     }
-}
-
-public enum CoffeeType
-{
-    Espresso = 1,
-    Filter = 2,
-    Instant = 3,
-    Decaf = 4,
-    Specialty = 5
 }

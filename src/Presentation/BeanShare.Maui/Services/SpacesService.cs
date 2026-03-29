@@ -8,55 +8,67 @@ public class SpacesService : ISpacesService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<SpacesService> _logger;
+    private readonly ApiResponseCache _cache;
 
-    public SpacesService(HttpClient httpClient, ILogger<SpacesService> logger)
+    public SpacesService(HttpClient httpClient, ILogger<SpacesService> logger, ApiResponseCache cache)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<List<SpaceSummaryDto>> GetUserSpacesAsync()
     {
+        var cached = _cache.Get<List<SpaceSummaryDto>>("spaces:list");
+        if (cached != null)
+            return cached;
+
+        var stale = _cache.GetStale<List<SpaceSummaryDto>>("spaces:list");
+
         try
         {
             var httpResponse = await _httpClient.GetAsync("/api/spaces");
-            var rawJson = await httpResponse.Content.ReadAsStringAsync();
-            System.Diagnostics.Debug.WriteLine($"[SpacesService] GET /api/spaces status: {(int)httpResponse.StatusCode}");
-            System.Diagnostics.Debug.WriteLine($"[SpacesService] Response body: {rawJson[..Math.Min(rawJson.Length, 500)]}");
-
             httpResponse.EnsureSuccessStatusCode();
+            var rawJson = await httpResponse.Content.ReadAsStringAsync();
             var response = System.Text.Json.JsonSerializer.Deserialize<SpacesResponse>(rawJson);
-            System.Diagnostics.Debug.WriteLine($"[SpacesService] Deserialized {response?.Spaces?.Count ?? 0} spaces");
-            return response?.Spaces?.ToList() ?? new List<SpaceSummaryDto>();
+            var spaces = response?.Spaces?.ToList() ?? new List<SpaceSummaryDto>();
+            _cache.Set("spaces:list", spaces, TimeSpan.FromSeconds(60));
+            return spaces;
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Failed to fetch user spaces - network error");
-            return new List<SpaceSummaryDto>();
+            return stale ?? new List<SpaceSummaryDto>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching user spaces");
-            System.Diagnostics.Debug.WriteLine($"[SpacesService] ERROR: {ex.GetType().Name}: {ex.Message}");
-            return new List<SpaceSummaryDto>();
+            return stale ?? new List<SpaceSummaryDto>();
         }
     }
 
     public async Task<SpaceDto?> GetSpaceByIdAsync(Guid spaceId)
     {
+        var cacheKey = $"spaces:{spaceId}";
+        var cached = _cache.Get<SpaceDto>(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
         try
         {
             var response = await _httpClient.GetFromJsonAsync<SpaceByIdResponse>($"/api/spaces/{spaceId}");
             if (response == null) return null;
 
-            return new SpaceDto
+            var spaceDto = new SpaceDto
             {
                 Id = response.Id,
                 Name = response.Name,
-                CurrencyCode = "CZK", // Default - API doesn't return this
+                CurrencyCode = "CZK",
                 InviteCode = response.InviteCode,
-                IsActive = true, // Default - API doesn't return this
-                CreatedBy = Guid.Empty, // Default - API doesn't return this
+                IsActive = true,
+                CreatedBy = Guid.Empty,
                 CreatedAt = response.CreatedAt,
                 MemberCount = response.MemberCount,
                 Members = response.Members.Select(m => new MembershipDto
@@ -68,6 +80,9 @@ public class SpacesService : ISpacesService
                     UserName = m.UserName
                 }).ToList()
             };
+
+            _cache.Set(cacheKey, spaceDto, TimeSpan.FromSeconds(60));
+            return spaceDto;
         }
         catch (HttpRequestException ex)
         {

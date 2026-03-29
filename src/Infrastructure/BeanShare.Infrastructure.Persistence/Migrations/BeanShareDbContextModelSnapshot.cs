@@ -238,6 +238,44 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                     b.ToTable("Spaces", (string)null);
                 });
 
+            modelBuilder.Entity("BeanShare.Domain.Entities.ActiveQrCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<int>("DefaultGrams")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RecipeName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("SpaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpaceId")
+                        .HasDatabaseName("IX_ActiveQrCodes_SpaceId");
+
+                    b.HasIndex("SpaceId", "IsActive")
+                        .HasDatabaseName("IX_ActiveQrCodes_SpaceId_IsActive");
+
+                    b.ToTable("ActiveQrCodes", (string)null);
+                });
+
             modelBuilder.Entity("BeanShare.Domain.Entities.ConsumptionEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -933,6 +971,42 @@ namespace BeanShare.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("BeanShare.Domain.Entities.ActiveQrCode", b =>
+                {
+                    b.OwnsOne("BeanShare.Domain.ValueObjects.CoffeeProduct", "Product", b1 =>
+                        {
+                            b1.Property<Guid>("ActiveQrCodeId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Brand")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("ProductBrand");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("ProductName");
+
+                            b1.Property<string>("Type")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("ProductType");
+
+                            b1.HasKey("ActiveQrCodeId");
+
+                            b1.ToTable("ActiveQrCodes");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ActiveQrCodeId");
+                        });
+
+                    b.Navigation("Product")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("BeanShare.Domain.Entities.ConsumptionEntry", b =>

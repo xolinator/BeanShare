@@ -6,40 +6,26 @@ using BeanShare.Domain.ValueObjects;
 using MediatR;
 
 namespace BeanShare.Application.Features.Spaces.Commands;
-public sealed class JoinSpaceCommandHandler : IRequestHandler<JoinSpaceCommand, Result<JoinSpaceResult>>
+
+public sealed class JoinSpaceCommandHandler(
+    ISpaceRepository spaceRepository,
+    IUserContext userContext,
+    IClock clock) : IRequestHandler<JoinSpaceCommand, Result<JoinSpaceResult>>
 {
-    private readonly ISpaceRepository _spaceRepository;
-    private readonly IUserContext _userContext;
-    private readonly IClock _clock;
-
-    public JoinSpaceCommandHandler(
-        ISpaceRepository spaceRepository,
-        IUserContext userContext,
-        IClock clock)
-    {
-        _spaceRepository = spaceRepository;
-        _userContext = userContext;
-        _clock = clock;
-    }
-
     public async Task<Result<JoinSpaceResult>> Handle(JoinSpaceCommand request, CancellationToken cancellationToken)
     {
         var inviteCode = new InviteCode(request.InviteCode);
-        var specification = new SpaceByInviteCodeSpecification(inviteCode);
-        var space = await _spaceRepository.GetSingleBySpecAsync(specification, cancellationToken);
+        var space = await spaceRepository.GetSingleBySpecAsync(
+            new SpaceByInviteCodeSpecification(inviteCode), cancellationToken);
 
         if (space == null)
-        {
             return Result<JoinSpaceResult>.Failure(Error.InviteCodeNotFound(request.InviteCode));
-        }
 
-        if (space.HasMember(_userContext.CurrentUserId))
-        {
-            return Result<JoinSpaceResult>.Failure(Error.AlreadySpaceMember(space.Id.Value, _userContext.CurrentUserId));
-        }
+        if (space.HasMember(userContext.CurrentUserId))
+            return Result<JoinSpaceResult>.Failure(Error.AlreadySpaceMember(space.Id.Value, userContext.CurrentUserId));
 
-        space.Join(_userContext.CurrentUserId, _clock);
-        await _spaceRepository.UpdateAsync(space, cancellationToken);
+        space.Join(userContext.CurrentUserId, clock);
+        await spaceRepository.UpdateAsync(space, cancellationToken);
 
         return Result<JoinSpaceResult>.Success(new JoinSpaceResult(space.Id.Value, space.Name));
     }

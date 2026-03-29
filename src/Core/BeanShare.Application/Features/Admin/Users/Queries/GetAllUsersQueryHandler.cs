@@ -25,26 +25,21 @@ public sealed class GetAllUsersQueryHandler : IRequestHandler<GetAllUsersQuery, 
             request.ActiveFilter,
             cancellationToken);
 
-        var userDtos = new List<AdminUserDto>(users.Count);
+        var spaceCounts = await _spaceRepository.GetSpaceCountsForUsersAsync(
+            users.Select(u => u.Id), cancellationToken);
 
-        // Process users sequentially to avoid EF Core threading issues in Blazor Server
-        for (var i = 0; i < users.Count; i++)
-        {
-            var user = users[i];
-            var spaceCount = await _spaceRepository.GetUserSpaceCountAsync(user.Id, cancellationToken);
-            userDtos.Add(new AdminUserDto(
-                user.Id.Value,
-                user.Email,
-                user.Name,
-                user.PictureUrl,
-                user.Provider,
-                user.SystemRole,
-                user.IsActive,
-                user.CreatedAt,
-                user.LastLoginAt,
-                user.DeactivatedAt,
-                spaceCount));
-        }
+        var userDtos = users.Select(user => new AdminUserDto(
+            user.Id.Value,
+            user.Email,
+            user.Name,
+            user.PictureUrl,
+            user.Provider,
+            user.SystemRole,
+            user.IsActive,
+            user.CreatedAt,
+            user.LastLoginAt,
+            user.DeactivatedAt,
+            spaceCounts.GetValueOrDefault(user.Id, 0))).ToList();
 
         var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
 

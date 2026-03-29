@@ -93,6 +93,12 @@ internal sealed class ConsumptionEntryConfiguration : IEntityTypeConfiguration<C
         builder.HasIndex(x => x.SpaceId)
             .HasDatabaseName("IX_Consumptions_SpaceId");
 
+        builder.HasIndex(x => x.UserId)
+            .HasDatabaseName("IX_Consumptions_UserId");
+
+        builder.HasIndex(x => x.BillingPeriodId)
+            .HasDatabaseName("IX_Consumptions_BillingPeriodId");
+
         builder.HasIndex(x => x.ConsumedAt)
             .HasDatabaseName("IX_Consumptions_ConsumedAt");
 

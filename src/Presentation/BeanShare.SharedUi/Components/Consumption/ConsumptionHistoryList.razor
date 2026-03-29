@@ -1,0 +1,256 @@
+@using BeanShare.Application.Features.Consumption.Dtos
+
+<div class="consumption-history">
+    @if (History == null)
+    {
+        <div style="text-align: center; padding: 1.5rem;">
+            <span class="material-symbols-outlined" style="font-size: 2rem; animation: spin 1s linear infinite; color: var(--bs-primary);">progress_activity</span>
+        </div>
+    }
+    else if (!History.Items.Any())
+    {
+        <div style="text-align: center; padding: 3rem;">
+            <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-text-subtle);">coffee</span>
+            <h4 style="margin-top: 1rem;">No consumption history</h4>
+            <p class="bs-text-subtle">Start logging your coffee consumption to see your history here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="history-timeline">
+            @{
+                var groupedByDate = History.Items
+                    .GroupBy(i => i.ConsumedAt.Date)
+                    .OrderByDescending(g => g.Key);
+            }
+
+            @foreach (var dateGroup in groupedByDate)
+            {
+                <div class="date-group">
+                    <div class="date-header">
+                        <span class="date-label">
+                            @if (dateGroup.Key.Date == DateTime.Today)
+                            {
+                                <text>Today</text>
+                            }
+                            else if (dateGroup.Key.Date == DateTime.Today.AddDays(-1))
+                            {
+                                <text>Yesterday</text>
+                            }
+                            else
+                            {
+                                @dateGroup.Key.ToString("dddd, MMMM d")
+                            }
+                        </span>
+                        <span class="date-count">@dateGroup.Count() @(dateGroup.Count() == 1 ? "cup" : "cups")</span>
+                    </div>
+
+                    <div class="timeline-items">
+                        @foreach (var item in dateGroup.OrderByDescending(i => i.ConsumedAt))
+                        {
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    @if (editingId == item.Id)
+                                    {
+                                        <div class="edit-form" style="padding: 0.5rem; background: var(--bs-background-light); border-radius: 0.5rem;">
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                <input type="text" class="bs-input" placeholder="Product name" @bind="editProductName" />
+                                                <input type="text" class="bs-input" placeholder="Brand" @bind="editProductBrand" />
+                                            </div>
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                <select class="bs-input" @bind="editProductType">
+                                                    <option value="Espresso">Espresso</option>
+                                                    <option value="Filter">Filter</option>
+                                                    <option value="Instant">Instant</option>
+                                                    <option value="Decaf">Decaf</option>
+                                                    <option value="Specialty">Specialty</option>
+                                                </select>
+                                                <input type="number" class="bs-input" placeholder="Grams" @bind="editQuantity" min="1" />
+                                                <input type="datetime-local" class="bs-input" @bind="editConsumedAt" />
+                                            </div>
+                                            <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                                                <button class="bs-btn bs-btn-secondary bs-btn-sm" @onclick="CancelEdit">Cancel</button>
+                                                <button class="bs-btn bs-btn-primary bs-btn-sm" @onclick="() => SaveEdit(item)">Save</button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="item-header">
+                                            <span class="item-time">@item.ConsumedAt.ToString("HH:mm")</span>
+                                            <span class="item-space bs-badge" style="background: var(--bs-gray-200); color: var(--bs-text);">@item.SpaceName</span>
+                                            @if (!string.IsNullOrEmpty(item.UserName) && item.UserName != "Unknown")
+                                            {
+                                                <span class="item-user bs-badge" style="background: var(--bs-background-light); color: var(--bs-text);">@item.UserName</span>
+                                            }
+                                        </div>
+                                        <div class="item-details">
+                                            <strong>@item.ProductName</strong>
+                                            <span class="bs-text-subtle">by @item.ProductBrand</span>
+                                        </div>
+                                        <div class="item-metrics">
+                                            <span class="metric">
+                                                <span class="material-symbols-outlined" style="font-size: 1rem;">water_drop</span> @item.QuantityGrams.ToString("F0")g
+                                            </span>
+                                            <span class="metric">
+                                                <span class="bs-badge" style="background: var(--bs-primary-light); color: var(--bs-primary);">@item.ProductType</span>
+                                            </span>
+                                            @if (item.EstimatedCost.HasValue)
+                                            {
+                                                <span class="metric" style="color: var(--bs-success);">
+                                                    <span class="material-symbols-outlined" style="font-size: 1rem;">payments</span> @item.Currency @item.EstimatedCost.Value.ToString("F2")
+                                                </span>
+                                            }
+                                            @if (item.CanEdit)
+                                            {
+                                                <span class="metric" style="margin-left: auto;">
+                                                    <button class="bs-btn-icon" title="Edit" @onclick="() => StartEdit(item)" style="color: var(--bs-text-subtle);">
+                                                        <span class="material-symbols-outlined" style="font-size: 1.125rem;">edit</span>
+                                                    </button>
+                                                    <button class="bs-btn-icon" title="Delete" @onclick="() => ConfirmDelete(item)" style="color: var(--bs-error); margin-left: 0.5rem;">
+                                                        <span class="material-symbols-outlined" style="font-size: 1.125rem;">delete</span>
+                                                    </button>
+                                                </span>
+                                            }
+                                        </div>
+                                        @if (item.BillingPeriodId.HasValue)
+                                        {
+                                            <div class="item-billing">
+                                                <small class="bs-text-subtle">
+                                                    <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">event_available</span>
+                                                    @(item.BillingPeriodName ?? "Billing Period")
+                                                </small>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (History.TotalCount > History.PageSize)
+        {
+            <nav aria-label="History pagination" style="margin-top: 1.5rem;">
+                <div style="display: flex; justify-content: center; gap: 0.25rem;">
+                    <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                            @onclick="() => OnPageChange.InvokeAsync(History.PageNumber - 1)"
+                            disabled="@(History.PageNumber == 1)">
+                        Previous
+                    </button>
+
+                    @{
+                        var totalPages = (int)Math.Ceiling(History.TotalCount / (double)History.PageSize);
+                        for (int i = 1; i <= Math.Min(totalPages, 5); i++)
+                        {
+                            var pageNum = i;
+                            <button class="bs-btn bs-btn-sm @(History.PageNumber == pageNum ? "bs-btn-primary" : "bs-btn-secondary")"
+                                    @onclick="() => OnPageChange.InvokeAsync(pageNum)">
+                                @pageNum
+                            </button>
+                        }
+                    }
+
+                    <button class="bs-btn bs-btn-secondary bs-btn-sm"
+                            @onclick="() => OnPageChange.InvokeAsync(History.PageNumber + 1)"
+                            disabled="@(History.PageNumber * History.PageSize >= History.TotalCount)">
+                        Next
+                    </button>
+                </div>
+            </nav>
+        }
+    }
+</div>
+
+@if (showDeleteConfirm)
+{
+    <div class="bs-modal-backdrop" @onclick="CancelDelete">
+        <div class="bs-modal" style="max-width: 24rem;" @onclick:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h5 style="margin: 0; font-weight: 600;">Delete consumption?</h5>
+                <button class="bs-btn-icon" @onclick="CancelDelete">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="bs-modal-body">
+                <p>This action cannot be undone.</p>
+            </div>
+            <div class="bs-modal-footer">
+                <button class="bs-btn bs-btn-secondary bs-btn-sm" @onclick="CancelDelete">Cancel</button>
+                <button class="bs-btn bs-btn-sm" style="background: var(--bs-error); color: white;" @onclick="ExecuteDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public ConsumptionHistoryDto? History { get; set; }
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+    [Parameter] public EventCallback<ConsumptionHistoryItemDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+
+    private Guid? editingId;
+    private string editProductName = "";
+    private string editProductBrand = "";
+    private string editProductType = "Espresso";
+    private decimal editQuantity;
+    private DateTime editConsumedAt;
+
+    private bool showDeleteConfirm;
+    private ConsumptionHistoryItemDto? deleteTarget;
+
+    private void StartEdit(ConsumptionHistoryItemDto item)
+    {
+        editingId = item.Id;
+        editProductName = item.ProductName;
+        editProductBrand = item.ProductBrand;
+        editProductType = item.ProductType;
+        editQuantity = item.QuantityGrams;
+        editConsumedAt = item.ConsumedAt;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+    }
+
+    private async Task SaveEdit(ConsumptionHistoryItemDto item)
+    {
+        var updated = item with
+        {
+            ProductName = editProductName,
+            ProductBrand = editProductBrand,
+            ProductType = editProductType,
+            QuantityGrams = editQuantity,
+            ConsumedAt = editConsumedAt
+        };
+
+        await OnEdit.InvokeAsync(updated);
+        editingId = null;
+    }
+
+    private void ConfirmDelete(ConsumptionHistoryItemDto item)
+    {
+        deleteTarget = item;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        if (deleteTarget != null)
+        {
+            await OnDelete.InvokeAsync(deleteTarget.Id);
+        }
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
+}

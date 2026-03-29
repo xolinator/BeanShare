@@ -1,6 +1,16 @@
 # BeanShare Production Deployment Guide
 
-## Deployment Architecture
+## Architecture Overview
+
+BeanShare consists of three services:
+
+| Service | Description | Port |
+|---------|-------------|------|
+| **BeanShare.BlazorWeb** | Blazor Server web application | 5126 (dev) / 8080 (prod) |
+| **BeanShare.Api** | REST API (FastEndpoints) | 5247 (dev) / 8080 (prod) |
+| **PostgreSQL** | Database (v15+) | 5432 |
+
+An external **OpenID Connect provider** is required for authentication. BeanShare works with any standards-compliant OIDC provider — Keycloak, Auth0, Azure AD/Entra ID, Google Identity Platform, Okta, and others.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -8,9 +18,9 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
-│  │   Keycloak   │    │  PostgreSQL  │    │  BeanShare   │       │
-│  │   (Auth)     │    │  (Database)  │    │  Blazor Web  │       │
-│  │   Port 8080  │    │  Port 5432   │    │  Port 443    │       │
+│  │  OIDC Provider│    │  PostgreSQL  │    │  BeanShare   │       │
+│  │  (Keycloak,  │    │  (Database)  │    │  Blazor Web  │       │
+│  │  Auth0, etc.)│    │  Port 5432   │    │  Port 443    │       │
 │  └──────────────┘    └──────────────┘    └──────────────┘       │
 │         │                   │                   │                │
 │         └───────────────────┴───────────────────┘                │
@@ -18,8 +28,6 @@
 │                  ┌──────────────┐                                │
 │                  │   NGINX /    │                                │
 │                  │   Traefik    │                                │
-│                  │   (Reverse   │                                │
-│                  │    Proxy)    │                                │
 │                  └──────────────┘                                │
 │                         │                                        │
 └─────────────────────────┴────────────────────────────────────────┘
@@ -35,28 +43,70 @@
 
 - Docker & Docker Compose
 - .NET 10 SDK (or use containerized build)
-- PostgreSQL 15+ (or Docker container)
-- Keycloak 23+ (or Docker container)
-- Reverse proxy (NGINX, Traefik, or cloud load balancer)
+- PostgreSQL 15+
+- An OIDC provider with admin access to create clients
+- Reverse proxy (Nginx, Traefik, or cloud load balancer)
 - SSL certificates (Let's Encrypt or commercial)
 
 ---
 
-## Step-by-Step Deployment
+## Step 1: Configure the OIDC Provider
 
-### 1. Database Setup
+BeanShare requires **three OIDC client registrations** in your identity provider. The exact steps vary by provider, but the requirements are the same.
 
-Use a managed PostgreSQL service (e.g., AWS RDS, Azure Database) or run it in Docker.
+### Client 1: Web Application (Confidential)
 
-```sql
-CREATE DATABASE beanshare;
-CREATE USER beanshare WITH PASSWORD '<STRONG_PASSWORD>';
-GRANT ALL PRIVILEGES ON DATABASE beanshare TO beanshare;
-```
+| Setting | Value |
+|---------|-------|
+| Client ID | `beanshare-web` (configurable) |
+| Client Type | Confidential (server-side) |
+| Grant Type | Authorization Code |
+| Redirect URI | `https://YOUR_WEB_DOMAIN/signin-oidc` |
+| Post-Logout URI | `https://YOUR_WEB_DOMAIN/signout-callback-oidc` |
+| Scopes | `openid`, `profile`, `email` |
 
-The application automatically creates the database schema on first startup via `EnsureCreatedAsync()`. Ensure the database user has CREATE TABLE permissions.
+### Client 2: API (Resource Server)
 
-### 2. Keycloak Setup
+| Setting | Value |
+|---------|-------|
+| Client ID | `beanshare-api` (configurable) |
+| Client Type | Confidential or Bearer-only |
+| Purpose | Validates JWT access tokens |
+
+### Client 3: Mobile Application (Public)
+
+| Setting | Value |
+|---------|-------|
+| Client ID | `beanshare-mobile` (configurable) |
+| Client Type | Public (no client secret) |
+| Grant Type | Authorization Code with PKCE |
+| Redirect URI | `beanshare://callback` |
+| Scopes | `openid`, `profile`, `email` |
+
+### Required Claims
+
+BeanShare reads the following claims from ID tokens and access tokens:
+
+| Claim | Purpose |
+|-------|---------|
+| `sub` | User identifier (required) |
+| `email` | User email |
+| `name` | Display name (falls back to `preferred_username`) |
+| `preferred_username` | Username |
+| `picture` | Avatar URL (optional) |
+
+### Role Claims
+
+BeanShare supports optional role-based access (e.g., system admin). Roles can be provided via any of these formats:
+
+- Standard `role` claim
+- `realm_access.roles` JSON array (Keycloak convention)
+- Standard `ClaimTypes.Role`
+
+### Provider-Specific Setup
+
+<details>
+<summary><b>Keycloak</b></summary>
 
 Deploy Keycloak with a persistent database backend (not the dev H2 mode):
 
@@ -74,83 +124,200 @@ docker run -d \
   quay.io/keycloak/keycloak:23.0 start
 ```
 
-**Important**: Production Keycloak uses `start` (not `start-dev`), requires HTTPS, and uses a real database.
+After Keycloak starts:
 
-After Keycloak starts, configure the realm:
-
-1. Open the Keycloak Admin Console at `https://auth.yourdomain.com/admin`
+1. Open the Admin Console at `https://auth.yourdomain.com/admin`
 2. Create a new realm named `beanshare`
 3. Import `scripts/keycloak-realm.json` via Realm Settings > Partial Import
-4. Update the client redirect URIs to match your production domain:
-   - `beanshare-web`: `https://yourdomain.com/*`
-   - `beanshare-api`: `https://api.yourdomain.com/*`
-   - `beanshare-mobile`: `beanshare://callback`
+4. Update client redirect URIs to match your production domain
 5. Change client secrets for `beanshare-web` and `beanshare-api`
-6. Delete the demo users imported from the realm JSON (they are for development only)
+6. Delete demo users imported from the realm JSON (development only)
 7. Create a real admin user and assign the `admin` realm role
-8. Enable user self-registration if desired (Realm Settings > Login > User registration)
 
-### 3. Build and Deploy the API
+Authority URL format: `https://your-keycloak.example.com/realms/beanshare`
 
-```bash
-cd src/Presentation/BeanShare.Api
-dotnet publish -c Release -o ./publish
+Keycloak stores roles in `realm_access.roles` as a JSON object — BeanShare parses this automatically.
+
+</details>
+
+<details>
+<summary><b>Auth0</b></summary>
+
+1. Create a "Regular Web Application" for the web client
+2. Create an "API" for the API audience
+3. Create a "Native" application for mobile with PKCE
+4. Authority URL: `https://YOUR_TENANT.auth0.com/`
+5. Use Auth0 Rules/Actions to add roles to the `role` claim in tokens
+
+</details>
+
+<details>
+<summary><b>Azure AD / Entra ID</b></summary>
+
+1. Register three applications in Azure AD
+2. Configure redirect URIs for each
+3. Authority URL: `https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0`
+4. Use Azure AD App Roles assigned to users
+5. Set `MapInboundClaims = false` (already configured in BeanShare)
+
+</details>
+
+<details>
+<summary><b>External SSO via Keycloak (SAML/OIDC brokering)</b></summary>
+
+Keycloak can act as a broker for external identity providers — useful for integrating with university or corporate SSO systems.
+
+1. In the Keycloak Admin Console, navigate to `Identity Providers > Add provider`
+2. Select SAML v2.0 or OpenID Connect v1.0
+3. Configure the IdP's metadata URL or endpoint URLs
+4. Set up attribute mapping (email, name → Keycloak user fields)
+5. Provide your SP metadata to the external IdP administrator:
+   - SAML SP descriptor: `https://auth.yourdomain.com/realms/beanshare/protocol/saml/descriptor`
+   - OIDC redirect URI: `https://auth.yourdomain.com/realms/beanshare/broker/{alias}/endpoint`
+
+Refer to the [Keycloak Identity Broker documentation](https://www.keycloak.org/docs/latest/server_admin/#_identity_broker) for details.
+
+</details>
+
+---
+
+## Step 2: Configure the Database
+
+```sql
+CREATE DATABASE beanshare;
+CREATE USER beanshare WITH PASSWORD '<STRONG_PASSWORD>';
+GRANT ALL PRIVILEGES ON DATABASE beanshare TO beanshare;
 ```
 
-Configure via environment variables:
+The application creates all tables automatically on first startup via EF Core (`EnsureCreatedAsync`). The database user needs CREATE TABLE permissions.
 
-```bash
-export ASPNETCORE_ENVIRONMENT=Production
-export ConnectionStrings__DefaultConnection="Host=DB_HOST;Port=5432;Database=beanshare;Username=beanshare;Password=<DB_PASSWORD>"
-export UseOidc=true
-export Oidc__Authority="https://auth.yourdomain.com/realms/beanshare"
-export Oidc__ClientSecret="<API_CLIENT_SECRET>"
-export Jwt__Secret="<RANDOM_SECRET_MIN_32_CHARS>"
-
-# Optional — without this, constant fallback exchange rates are used
-export OpenExchangeRates__AppId="<API_KEY>"
-
-# Optional — email notifications
-export Email__Enabled=true
-export Email__SmtpUsername="<SMTP_USER>"
-export Email__SmtpPassword="<SMTP_PASSWORD>"
+Connection string format:
+```
+Host=db.example.com;Port=5432;Database=beanshare;Username=beanshare;Password=your-secure-password;SSL Mode=Require
 ```
 
-Run:
+---
+
+## Step 3: Set Environment Variables
+
+Both applications read configuration from environment variables using the ASP.NET Core double-underscore convention (`Oidc__Authority` maps to `Oidc:Authority` in config).
+
+### Required Variables
+
+| Variable | Service | Description |
+|----------|---------|-------------|
+| `ConnectionStrings__DefaultConnection` | API, Web | PostgreSQL connection string |
+| `UseOidc` | API, Web | Must be `true` |
+| `Oidc__Authority` | API, Web | OIDC provider URL |
+| `Oidc__ClientId` | Web | Web client ID (default: `beanshare-web`) |
+| `Oidc__ClientSecret` | Web | Web client secret |
+| `Oidc__Audience` | API | API audience (default: `beanshare-api`) |
+| `ApiBaseUrl` | Web | URL where the API is reachable from the web server |
+| `QrCodeBaseUrl` | Web | Public URL for QR code deep links |
+
+### Optional Variables
+
+| Variable | Service | Description | Default |
+|----------|---------|-------------|---------|
+| `OpenExchangeRates__AppId` | API | API key for currency conversion | (disabled) |
+| `Email__Enabled` | API | Enable email notifications | `false` |
+| `Email__SmtpHost` | API | SMTP server | `smtp.gmail.com` |
+| `Email__SmtpPort` | API | SMTP port | `587` |
+| `Email__SmtpUsername` | API | SMTP username | - |
+| `Email__SmtpPassword` | API | SMTP password | - |
+| `IncludeDemoData` | API, Web | Seed demo spaces/users/coffee data on startup | `false` |
+
+---
+
+## Step 4: Deploy
+
+### Option A: Docker Compose (Recommended for Self-Hosting)
+
+1. Build the Docker images:
 
 ```bash
-cd publish && dotnet BeanShare.Api.dll
+docker build -f deploy/Dockerfile.api -t beanshare-api .
+docker build -f deploy/Dockerfile.web -t beanshare-web .
 ```
 
-The API starts on port 5247 by default. Use a reverse proxy for HTTPS.
+2. Create a `docker-compose.prod.yml`:
 
-### 4. Build and Deploy the Blazor Web App
+```yaml
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: beanshare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: beanshare
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beanshare"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: beanshare-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=beanshare;Username=beanshare;Password=${POSTGRES_PASSWORD}
+      UseOidc: "true"
+      Oidc__Authority: ${OIDC_AUTHORITY}
+      Oidc__Audience: beanshare-api
+      ASPNETCORE_ENVIRONMENT: Production
+
+  web:
+    image: beanshare-web
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=beanshare;Username=beanshare;Password=${POSTGRES_PASSWORD}
+      UseOidc: "true"
+      Oidc__Authority: ${OIDC_AUTHORITY}
+      Oidc__ClientId: beanshare-web
+      Oidc__ClientSecret: ${OIDC_WEB_SECRET}
+      ApiBaseUrl: http://api:8080
+      QrCodeBaseUrl: ${WEB_PUBLIC_URL}
+      ASPNETCORE_ENVIRONMENT: Production
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
+```
+
+3. Start:
 
 ```bash
-cd src/Presentation/BeanShare.BlazorWeb
-dotnet publish -c Release -o ./publish
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-Configure via environment variables:
+### Option B: Direct Deployment (VPS / Bare Metal)
 
 ```bash
-export ASPNETCORE_ENVIRONMENT=Production
-export ConnectionStrings__DefaultConnection="Host=DB_HOST;Port=5432;Database=beanshare;Username=beanshare;Password=<DB_PASSWORD>"
-export UseOidc=true
-export Oidc__Authority="https://auth.yourdomain.com/realms/beanshare"
-export Oidc__ClientId="beanshare-web"
-export Oidc__ClientSecret="<WEB_CLIENT_SECRET>"
+dotnet publish src/Presentation/BeanShare.Api -c Release -o /opt/beanshare/api
+dotnet publish src/Presentation/BeanShare.BlazorWeb -c Release -o /opt/beanshare/web
 ```
 
-Run:
+Set environment variables in the service definition or via `/etc/environment`, then run:
 
 ```bash
-cd publish && dotnet BeanShare.BlazorWeb.dll
+cd /opt/beanshare/api && dotnet BeanShare.Api.dll
+cd /opt/beanshare/web && dotnet BeanShare.BlazorWeb.dll
 ```
 
-The web app starts on port 5126. Use a reverse proxy for HTTPS.
+### Option C: Cloud Platforms (fly.io, Railway, Render, etc.)
 
-### 5. Reverse Proxy (Nginx Example)
+The Dockerfiles work on any container platform. See `deploy/DEPLOYMENT.md` for a complete fly.io example.
+
+---
+
+## Step 5: Reverse Proxy (Nginx)
 
 Blazor Server uses WebSockets — the `Upgrade` and `Connection` headers are required.
 
@@ -193,97 +360,75 @@ server {
 
 ## Database Seeding
 
-On first startup, the application seeds **only essential data** in production:
+On first startup, the application seeds **essential data only** in production:
 
-- **12 global coffee presets** (Espresso, Cappuccino, Pour Over, AeroPress, etc.)
+- 12 global coffee presets (Espresso, Cappuccino, Pour Over, AeroPress, etc.)
 
-No demo users, spaces, or fake consumption data are created. Demo seeders only run in the Development environment (see [TEST.md](BeanShare/TEST.md) for local testing).
-
-The admin user is managed through Keycloak. When a user with the `admin` realm role logs in for the first time, `UserSynchronizationService` automatically creates their profile in the database.
-
----
-
-## External SSO Integration
-
-Keycloak supports adding external identity providers (IdPs) for single sign-on. This is useful for integrating with university or corporate authentication systems.
-
-### Supported Protocols
-
-- **SAML 2.0** — common in academic environments (e.g., Shibboleth federations)
-- **OpenID Connect** — modern OAuth 2.0-based alternative
-
-### General Setup Steps
-
-1. In the Keycloak Admin Console, navigate to `Identity Providers > Add provider`
-2. Select the protocol used by the external IdP (SAML v2.0 or OpenID Connect v1.0)
-3. Configure the IdP's metadata URL or endpoint URLs (SSO URL, token URL, etc.)
-4. Set up attribute mapping so that external user attributes (email, name) map to Keycloak user fields
-5. Provide your Service Provider (SP) metadata to the external IdP administrator for registration:
-   - SAML SP descriptor: `https://auth.yourdomain.com/realms/beanshare/protocol/saml/descriptor`
-   - OIDC redirect URI: `https://auth.yourdomain.com/realms/beanshare/broker/{alias}/endpoint`
-6. Test the integration, then enable user self-registration or first-broker-login flows as needed
-
-Refer to the [Keycloak Identity Broker documentation](https://www.keycloak.org/docs/latest/server_admin/#_identity_broker) for detailed configuration instructions.
-
----
-
-## Security Checklist
-
-- [ ] Change all default passwords (Keycloak admin, database, client secrets)
-- [ ] Generate a cryptographically random JWT secret (min 32 characters)
-- [ ] Enable HTTPS on all services
-- [ ] Restrict `AllowedHosts` in appsettings to your actual domain
-- [ ] Update Keycloak client redirect URIs to production URLs
-- [ ] Delete demo users from Keycloak
-- [ ] Store all secrets in environment variables, not config files
-- [ ] Set up database backups
-- [ ] Configure firewall rules (only expose ports 443 publicly)
-
----
-
-## Maintenance
-
-### Health Checks
-
-```bash
-# Check PostgreSQL
-docker exec postgres pg_isready -U beanshare
-
-# Check Keycloak
-curl -s https://auth.yourdomain.com/health | jq
-
-# Check BeanShare
-curl -s https://yourdomain.com/health
-```
-
-### Backups
-
-```bash
-# Database backup
-docker exec postgres pg_dump -U beanshare beanshare > backup_$(date +%Y%m%d).sql
-
-# Keycloak realm export
-docker exec keycloak /opt/keycloak/bin/kc.sh export --dir /tmp/export --realm beanshare
-```
-
-### Logs
-
-```bash
-docker logs -f beanshare-web
-docker logs -f keycloak
-docker logs -f postgres
-```
+No demo users, spaces, or fake consumption data are created unless `IncludeDemoData=true` is set. The first user to log in with the `admin` role in the OIDC provider is automatically synced to the database as an admin via `UserSynchronizationService`.
 
 ---
 
 ## Troubleshooting
 
-1. **"OIDC callback error"** — Check redirect URIs in Keycloak client configuration
-2. **"Database connection failed"** — Verify connection string and PostgreSQL is running
-3. **"SSL certificate error"** — Ensure certificates are valid and properly mounted
-4. **"User not synced"** — Check `OnTokenValidated` event in Program.cs
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| OIDC redirect loop | Incorrect redirect URI in provider | Verify redirect URI matches exactly, including trailing slash |
+| 401 on all API calls | Token issuer mismatch | Check `Oidc__Authority` matches the `iss` claim in issued tokens |
+| Database connection refused | Wrong connection string or firewall | Verify host, port, and credentials |
+| "State mismatch" error | Clock skew between servers | Ensure NTP is configured; check `ClockSkew` setting |
+| Roles not working | Claims not mapped | Check that your OIDC provider includes roles in the token |
+| QR codes link to wrong URL | `QrCodeBaseUrl` not set | Set to the public URL of your web application |
 
 ---
 
-*Last Updated: February 25, 2026*
+## Mobile Application (Android)
+
+The MAUI Android app is a client-side application — it does not run on a server. Configuration is embedded in `appsettings.json` at build time and must be set before building the APK.
+
+### Configuration
+
+Edit `src/Presentation/BeanShare.Maui/appsettings.json`:
+
+```json
+{
+  "ApiBaseUrl": "https://api.yourdomain.com",
+  "UseOidc": true,
+  "Oidc": {
+    "Authority": "https://auth.yourdomain.com/realms/beanshare",
+    "ClientId": "beanshare-mobile",
+    "RedirectUri": "beanshare://callback"
+  }
+}
+```
+
+`beanshare://callback` must match the redirect URI registered in your OIDC provider (Client 3 above).
+
+### Build Requirements
+
+- .NET 10 SDK with MAUI workload (`dotnet workload install maui-android`)
+- Android SDK (API 35+)
+- Java JDK 21
+
+### Building the APK
+
+```bash
+dotnet build src/Presentation/BeanShare.Maui/BeanShare.Maui.csproj \
+  -f net10.0-android \
+  -c Release \
+  -p:EmbedAssembliesIntoApk=true
+```
+
+The signed APK is output to `bin/Release/net10.0-android/com.companyname.beanshare.maui-Signed.apk`.
+
+### Installation
+
+Sideload via adb (USB debugging must be enabled on the device):
+
+```bash
+adb install -r com.companyname.beanshare.maui-Signed.apk
+```
+
+For distribution, the APK can be published to Google Play or distributed as a direct download. The app uses the `beanshare://` custom URL scheme for the OIDC callback, which is handled by `WebAuthenticatorCallbackActivity` and requires no additional server configuration.
+
+---
 *Author: Oliver Golec*

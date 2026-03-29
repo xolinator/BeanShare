@@ -5,9 +5,12 @@
 @using BeanShare.Application.Features.Spaces.Dtos
 @using BeanShare.Application.Features.CoffeeStock.Dtos
 @using BeanShare.SharedUi.Components.Consumption.Models
+@using BeanShare.SharedUi.Services
 @using Microsoft.Extensions.Logging
 @using BeanShare.Application.Abstractions
 @inject NavigationManager Navigation
+@inject IActiveQrService ActiveQrService
+@inject QrCodeResolveCache QrResolveCache
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IUserContext UserContext
 @inject ISpacesService SpacesService
@@ -71,7 +74,22 @@
     OnSpaceSelected="HandleQuickConsumptionSpaceSelected"
     OnSubmit="HandleQuickConsumptionSubmit"
     OnCancel="CloseConsumptionModal"
+    OnScanQr="HandleQuickScanQr"
     CurrentUserId="@UserContext.CurrentUserId.Value" />
+
+<BeanShare.SharedUi.Components.Consumption.QrScannerModal
+    IsVisible="@showQuickQrScanner"
+    OnScanned="HandleQuickQrScanned"
+    OnClose="@(() => showQuickQrScanner = false)" />
+
+<BeanShare.SharedUi.Components.Consumption.QrConsumptionConfirmModal
+    IsVisible="@showQuickQrConfirm"
+    Payload="@quickQrPayload"
+    SpaceMembers="@quickConsumptionMembers"
+    CurrentUserId="@UserContext.CurrentUserId.Value"
+    QuickPresets="@quickConsumptionPresets"
+    OnConfirm="HandleQuickQrConfirm"
+    OnCancel="@(() => { showQuickQrConfirm = false; quickQrPayload = null; })" />
 
 @code {
     [Parameter]
@@ -93,6 +111,11 @@
     private List<PresetOption>? quickConsumptionPresets;
     private List<MembershipDto>? quickConsumptionMembers;
     private bool isLoadingQuickConsumptionData;
+
+    // QR scanner state
+    private bool showQuickQrScanner;
+    private bool showQuickQrConfirm;
+    private QrConsumptionPayload? quickQrPayload;
 
     protected override async Task OnInitializedAsync()
     {
@@ -293,17 +316,21 @@
 
         try
         {
-            var stockResult = await StockService.GetSpaceStockAsync(spaceId);
-            var presetsResult = await PresetService.GetQuickPresetsAsync(spaceId);
-            var spaceResult = await SpacesService.GetSpaceByIdAsync(spaceId);
+            var stockTask = StockService.GetSpaceStockAsync(spaceId);
+            var presetsTask = PresetService.GetQuickPresetsAsync(spaceId);
+            var spaceTask = SpacesService.GetSpaceByIdAsync(spaceId);
 
+            await Task.WhenAll(stockTask, presetsTask, spaceTask);
+
+            var stockResult = await stockTask;
             if (stockResult?.StockLevels != null)
             {
                 quickConsumptionStock = stockResult.StockLevels.ToList();
             }
 
-            quickConsumptionPresets = presetsResult;
+            quickConsumptionPresets = await presetsTask;
 
+            var spaceResult = await spaceTask;
             if (spaceResult?.Members != null)
             {
                 quickConsumptionMembers = spaceResult.Members.ToList();
@@ -381,6 +408,84 @@
         {
             Navigation.NavigateTo("/spaces");
         }
+    }
+
+    private void HandleQuickScanQr()
+    {
+        showConsumptionModal = false;
+        showQuickQrScanner = true;
+    }
+
+    private async Task HandleQuickQrScanned(QrConsumptionPayload payload)
+    {
+        showQuickQrScanner = false;
+
+        if (payload.Version >= 2 && payload.QrCodeId.HasValue)
+        {
+            try
+            {
+                var resolved = await ActiveQrService.ResolveActiveQrCodeAsync(payload.QrCodeId.Value);
+                if (resolved != null)
+                {
+                    payload.SpaceId = resolved.SpaceId;
+                    payload.ProductName = resolved.ProductName;
+                    payload.ProductBrand = resolved.ProductBrand;
+                    payload.ProductType = resolved.ProductType;
+                    payload.DefaultGrams = resolved.DefaultGrams;
+                    payload.QrLabel = resolved.Label;
+                    QrResolveCache.Store(payload.QrCodeId.Value, payload);
+                }
+                else
+                {
+                    await AlertService.ShowAlertAsync("Error", "QR code not found or deactivated.");
+                    return;
+                }
+            }
+            catch
+            {
+                var cached = QrResolveCache.TryGet(payload.QrCodeId.Value);
+                if (cached != null)
+                {
+                    payload.SpaceId = cached.SpaceId;
+                    payload.ProductName = cached.ProductName;
+                    payload.ProductBrand = cached.ProductBrand;
+                    payload.ProductType = cached.ProductType;
+                    payload.DefaultGrams = cached.DefaultGrams;
+                    payload.QrLabel = cached.QrLabel;
+                }
+                else
+                {
+                    await AlertService.ShowAlertAsync("Error", "Could not resolve QR code. Check your connection.");
+                    return;
+                }
+            }
+        }
+
+        quickQrPayload = payload;
+        showQuickQrConfirm = true;
+        StateHasChanged();
+    }
+
+    private async Task HandleQuickQrConfirm(ConsumptionFormModel model)
+    {
+        var spaceId = quickQrPayload?.SpaceId ?? (Guid.TryParse(currentSpaceId, out var sid) ? sid : Guid.Empty);
+
+        showQuickQrConfirm = false;
+        quickQrPayload = null;
+
+        var request = new QuickConsumptionRequest
+        {
+            SpaceId = spaceId,
+            ProductName = model.ProductName ?? "Coffee",
+            ProductBrand = model.ProductBrand ?? "Generic",
+            ProductType = model.ProductType ?? "Ground",
+            Grams = model.Grams,
+            ConsumedAt = model.ConsumedAt.ToUniversalTime(),
+            PresetName = model.PresetName,
+            ForUserIds = model.ForUserIds
+        };
+
+        await HandleQuickConsumptionSubmit(request);
     }
 
     public void Dispose()

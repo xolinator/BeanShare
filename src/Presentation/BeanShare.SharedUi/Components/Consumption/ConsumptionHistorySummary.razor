@@ -1,0 +1,103 @@
+@using BeanShare.Application.Features.Consumption.Dtos
+
+<div class="history-summary">
+    @if (Summary != null)
+    {
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="card-icon">
+                    <span class="material-symbols-outlined">coffee</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.TotalEntries</div>
+                    <div class="card-label">Total Cups</div>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="card-icon">
+                    <span class="material-symbols-outlined">water_drop</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.TotalGrams.ToString("F0")g</div>
+                    <div class="card-label">Total Coffee</div>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="card-icon">
+                    <span class="material-symbols-outlined">date_range</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.UniqueDays</div>
+                    <div class="card-label">Active Days</div>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="card-icon">
+                    <span class="material-symbols-outlined">trending_up</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-value">@Summary.AverageGramsPerDay.ToString("F1")g</div>
+                    <div class="card-label">Daily Average</div>
+                </div>
+            </div>
+        </div>
+
+        @if (Summary.ConsumptionByType.Any())
+        {
+            <div class="type-breakdown">
+                <h6 style="margin-bottom: 1rem; font-weight: 600;">Consumption by Type</h6>
+                <div class="type-bars">
+                    @foreach (var type in Summary.ConsumptionByType.OrderByDescending(x => x.Value))
+                    {
+                        var percentage = Summary.TotalEntries > 0
+                            ? (type.Value * 100.0 / Summary.TotalEntries)
+                            : 0;
+
+                        <div class="type-bar-item">
+                            <div class="type-bar-header">
+                                <span class="type-name">@type.Key</span>
+                                <span class="type-count">@type.Value cups</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: @percentage%"
+                                     aria-valuenow="@percentage"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                    @percentage.ToString("F0")%
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Summary.ConsumptionGramsBySpace.Any())
+        {
+            <div class="space-breakdown">
+                <h6 style="margin-bottom: 1rem; font-weight: 600;">Consumption by Space</h6>
+                <div class="space-list">
+                    @foreach (var space in Summary.ConsumptionGramsBySpace.OrderByDescending(x => x.Value))
+                    {
+                        <div class="space-item">
+                            <span class="space-name">
+                                <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">apartment</span> @space.Key
+                            </span>
+                            <span class="space-amount">
+                                @space.Value.ToString("F0")g
+                            </span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public ConsumptionHistorySummaryDto? Summary { get; set; }
+}

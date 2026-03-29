@@ -44,7 +44,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithValidSpaceAndStock_ShouldReturnStockData()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper, _clock);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         var space = CreateMockSpace();
@@ -68,7 +68,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithNoStockForSpace_ShouldReturnEmptyStock()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper, _clock);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         var space = CreateMockSpace();
@@ -90,7 +90,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithInvalidSpace_ShouldReturnError()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper, _clock);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         _spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
@@ -105,7 +105,7 @@ public sealed class CoffeeStockQueryTests
     [Fact]
     public async Task GetSpaceStock_WithNonMember_ShouldReturnError()
     {
-        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper);
+        var handler = new GetSpaceStockQueryHandler(_coffeeStockRepository, _spaceRepository, _userRepository, _userContext, _mapper, _clock);
         var query = new GetSpaceStockQuery(_spaceId.Value);
 
         // Create space with different user so current user is not a member

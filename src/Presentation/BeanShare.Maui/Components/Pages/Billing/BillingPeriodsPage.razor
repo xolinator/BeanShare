@@ -6,120 +6,113 @@
 @inject NavigationManager Navigation
 @inject IAlertService AlertService
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>Billing Periods</h3>
-        <button class="btn btn-primary" @onclick="ShowCreateModal">
-            <i class="bi bi-plus-circle me-1"></i> New Period
+<div class="bs-container" style="padding: 1rem 0;">
+    <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1.5rem;">
+        <h2 class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">Billing Periods</h2>
+        <button class="bs-btn bs-btn-primary bs-btn-sm" @onclick="ShowCreateModal" style="gap: 0.375rem;">
+            <span class="material-symbols-outlined" style="font-size: 1.125rem;">add</span>
+            New Period
         </button>
     </div>
 
     @if (isLoading)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
+        <BeanShare.SharedUi.Components.Common.LoadingSpinner Message="Loading billing periods..." />
     }
     else if (!billingPeriods.Any())
     {
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            No billing periods yet. Create your first one to start tracking costs!
+        <div class="bs-card" style="text-align: center; padding: 2rem;">
+            <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-text-subtle); display: block; margin-bottom: 0.75rem;">receipt_long</span>
+            <p style="margin: 0; color: var(--bs-text-subtle);">No billing periods yet. Create your first one to start tracking costs!</p>
         </div>
     }
     else
     {
-        <div class="row g-3">
+        <div class="bs-flex bs-flex-col bs-gap-3">
             @foreach (var period in billingPeriods)
             {
-                var cardClass = period.State switch
+                var stateColor = period.State switch
                 {
-                    "Draft" => "border-secondary",
-                    "Open" => "border-success",
-                    "Closed" => "border-warning",
-                    "Settled" => "border-primary",
-                    _ => "border-secondary"
+                    "Open" => "var(--bs-success)",
+                    "Closed" => "var(--bs-warning, #f59e0b)",
+                    "Settled" => "var(--bs-primary)",
+                    _ => "var(--bs-text-subtle)"
                 };
 
-                <div class="col-md-6">
-                    <div class="card @cardClass">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title mb-0">@period.Name</h5>
-                                <span class="badge bg-@GetStateBadgeColor(period.State)">@period.State</span>
-                            </div>
+                <div class="bs-card" style="border-left: 3px solid @stateColor;">
+                    <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 0.5rem;">
+                        <h3 class="bs-font-bold" style="margin: 0; font-size: 1rem;">@period.Name</h3>
+                        <span style="font-size: 0.75rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: 999px; background: color-mix(in srgb, @stateColor 15%, transparent); color: @stateColor;">
+                            @period.State
+                        </span>
+                    </div>
 
-                            <div class="text-muted small mb-3">
-                                @period.StartDate.ToString("MMM dd, yyyy") - @period.EndDate.ToString("MMM dd, yyyy")
-                            </div>
+                    <p class="bs-text-subtle" style="margin: 0 0 0.75rem; font-size: 0.8125rem;">
+                        @period.StartDate.ToString("MMM dd, yyyy") — @period.EndDate.ToString("MMM dd, yyyy")
+                    </p>
 
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <div class="p-2 bg-light rounded text-center">
-                                        <div class="fw-bold">@period.ConsumptionCount</div>
-                                        <small class="text-muted">Entries</small>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="p-2 bg-light rounded text-center">
-                                        <div class="fw-bold">@period.TotalCoffeeGrams g</div>
-                                        <small class="text-muted">Coffee</small>
-                                    </div>
-                                </div>
-                            </div>
-
-                            @if (period.State == "Open" && period.DaysRemaining >= 0)
-                            {
-                                <div class="alert alert-info py-2 small mb-3">
-                                    <i class="bi bi-clock me-1"></i>
-                                    @period.DaysRemaining days remaining
-                                </div>
-                            }
-
-                            <button class="btn btn-sm btn-primary w-100" @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}/billing/{period.Id}"))'>
-                                <i class="bi bi-eye me-1"></i> View Details
-                            </button>
+                    <div class="bs-flex bs-gap-3" style="margin-bottom: 0.75rem;">
+                        <div style="flex: 1; text-align: center; padding: 0.5rem; background: var(--bs-gray-100); border-radius: 0.5rem;">
+                            <div class="bs-font-bold">@period.ConsumptionCount</div>
+                            <div style="font-size: 0.6875rem; color: var(--bs-text-subtle);">Entries</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; padding: 0.5rem; background: var(--bs-gray-100); border-radius: 0.5rem;">
+                            <div class="bs-font-bold">@period.TotalCoffeeGrams g</div>
+                            <div style="font-size: 0.6875rem; color: var(--bs-text-subtle);">Coffee</div>
                         </div>
                     </div>
+
+                    @if (period.State == "Open" && period.DaysRemaining >= 0)
+                    {
+                        <p style="font-size: 0.8125rem; color: var(--bs-primary); margin: 0 0 0.75rem;">
+                            <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">schedule</span>
+                            @period.DaysRemaining days remaining
+                        </p>
+                    }
+
+                    <button class="bs-btn bs-btn-sm" style="width: 100%; background: var(--bs-primary-light); color: var(--bs-primary);"
+                            @onclick='@(() => Navigation.NavigateTo($"/spaces/{SpaceId}/billing/{period.Id}"))'>
+                        View Details
+                    </button>
                 </div>
             }
         </div>
     }
+</div>
 
-    @if (showCreateModal)
-    {
-        <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Create Billing Period</h5>
-                        <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <input type="text" class="form-control" @bind="newPeriodName" placeholder="e.g., January 2025" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Start Date</label>
-                            <input type="date" class="form-control" @bind="newPeriodStart" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">End Date</label>
-                            <input type="date" class="form-control" @bind="newPeriodEnd" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseCreateModal">Cancel</button>
-                        <button type="button" class="btn btn-primary" @onclick="CreatePeriod">Create</button>
-                    </div>
+@if (showCreateModal)
+{
+    <div class="bs-modal-backdrop" @onclick="CloseCreateModal">
+        <div class="bs-modal" role="dialog" aria-label="Create billing period" aria-modal="true" @onclick:stopPropagation="true" style="max-width: 24rem;">
+            <div class="bs-modal-header bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
+                <h3 style="margin: 0; font-size: 1.125rem;">Create Billing Period</h3>
+                <button class="bs-btn-icon" aria-label="Close" @onclick="CloseCreateModal" style="background: transparent; border: none;">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="bs-flex bs-flex-col bs-gap-3">
+                <div>
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem;">Name</label>
+                    <input type="text" class="bs-input" @bind="newPeriodName" placeholder="e.g., January 2025" />
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem;">Start Date</label>
+                    <input type="date" class="bs-input" @bind="newPeriodStart" />
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem;">End Date</label>
+                    <input type="date" class="bs-input" @bind="newPeriodEnd" />
                 </div>
             </div>
+
+            <div class="bs-flex bs-gap-2 bs-justify-end" style="margin-top: 1.25rem;">
+                <button class="bs-btn bs-btn-secondary" @onclick="CloseCreateModal">Cancel</button>
+                <button class="bs-btn bs-btn-primary" @onclick="CreatePeriod">Create</button>
+            </div>
         </div>
-    }
-</div>
+    </div>
+}
 
 @code {
     [Parameter] public Guid SpaceId { get; set; }
@@ -159,10 +152,7 @@
         showCreateModal = true;
     }
 
-    private void CloseCreateModal()
-    {
-        showCreateModal = false;
-    }
+    private void CloseCreateModal() => showCreateModal = false;
 
     private async Task CreatePeriod()
     {
@@ -184,61 +174,4 @@
             await AlertService.ShowAlertAsync("Error", $"Failed to create billing period: {ex.Message}");
         }
     }
-
-    private async Task OpenPeriod(Guid periodId)
-    {
-        try
-        {
-            await BillingService.OpenBillingPeriodAsync(periodId);
-            await LoadBillingPeriods();
-        }
-        catch (Exception ex)
-        {
-            await AlertService.ShowAlertAsync("Error", $"Failed to open billing period: {ex.Message}");
-        }
-    }
-
-    private async Task ClosePeriod(Guid periodId)
-    {
-        try
-        {
-            await BillingService.CloseBillingPeriodAsync(periodId);
-            await LoadBillingPeriods();
-        }
-        catch (Exception ex)
-        {
-            await AlertService.ShowAlertAsync("Error", $"Failed to close billing period: {ex.Message}");
-        }
-    }
-
-    private async Task GenerateSettlement(Guid periodId)
-    {
-        try
-        {
-            var settlement = await SettlementService.GenerateSettlementAsync(periodId);
-            if (settlement != null)
-            {
-                await LoadBillingPeriods();
-                Navigation.NavigateTo($"/spaces/{SpaceId}/settlements");
-            }
-        }
-        catch (Exception ex)
-        {
-            await AlertService.ShowAlertAsync("Error", $"Failed to generate settlement: {ex.Message}");
-        }
-    }
-
-    private void ViewSettlement(Guid periodId)
-    {
-        Navigation.NavigateTo($"/spaces/{SpaceId}/billing/{periodId}");
-    }
-
-    private string GetStateBadgeColor(string state) => state switch
-    {
-        "Draft" => "secondary",
-        "Open" => "success",
-        "Closed" => "warning",
-        "Settled" => "primary",
-        _ => "secondary"
-    };
 }

@@ -23,6 +23,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
 
 builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInMemoryDatabase);
+builder.Services.AddMemoryCache();
 builder.Services.AddExchangeRates(builder.Configuration);
 builder.Services.AddCommunicationServices(builder.Configuration);
 
@@ -63,14 +64,17 @@ if (useOidc)
                 ClockSkew = TimeSpan.FromMinutes(AuthenticationSettings.TokenClockSkewMinutes)
             };
 
-            // Some OIDC providers (e.g. Keycloak) put roles in realm_access as JSON: {"roles":["admin","user"]}
-            // ASP.NET Core can't parse nested JSON as role claims, so we extract them manually.
+            // Extract roles from multiple OIDC claim formats for provider compatibility.
+            // Keycloak: realm_access.roles (JSON), Auth0/Azure AD: roles (array), standard: role claim.
             options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
             {
                 OnTokenValidated = context =>
                 {
                     var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
-                    var realmAccessClaim = identity?.FindFirst("realm_access")?.Value;
+                    if (identity == null) return Task.CompletedTask;
+
+                    // Keycloak: realm_access JSON with nested roles array
+                    var realmAccessClaim = identity.FindFirst("realm_access")?.Value;
                     if (!string.IsNullOrEmpty(realmAccessClaim))
                     {
                         try
@@ -83,18 +87,32 @@ if (useOidc)
                                 {
                                     var roleName = role.GetString();
                                     if (!string.IsNullOrWhiteSpace(roleName))
-                                    {
-                                        identity!.AddClaim(new System.Security.Claims.Claim(
+                                        identity.AddClaim(new System.Security.Claims.Claim(
                                             System.Security.Claims.ClaimTypes.Role, roleName));
-                                    }
                                 }
                             }
                         }
-                        catch (System.Text.Json.JsonException)
-                        {
-                            // Malformed realm_access claim — skip role extraction
-                        }
+                        catch (System.Text.Json.JsonException) { }
                     }
+
+                    // Auth0 / Azure AD / generic: "roles" claim as JSON array
+                    var rolesClaim = identity.FindFirst("roles")?.Value;
+                    if (!string.IsNullOrEmpty(rolesClaim) && rolesClaim.TrimStart().StartsWith("["))
+                    {
+                        try
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(rolesClaim);
+                            foreach (var role in doc.RootElement.EnumerateArray())
+                            {
+                                var roleName = role.GetString();
+                                if (!string.IsNullOrWhiteSpace(roleName))
+                                    identity.AddClaim(new System.Security.Claims.Claim(
+                                        System.Security.Claims.ClaimTypes.Role, roleName));
+                            }
+                        }
+                        catch (System.Text.Json.JsonException) { }
+                    }
+
                     return Task.CompletedTask;
                 }
             };
@@ -189,7 +207,9 @@ using (var scope = app.Services.CreateScope())
 
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder>>();
     var seeder = new BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder(context, logger);
-    await seeder.SeedAsync(includeDemoData: true);
+    var includeDemoData = app.Environment.IsDevelopment()
+        || app.Configuration.GetValue<bool>("IncludeDemoData");
+    await seeder.SeedAsync(includeDemoData: includeDemoData);
 }
 
 // Validate critical configuration on startup

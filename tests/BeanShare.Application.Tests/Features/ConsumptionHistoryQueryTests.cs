@@ -75,13 +75,7 @@ public sealed class ConsumptionHistoryQueryTests
         var consumptions = CreateConsumptions(5);
 
         _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
-        _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), default)
-            .Returns(callInfo =>
-            {
-                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
-                var predicate = spec.Criteria.Compile();
-                return consumptions.Where(predicate).ToList();
-            });
+        SetupConsumptionMocks(consumptions);
 
         var query = new GetUserConsumptionHistoryQuery(null, null, null, null, 1, 3);
 
@@ -106,13 +100,7 @@ public sealed class ConsumptionHistoryQueryTests
         };
 
         _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
-        _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), default)
-            .Returns(callInfo =>
-            {
-                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
-                var predicate = spec.Criteria.Compile();
-                return consumptions.Where(predicate).ToList();
-            });
+        SetupConsumptionMocks(consumptions);
 
         var query = new GetUserConsumptionHistoryQuery(
             null,
@@ -137,13 +125,7 @@ public sealed class ConsumptionHistoryQueryTests
         var consumptions = CreateConsumptions(3);
 
         _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
-        _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), default)
-            .Returns(callInfo =>
-            {
-                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
-                var predicate = spec.Criteria.Compile();
-                return consumptions.Where(predicate).ToList();
-            });
+        SetupConsumptionMocks(consumptions);
 
         var query = new GetUserConsumptionHistoryQuery(_spaceId.Value, null, null, null, 1, 20);
 
@@ -166,13 +148,7 @@ public sealed class ConsumptionHistoryQueryTests
         };
 
         _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
-        _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), default)
-            .Returns(callInfo =>
-            {
-                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
-                var predicate = spec.Criteria.Compile();
-                return consumptions.Where(predicate).ToList();
-            });
+        SetupConsumptionMocks(consumptions);
 
         var query = new GetUserConsumptionHistoryQuery(null, null, null, billingPeriodId.Value, 1, 20);
 
@@ -228,13 +204,7 @@ public sealed class ConsumptionHistoryQueryTests
         };
 
         _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
-        _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), default)
-            .Returns(callInfo =>
-            {
-                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
-                var predicate = spec.Criteria.Compile();
-                return consumptions.Where(predicate).ToList();
-            });
+        SetupConsumptionMocks(consumptions);
 
         var query = new GetUserConsumptionHistoryQuery(null, null, null, null, 1, 20);
 
@@ -261,13 +231,7 @@ public sealed class ConsumptionHistoryQueryTests
         };
 
         _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
-        _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), default)
-            .Returns(callInfo =>
-            {
-                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
-                var predicate = spec.Criteria.Compile();
-                return consumptions.Where(predicate).ToList();
-            });
+        SetupConsumptionMocks(consumptions);
 
         var query = new GetUserConsumptionHistoryQuery(null, null, null, null, 1, 20);
 
@@ -276,6 +240,29 @@ public sealed class ConsumptionHistoryQueryTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Items.Should().BeInDescendingOrder(item => item.ConsumedAt);
         result.Value.Items.First().ConsumedAt.Should().Be(new DateTime(2025, 10, 3, 9, 0, 0, DateTimeKind.Utc));
+    }
+
+    private void SetupConsumptionMocks(List<ConsumptionEntry> consumptions)
+    {
+        _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
+                var predicate = spec.Criteria.Compile();
+                return consumptions.Where(predicate).ToList();
+            });
+
+        _consumptionRepository.GetPagedBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var spec = callInfo.Arg<ISpec<ConsumptionEntry>>();
+                var skipArg = callInfo.ArgAt<int>(1);
+                var takeArg = callInfo.ArgAt<int>(2);
+                var predicate = spec.Criteria.Compile();
+                var filtered = consumptions.Where(predicate).OrderByDescending(c => c.ConsumedAt).ToList();
+                var paged = filtered.Skip(skipArg).Take(takeArg).ToList();
+                return ((IReadOnlyList<ConsumptionEntry>)paged, filtered.Count);
+            });
     }
 
     private Space CreateSpace()

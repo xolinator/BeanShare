@@ -16,20 +16,10 @@
         <span class="material-symbols-outlined">add</span>
     </button>
 
-    @if (!string.IsNullOrEmpty(CurrentSpaceId))
-    {
-        <button class="@GetTabClass("consumption")" @onclick='() => NavigateToTab($"/spaces/{CurrentSpaceId}/consumption")'>
-            <span class="material-symbols-outlined">local_cafe</span>
-            <span class="tab-label">Coffee</span>
-        </button>
-    }
-    else
-    {
-        <button class="@GetTabClass("settings")" @onclick='() => NavigateToTab("/settings")'>
-            <span class="material-symbols-outlined">settings</span>
-            <span class="tab-label">Settings</span>
-        </button>
-    }
+    <button class="@GetTabClass("history")" @onclick='() => NavigateToTab("/history")'>
+        <span class="material-symbols-outlined">history</span>
+        <span class="tab-label">History</span>
+    </button>
 
     <button class="@GetTabClass("profile")" @onclick='() => NavigateToTab("/profile")'>
         <span class="material-symbols-outlined">person</span>
@@ -94,7 +84,7 @@
             "spaces" => currentPath == "spaces",
             "stock" => currentPath.Contains("/stock"),
             "consumption" => currentPath.Contains("/consumption"),
-            "settings" => currentPath.StartsWith("settings"),
+            "history" => currentPath.StartsWith("history"),
             "profile" => currentPath.StartsWith("profile"),
             _ => false
         };

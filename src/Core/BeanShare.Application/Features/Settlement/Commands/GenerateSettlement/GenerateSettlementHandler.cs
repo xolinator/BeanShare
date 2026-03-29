@@ -107,8 +107,6 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
         var costingPolicy = new WeightedAverageCostingPolicy();
         var totalConsumedWeight = Weight.FromGrams(periodConsumptions.Sum(c => c.Quantity.Grams));
         var totalCost = costingPolicy.CalculateCost(periodPurchases, totalConsumedWeight, space.Currency.Code);
-        // Debug: keeping this for testing settlement calculations if issues come up
-        // Console.WriteLine($"Settlement calc: {periodPurchases.Count} purchases, {totalConsumedWeight.Grams}g consumed, cost={totalCost.Amount}");
 
         var settlement = Domain.Aggregates.Settlement.Settlement.Create(
             billingPeriod.SpaceId,

@@ -13,17 +13,9 @@
             <span class="material-symbols-outlined">palette</span>
             <span>Appearance</span>
         </button>
-        <button class="@GetTabClass("notifications")" @onclick='() => SetActiveTab("notifications")'>
-            <span class="material-symbols-outlined">notifications</span>
-            <span>Notifications</span>
-        </button>
         <button class="@GetTabClass("privacy")" @onclick='() => SetActiveTab("privacy")'>
             <span class="material-symbols-outlined">lock</span>
             <span>Privacy</span>
-        </button>
-        <button class="@GetTabClass("advanced")" @onclick='() => SetActiveTab("advanced")'>
-            <span class="material-symbols-outlined">settings</span>
-            <span>Advanced</span>
         </button>
     </div>
 
@@ -73,59 +65,6 @@
                 </div>
                 break;
 
-            case "notifications":
-                <div class="settings-section">
-                    <h2>Notifications</h2>
-                    <p class="section-description">Control when and how you receive notifications</p>
-
-                    <div class="setting-group">
-                        <h3>Email Notifications</h3>
-                        <div class="toggle-list">
-                            <div class="toggle-item">
-                                <div class="toggle-info">
-                                    <label>New Coffee Added</label>
-                                    <p>When someone adds coffee to your space</p>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" @bind="notifyNewCoffee" />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="toggle-item">
-                                <div class="toggle-info">
-                                    <label>Low Stock Alert</label>
-                                    <p>When coffee stock is running low</p>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" @bind="notifyLowStock" />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="toggle-item">
-                                <div class="toggle-info">
-                                    <label>Space Invitations</label>
-                                    <p>When you're invited to join a space</p>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" @bind="notifyInvitations" />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="toggle-item">
-                                <div class="toggle-info">
-                                    <label>Weekly Summary</label>
-                                    <p>Weekly coffee consumption report</p>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" @bind="notifyWeeklySummary" />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                break;
-
             case "privacy":
                 <div class="settings-section">
                     <h2>Privacy & Security</h2>
@@ -144,83 +83,16 @@
                         <div class="account-list">
                             <div class="account-item">
                                 <div class="account-info">
-                                    <div class="account-icon">G</div>
+                                    <div class="account-icon" style="background: #4285f4;">G</div>
                                     <span>Google</span>
                                 </div>
-                                <button class="connect-btn" disabled title="OAuth integration coming soon">Connect</button>
-                            </div>
-                            <div class="account-item">
-                                <div class="account-info">
-                                    <div class="account-icon">F</div>
-                                    <span>Facebook</span>
-                                </div>
-                                <button class="connect-btn" disabled title="OAuth integration coming soon">Connect</button>
+                                <span style="color: var(--bs-text-subtle); font-size: 0.8125rem;">Via Keycloak</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 break;
 
-            case "advanced":
-                <div class="settings-section">
-                    <h2>Advanced Settings</h2>
-                    <p class="section-description">Advanced configuration options</p>
-
-                    <div class="setting-group">
-                        <h3>Language & Region</h3>
-                        <div class="form-field">
-                            <label>Language</label>
-                            <select @bind="language">
-                                <option value="en">English</option>
-                                <option value="de">Deutsch</option>
-                                <option value="fr">Français</option>
-                                <option value="es">Español</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label>Time Zone</label>
-                            <select @bind="timeZone">
-                                <option value="UTC">UTC</option>
-                                <option value="EST">Eastern Time</option>
-                                <option value="CST">Central Time</option>
-                                <option value="PST">Pacific Time</option>
-                                <option value="CET">Central European Time</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label>Date Format</label>
-                            <select @bind="dateFormat">
-                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <h3>Data & Storage</h3>
-                        <div class="storage-card">
-                            <div class="storage-bar">
-                                <div class="storage-used" style="width: 35%"></div>
-                            </div>
-                            <p>350 MB of 1 GB used</p>
-                        </div>
-                        <button class="action-button" disabled>
-                            <span class="material-symbols-outlined">delete</span>
-                            <span>Clear Cache</span>
-                        </button>
-                    </div>
-
-                    <div class="setting-group">
-                        <h3>Export Data</h3>
-                        <p>Download all your BeanShare data</p>
-                        <button class="action-button" disabled>
-                            <span class="material-symbols-outlined">download</span>
-                            <span>Export as JSON</span>
-                        </button>
-                    </div>
-                </div>
-                break;
         }
     </div>
 

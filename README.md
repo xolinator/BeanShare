@@ -356,7 +356,7 @@ See [TEST.md](TEST.md) for local setup and [PRODUCTION-DEPLOYMENT.md](../PRODUCT
 
 ## License
 
-[Your License]
+Authored by: Oliver Golec
 
 This project is part of a diploma thesis at Brno University of Technology (VUT FIT).
 

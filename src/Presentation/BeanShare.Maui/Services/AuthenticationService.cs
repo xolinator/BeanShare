@@ -33,32 +33,54 @@ public class AuthenticationService : IAuthenticationService
         _callbackUrl = configuration.GetValue<string>("Oidc:RedirectUri") ?? "beanshare://callback";
         _useOidc = configuration.GetValue<bool>("UseOidc", false);
         _idpHintParam = configuration.GetValue<string>("Oidc:IdentityProviderHintParam");
-
-        // Android emulator uses 10.0.2.2 to reach the host machine's localhost
 #if ANDROID
-        if (oidcAuthority.Contains("localhost") || oidcAuthority.Contains("127.0.0.1"))
+        if (DeviceInfo.DeviceType == DeviceType.Virtual &&
+            (oidcAuthority.Contains("localhost") || oidcAuthority.Contains("127.0.0.1")))
         {
             oidcAuthority = oidcAuthority.Replace("localhost", "10.0.2.2").Replace("127.0.0.1", "10.0.2.2");
             logger.LogInformation("Android emulator detected - OIDC authority remapped to: {Authority}", oidcAuthority);
         }
 #endif
 
-        // Use explicit endpoint overrides if configured, otherwise derive from authority using common OIDC provider conventions
-        _authorizationEndpoint = configuration.GetValue<string>("Oidc:AuthorizationEndpoint");
-        if (string.IsNullOrEmpty(_authorizationEndpoint))
-            _authorizationEndpoint = $"{oidcAuthority}/protocol/openid-connect/auth";
+        // Use explicit endpoint overrides if configured. If not set, attempt OIDC discovery
+        // from {authority}/.well-known/openid-configuration. Keycloak fallback paths
+        // are used only if discovery also fails.
+        _authorizationEndpoint = configuration.GetValue<string>("Oidc:AuthorizationEndpoint") ?? "";
+        _registrationEndpoint = configuration.GetValue<string>("Oidc:RegistrationEndpoint") ?? "";
+        var tokenEndpoint = configuration.GetValue<string>("Oidc:TokenEndpoint") ?? "";
+        _endSessionEndpoint = configuration.GetValue<string>("Oidc:EndSessionEndpoint") ?? "";
 
-        _registrationEndpoint = configuration.GetValue<string>("Oidc:RegistrationEndpoint");
+        if (string.IsNullOrEmpty(_authorizationEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
+        {
+            try
+            {
+                var discoveryUrl = $"{oidcAuthority}/.well-known/openid-configuration";
+                var discoveryJson = httpClient.GetStringAsync(discoveryUrl).GetAwaiter().GetResult();
+                using var doc = System.Text.Json.JsonDocument.Parse(discoveryJson);
+
+                if (string.IsNullOrEmpty(_authorizationEndpoint) && doc.RootElement.TryGetProperty("authorization_endpoint", out var authEp))
+                    _authorizationEndpoint = authEp.GetString() ?? "";
+                if (string.IsNullOrEmpty(tokenEndpoint) && doc.RootElement.TryGetProperty("token_endpoint", out var tokenEp))
+                    tokenEndpoint = tokenEp.GetString() ?? "";
+                if (string.IsNullOrEmpty(_endSessionEndpoint) && doc.RootElement.TryGetProperty("end_session_endpoint", out var endEp))
+                    _endSessionEndpoint = endEp.GetString() ?? "";
+
+                logger.LogInformation("OIDC endpoints discovered from {Url}", discoveryUrl);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "OIDC discovery failed, using Keycloak-style endpoint paths as fallback");
+                if (string.IsNullOrEmpty(_authorizationEndpoint))
+                    _authorizationEndpoint = $"{oidcAuthority}/protocol/openid-connect/auth";
+                if (string.IsNullOrEmpty(tokenEndpoint))
+                    tokenEndpoint = $"{oidcAuthority}/protocol/openid-connect/token";
+                if (string.IsNullOrEmpty(_endSessionEndpoint))
+                    _endSessionEndpoint = $"{oidcAuthority}/protocol/openid-connect/logout";
+            }
+        }
+
         if (string.IsNullOrEmpty(_registrationEndpoint))
             _registrationEndpoint = $"{oidcAuthority}/protocol/openid-connect/registrations";
-
-        var tokenEndpoint = configuration.GetValue<string>("Oidc:TokenEndpoint");
-        if (string.IsNullOrEmpty(tokenEndpoint))
-            tokenEndpoint = $"{oidcAuthority}/protocol/openid-connect/token";
-
-        _endSessionEndpoint = configuration.GetValue<string>("Oidc:EndSessionEndpoint");
-        if (string.IsNullOrEmpty(_endSessionEndpoint))
-            _endSessionEndpoint = $"{oidcAuthority}/protocol/openid-connect/logout";
 
         _tokenHandler = new OidcTokenHandler(httpClient, logger, _oidcClientId, _callbackUrl, tokenEndpoint);
     }
@@ -372,6 +394,7 @@ public class AuthenticationService : IAuthenticationService
             {
                 _httpClient.DefaultRequestHeaders.Remove("Authorization");
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+                await _tokenHandler.FetchAndUpdateDatabaseUserIdAsync(accessToken);
             }
 
             return _currentUser;

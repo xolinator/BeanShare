@@ -7,6 +7,8 @@ namespace BeanShare.Api.Endpoints.Consumption;
 public sealed class GetRecentConsumptionsRequest
 {
     public Guid SpaceId { get; set; }
+    [QueryParam]
+    public Guid? ForUserId { get; set; }
 }
 
 public sealed class GetRecentConsumptionsEndpoint(IMediator mediator)
@@ -18,13 +20,13 @@ public sealed class GetRecentConsumptionsEndpoint(IMediator mediator)
         Summary(s =>
         {
             s.Summary = "Get recent consumptions for a space";
-            s.Description = "Returns recent consumption entries, user KPIs, and remaining stock for a space.";
+            s.Description = "Returns recent consumption entries, user KPIs, and remaining stock for a space. Optionally filter by a specific user.";
         });
     }
 
     public override async Task HandleAsync(GetRecentConsumptionsRequest req, CancellationToken ct)
     {
-        var query = new GetRecentConsumptionsQuery(req.SpaceId);
+        var query = new GetRecentConsumptionsQuery(req.SpaceId, req.ForUserId);
         var result = await mediator.Send(query, ct);
 
         if (result.IsSuccess)

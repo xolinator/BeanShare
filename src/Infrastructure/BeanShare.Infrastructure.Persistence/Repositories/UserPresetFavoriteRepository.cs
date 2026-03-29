@@ -1,6 +1,6 @@
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
-using BeanShare.Domain.Repositories;
+using BeanShare.Application.Abstractions;
 using BeanShare.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 

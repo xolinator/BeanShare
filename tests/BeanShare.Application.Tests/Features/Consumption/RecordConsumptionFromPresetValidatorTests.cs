@@ -1,4 +1,6 @@
 using BeanShare.Application.Features.Consumption.Commands;
+using BeanShare.Application.Tests.Features;
+using BeanShare.Domain.Common;
 using FluentValidation.TestHelper;
 using Xunit;
 
@@ -6,7 +8,13 @@ namespace BeanShare.Application.Tests.Features.Consumption;
 
 public class RecordConsumptionFromPresetValidatorTests
 {
-    private readonly RecordConsumptionFromPresetValidator _validator = new();
+    private readonly IClock _clock = TestClock.Instance;
+    private readonly RecordConsumptionFromPresetValidator _validator;
+
+    public RecordConsumptionFromPresetValidatorTests()
+    {
+        _validator = new RecordConsumptionFromPresetValidator(_clock);
+    }
 
     [Fact]
     public void Should_Have_Error_When_SpaceId_Is_Empty()
@@ -15,7 +23,7 @@ public class RecordConsumptionFromPresetValidatorTests
             Guid.Empty,
             Guid.NewGuid(),
             null,
-            DateTime.UtcNow);
+            _clock.UtcNow);
 
         var result = _validator.TestValidate(command);
 
@@ -29,7 +37,7 @@ public class RecordConsumptionFromPresetValidatorTests
             Guid.NewGuid(),
             Guid.Empty,
             null,
-            DateTime.UtcNow);
+            _clock.UtcNow);
 
         var result = _validator.TestValidate(command);
 
@@ -46,7 +54,7 @@ public class RecordConsumptionFromPresetValidatorTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             quantity,
-            DateTime.UtcNow);
+            _clock.UtcNow);
 
         var result = _validator.TestValidate(command);
 
@@ -60,7 +68,7 @@ public class RecordConsumptionFromPresetValidatorTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             20,
-            DateTime.UtcNow);
+            _clock.UtcNow);
 
         var result = _validator.TestValidate(command);
 

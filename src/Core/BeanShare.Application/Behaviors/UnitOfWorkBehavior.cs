@@ -8,7 +8,13 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse> : IPipelineBehavior<
     where TRequest : IRequest<TResponse>
 {
     private readonly IUnitOfWork _uow;
-    public UnitOfWorkBehavior(IUnitOfWork uow) => _uow = uow;
+    private readonly IDomainEventDispatcher _eventDispatcher;
+
+    public UnitOfWorkBehavior(IUnitOfWork uow, IDomainEventDispatcher eventDispatcher)
+    {
+        _uow = uow;
+        _eventDispatcher = eventDispatcher;
+    }
 
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
     {
@@ -33,7 +39,12 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse> : IPipelineBehavior<
 
                     if (isSuccess)
                     {
+                        var domainEvents = _eventDispatcher.CollectDomainEvents();
+
                         await _uow.SaveChangesAsync(ct);
+
+                        if (domainEvents.Count > 0)
+                            await _eventDispatcher.DispatchAsync(domainEvents, ct);
                     }
                 }
             }
