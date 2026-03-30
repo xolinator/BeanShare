@@ -110,24 +110,32 @@ Development with Nix:
 ```bash
 nix develop          # enter dev shell (.NET 10, git)
 nix run .#updateDeps # refresh NuGet lockfile (nix/deps.json)
-nix run .#beanshareModuleTestContainer # build/load/run NixOS module test container in Docker
+nix run .#dev-container -- up # build/load/run dev container in Docker
 ```
 
-Test the `services.beanshare-blazorweb` NixOS module in a Docker-based NixOS container:
+Run the development container for the `services.beanshare-blazorweb` NixOS module in Docker:
 
 ```bash
-# default (builds x86_64-linux image)
-nix run .#beanshareModuleTestContainer
+# build and start
+nix run .#dev-container -- up
 
-# Apple Silicon / ARM Linux target
-TARGET_SYSTEM=aarch64-linux nix run .#beanshareModuleTestContainer
+# open a shell in the running container
+nix run .#dev-container -- exec
+
+# connect over SSH (nixos@localhost:2222, password: nixos)
+nix run .#dev-container -- ssh
+
+# inspect and stop it
+nix run .#dev-container -- status
+nix run .#dev-container -- down
 ```
 
-This command:
+This workflow:
 - builds a NixOS container image via `dockerTools` (no project Dockerfile)
 - enables `services.beanshare-blazorweb` inside the container
 - loads and starts it under Docker with systemd
-- opens SSH (`nixos@localhost -p 2222`, password: `nixos`) for interactive testing
+- exposes SSH on `localhost:2222` and the app on `localhost:8080`
+- supports `up`, `exec`, `down`, `ps`, `status`, and `ssh` subcommands via `dev-container`
 
 ## Documentation
 

@@ -18,6 +18,7 @@
         imports =
           [
             inputs.treefmt-nix.flakeModule
+            ./nix/pkgs/dev-container.nix
           ]
           ++ (lib.collect builtins.isPath (h.load {
             src = ./nix;

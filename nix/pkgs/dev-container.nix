@@ -52,8 +52,9 @@
                   enable = true;
                   package = config.packages.blazorwebapp;
                   listenAddress = "0.0.0.0";
-                  port = 5000;
+                  port = 8080;
                   openFirewall = false;
+                  database.password = "beanshare";
                   database.postgresql.enable = true;
                 };
 
@@ -68,16 +69,16 @@
           '';
         in
         pkgs.dockerTools.buildImage {
-          name = "beanshare-module-test-container";
+          name = "dev-container";
           tag = "latest";
 
           config = {
             Cmd = [ "/init" ];
             StopSignal = "SIGRTMIN+3";
-            Hostname = "beanshare-module-test";
+            Hostname = "dev-container";
             ExposedPorts = {
               "2222/tcp" = { };
-              "5000/tcp" = { };
+              "8080/tcp" = { };
             };
           };
 
@@ -91,6 +92,6 @@
         };
     in
     lib.optionalAttrs (lib.elem system [ "x86_64-linux" "aarch64-linux" ]) {
-      packages.beanshare-module-test-container = mkModuleTestContainer system;
+      packages.devContainer = mkModuleTestContainer system;
     };
 }
