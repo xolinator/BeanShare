@@ -2,6 +2,7 @@ using BeanShare.Application.Constants;
 using BeanShare.Application.Services;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
+using BeanShare.Domain.Enums;
 using BeanShare.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -122,6 +123,23 @@ public sealed class UserService : IUserService
         }
 
         return user;
+    }
+
+    public async Task<User?> GetByProviderUserIdAsync(
+        AuthenticationProvider provider,
+        string providerUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(providerUserId))
+        {
+            return null;
+        }
+
+        return await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                u => u.Provider == provider && u.ProviderUserId == providerUserId,
+                cancellationToken);
     }
 
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default)

@@ -102,7 +102,7 @@ if (useOidc)
                         AddRoleClaims(identity, rolesClaim);
                     }
 
-                    foreach (var groupsClaim in identity.FindAll("groups"))
+                    foreach (var groupsClaim in identity.FindAll("groups").ToList())
                     {
                         AddRoleClaims(identity, groupsClaim.Value);
                     }

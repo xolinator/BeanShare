@@ -49,6 +49,10 @@ if (useOidc)
     var oidcClientSecret = builder.Configuration["Oidc:ClientSecret"]
         ?? throw new InvalidOperationException("Oidc:ClientSecret not configured");
     var oidcIdentityProviderHintParam = builder.Configuration["Oidc:IdentityProviderHintParam"];
+    var oidcResponseMode = builder.Configuration["Oidc:ResponseMode"];
+    var oidcUseSecureCallbackCookies =
+        builder.Configuration.GetValue<bool?>("Oidc:UseSecureCallbackCookies")
+        ?? builder.Environment.IsProduction();
 
     builder.Services.AddAuthentication(options =>
     {
@@ -68,10 +72,28 @@ if (useOidc)
         options.ClientId = oidcClientId;
         options.ClientSecret = oidcClientSecret;
         options.ResponseType = "code";
-        options.SaveTokens = true;
+        if (!string.IsNullOrWhiteSpace(oidcResponseMode))
+        {
+            options.ResponseMode = oidcResponseMode;
+        }
+        options.SaveTokens = false;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = builder.Environment.IsProduction();
         options.MapInboundClaims = false;
+        options.CorrelationCookie.SecurePolicy = oidcUseSecureCallbackCookies
+            ? CookieSecurePolicy.Always
+            : CookieSecurePolicy.SameAsRequest;
+        options.NonceCookie.SecurePolicy = oidcUseSecureCallbackCookies
+            ? CookieSecurePolicy.Always
+            : CookieSecurePolicy.SameAsRequest;
+
+        var useFormPostResponseMode = string.IsNullOrWhiteSpace(options.ResponseMode)
+            || string.Equals(options.ResponseMode, "form_post", StringComparison.OrdinalIgnoreCase);
+        var callbackCookieSameSite = useFormPostResponseMode
+            ? SameSiteMode.None
+            : SameSiteMode.Lax;
+        options.CorrelationCookie.SameSite = callbackCookieSameSite;
+        options.NonceCookie.SameSite = callbackCookieSameSite;
 
         options.Scope.Clear();
         options.Scope.Add("openid");
@@ -133,7 +155,7 @@ if (useOidc)
                             AddRoleClaims(identity, rolesClaim.Value);
                         }
 
-                        foreach (var groupsClaim in identity.FindAll("groups"))
+                        foreach (var groupsClaim in identity.FindAll("groups").ToList())
                         {
                             AddRoleClaims(identity, groupsClaim.Value);
                         }

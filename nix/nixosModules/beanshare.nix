@@ -54,6 +54,9 @@
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Host $http_host;
           proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_buffer_size 16k;
+          proxy_buffers 8 16k;
+          proxy_busy_buffers_size 24k;
         '';
       in
       with lib;
