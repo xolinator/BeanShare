@@ -8,6 +8,7 @@
     perSystem @ { inputs', ... }: nixos @ { pkgs, config, lib, system, ... }:
       let
         cfg = config.services.beanshare-blazorweb;
+        packageContentRoot = "${cfg.package}/lib/beanshare-blazorwebapp";
         apiCfg =
           if builtins.hasAttr "beanshare-api" config.services
           then config.services."beanshare-api"
@@ -178,6 +179,7 @@
               default = "";
               description = "OIDC client secret. Prefer environmentFile for secrets to avoid storing in Nix.";
             };
+
           };
 
           environmentFile = mkOption {
@@ -256,7 +258,7 @@
               serviceConfig = {
                 DynamicUser = true;
                 RuntimeDirectory = "beanshare-blazorweb";
-                WorkingDirectory = cfg.package;
+                WorkingDirectory = packageContentRoot;
                 Restart = "on-failure";
                 RestartSec = "10s";
               } // lib.optionalAttrs (cfg.environmentFile != null) {

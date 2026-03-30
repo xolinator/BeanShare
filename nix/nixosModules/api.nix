@@ -6,6 +6,7 @@
     perSystem @ { inputs', ... }: nixos @ { pkgs, config, lib, system, ... }:
       let
         cfg = config.services.beanshare-api;
+        packageContentRoot = "${cfg.package}/lib/beanshare-apiapp";
         dbHost = if cfg.database.postgresql.enable then "localhost" else cfg.database.host;
         dbPort = if cfg.database.postgresql.enable then config.services.postgresql.settings.port else cfg.database.port;
         dbConnectionString =
@@ -104,7 +105,7 @@
               serviceConfig = {
                 DynamicUser = true;
                 RuntimeDirectory = "beanshare-api";
-                WorkingDirectory = cfg.package;
+                WorkingDirectory = packageContentRoot;
                 Restart = "on-failure";
                 RestartSec = "10s";
               } // lib.optionalAttrs (cfg.environmentFile != null) {
