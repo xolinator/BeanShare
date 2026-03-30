@@ -48,6 +48,7 @@ if (useOidc)
     var oidcClientId = builder.Configuration["Oidc:ClientId"] ?? "beanshare-web";
     var oidcClientSecret = builder.Configuration["Oidc:ClientSecret"]
         ?? throw new InvalidOperationException("Oidc:ClientSecret not configured");
+    var oidcIdentityProviderHintParam = builder.Configuration["Oidc:IdentityProviderHintParam"];
 
     builder.Services.AddAuthentication(options =>
     {
@@ -85,6 +86,17 @@ if (useOidc)
 
         options.Events = new OpenIdConnectEvents
         {
+            OnRedirectToIdentityProvider = context =>
+            {
+                if (!string.IsNullOrWhiteSpace(oidcIdentityProviderHintParam) &&
+                    context.Properties.Items.TryGetValue(oidcIdentityProviderHintParam, out var hintValue) &&
+                    !string.IsNullOrWhiteSpace(hintValue))
+                {
+                    context.ProtocolMessage.SetParameter(oidcIdentityProviderHintParam, hintValue);
+                }
+
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async context =>
             {
                 // Extract roles from multiple OIDC claim formats for provider compatibility
@@ -104,9 +116,7 @@ if (useOidc)
                                 {
                                     foreach (var role in rolesElement.EnumerateArray())
                                     {
-                                        var roleValue = role.GetString() ?? "";
-                                        identity.AddClaim(new System.Security.Claims.Claim(
-                                            System.Security.Claims.ClaimTypes.Role, roleValue));
+                                        AddRoleClaims(identity, role.GetString());
                                     }
                                 }
                             }
@@ -118,19 +128,14 @@ if (useOidc)
                         }
 
                         var rolesClaim = identity.FindFirst("roles");
-                        if (rolesClaim != null && rolesClaim.Value.TrimStart().StartsWith("["))
+                        if (rolesClaim != null)
                         {
-                            try
-                            {
-                                using var rolesDoc = System.Text.Json.JsonDocument.Parse(rolesClaim.Value);
-                                foreach (var role in rolesDoc.RootElement.EnumerateArray())
-                                {
-                                    var roleValue = role.GetString() ?? "";
-                                    identity.AddClaim(new System.Security.Claims.Claim(
-                                        System.Security.Claims.ClaimTypes.Role, roleValue));
-                                }
-                            }
-                            catch (Exception) { }
+                            AddRoleClaims(identity, rolesClaim.Value);
+                        }
+
+                        foreach (var groupsClaim in identity.FindAll("groups"))
+                        {
+                            AddRoleClaims(identity, groupsClaim.Value);
                         }
                     }
                 }
@@ -182,7 +187,10 @@ var app = builder.Build();
 
 var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedHost |
+        ForwardedHeaders.XForwardedProto
 };
 #pragma warning disable ASPDEPR005
 forwardedHeadersOptions.KnownNetworks.Clear();
@@ -246,4 +254,71 @@ static string ResolvePublicBaseUrl(IServiceProvider services, string? configured
     }
 
     return developmentFallback.TrimEnd('/');
+}
+
+static void AddRoleClaims(System.Security.Claims.ClaimsIdentity identity, string? rawValue)
+{
+    foreach (var roleValue in ExpandMultiValueClaim(rawValue))
+    {
+        if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, roleValue))
+        {
+            identity.AddClaim(new System.Security.Claims.Claim(
+                System.Security.Claims.ClaimTypes.Role,
+                roleValue));
+        }
+    }
+}
+
+static IEnumerable<string> ExpandMultiValueClaim(string? rawValue)
+{
+    if (string.IsNullOrWhiteSpace(rawValue))
+    {
+        yield break;
+    }
+
+    var trimmedValue = rawValue.Trim();
+
+    if (trimmedValue.StartsWith("["))
+    {
+        var parsedValues = TryParseJsonArrayClaim(trimmedValue);
+        if (parsedValues != null)
+        {
+            foreach (var value in parsedValues)
+            {
+                yield return value;
+            }
+
+            yield break;
+        }
+    }
+
+    yield return trimmedValue;
+}
+
+static List<string>? TryParseJsonArrayClaim(string rawValue)
+{
+    try
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(rawValue);
+        if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var values = new List<string>();
+        foreach (var item in doc.RootElement.EnumerateArray())
+        {
+            var value = item.GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                values.Add(value);
+            }
+        }
+
+        return values;
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return null;
+    }
 }

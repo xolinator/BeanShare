@@ -88,10 +88,7 @@ if (useOidc)
                             {
                                 foreach (var role in rolesElement.EnumerateArray())
                                 {
-                                    var roleName = role.GetString();
-                                    if (!string.IsNullOrWhiteSpace(roleName))
-                                        identity.AddClaim(new System.Security.Claims.Claim(
-                                            System.Security.Claims.ClaimTypes.Role, roleName));
+                                    AddRoleClaims(identity, role.GetString());
                                 }
                             }
                         }
@@ -100,20 +97,14 @@ if (useOidc)
 
                     // Auth0 / Azure AD / generic: "roles" claim as JSON array
                     var rolesClaim = identity.FindFirst("roles")?.Value;
-                    if (!string.IsNullOrEmpty(rolesClaim) && rolesClaim.TrimStart().StartsWith("["))
+                    if (!string.IsNullOrEmpty(rolesClaim))
                     {
-                        try
-                        {
-                            using var doc = System.Text.Json.JsonDocument.Parse(rolesClaim);
-                            foreach (var role in doc.RootElement.EnumerateArray())
-                            {
-                                var roleName = role.GetString();
-                                if (!string.IsNullOrWhiteSpace(roleName))
-                                    identity.AddClaim(new System.Security.Claims.Claim(
-                                        System.Security.Claims.ClaimTypes.Role, roleName));
-                            }
-                        }
-                        catch (System.Text.Json.JsonException) { }
+                        AddRoleClaims(identity, rolesClaim);
+                    }
+
+                    foreach (var groupsClaim in identity.FindAll("groups"))
+                    {
+                        AddRoleClaims(identity, groupsClaim.Value);
                     }
 
                     return Task.CompletedTask;
@@ -171,7 +162,10 @@ var app = builder.Build();
 
 var fhOptions = new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedHost |
+        ForwardedHeaders.XForwardedProto
 };
 #pragma warning disable ASPDEPR005
 fhOptions.KnownNetworks.Clear();
@@ -212,6 +206,73 @@ await app.Services.InitializeBeanShareDatabaseAsync(includeApiDemoData);
 ValidateConfiguration(app.Configuration, useOidc, app.Logger);
 
 app.Run();
+
+static void AddRoleClaims(System.Security.Claims.ClaimsIdentity identity, string? rawValue)
+{
+    foreach (var roleValue in ExpandMultiValueClaim(rawValue))
+    {
+        if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, roleValue))
+        {
+            identity.AddClaim(new System.Security.Claims.Claim(
+                System.Security.Claims.ClaimTypes.Role,
+                roleValue));
+        }
+    }
+}
+
+static IEnumerable<string> ExpandMultiValueClaim(string? rawValue)
+{
+    if (string.IsNullOrWhiteSpace(rawValue))
+    {
+        yield break;
+    }
+
+    var trimmedValue = rawValue.Trim();
+
+    if (trimmedValue.StartsWith("["))
+    {
+        var parsedValues = TryParseJsonArrayClaim(trimmedValue);
+        if (parsedValues != null)
+        {
+            foreach (var value in parsedValues)
+            {
+                yield return value;
+            }
+
+            yield break;
+        }
+    }
+
+    yield return trimmedValue;
+}
+
+static List<string>? TryParseJsonArrayClaim(string rawValue)
+{
+    try
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(rawValue);
+        if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var values = new List<string>();
+        foreach (var item in doc.RootElement.EnumerateArray())
+        {
+            var value = item.GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                values.Add(value);
+            }
+        }
+
+        return values;
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return null;
+    }
+}
 
 static void ValidateConfiguration(IConfiguration configuration, bool useOidc, ILogger logger)
 {

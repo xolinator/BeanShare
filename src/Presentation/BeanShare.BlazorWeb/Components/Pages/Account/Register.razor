@@ -131,8 +131,11 @@ else
             var registrationEndpoint = Configuration["Oidc:RegistrationEndpoint"];
             if (string.IsNullOrEmpty(registrationEndpoint))
                 registrationEndpoint = $"{oidcAuthority}/protocol/openid-connect/registrations";
-            var baseUrl = HttpContextAccessor.HttpContext?.Request.Scheme + "://" +
-                         HttpContextAccessor.HttpContext?.Request.Host;
+            var request = HttpContextAccessor.HttpContext?.Request;
+            var baseUrl =
+                request != null
+                    ? $"{request.Scheme}://{request.Host}{request.PathBase}"
+                    : Navigation.BaseUri.TrimEnd('/');
             _oidcRegistrationUrl = $"{registrationEndpoint}?client_id={clientId}&response_type=code&scope=openid&redirect_uri={Uri.EscapeDataString($"{baseUrl}/signin-oidc")}";
         }
     }

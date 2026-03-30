@@ -60,6 +60,7 @@ public sealed class OidcUserContext : IUserContext
             var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value)
                             .Concat(user.FindAll("role").Select(c => c.Value))
                             .Concat(user.FindAll("roles").Select(c => c.Value))
+                            .Concat(user.FindAll("groups").Select(c => c.Value))
                             .Where(v => !string.IsNullOrWhiteSpace(v))
                             .Distinct(StringComparer.Ordinal)
                             .ToArray();
