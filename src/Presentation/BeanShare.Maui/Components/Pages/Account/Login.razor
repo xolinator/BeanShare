@@ -14,7 +14,7 @@
     <div class="bs-login-card">
         <div class="bs-login-header">
             <h1 class="bs-login-title">Welcome to BeanShare</h1>
-            <p class="bs-login-subtitle">Sign in to manage your coffee spaces</p>
+            <p class="bs-login-subtitle">@(_useOidc ? $"Sign in with {_oidcProviderDisplayName} to manage your coffee spaces" : "Sign in to manage your coffee spaces")</p>
         </div>
 
         @if (!string.IsNullOrEmpty(_errorMessage))
@@ -33,7 +33,7 @@
                 }
                 else
                 {
-                    <span>Sign In</span>
+                    <span>Continue with @_oidcProviderDisplayName</span>
                 }
             </button>
         }
@@ -121,10 +121,29 @@
     private bool _isFacebookLoading;
     private string? _errorMessage;
     private bool _useOidc;
+    private string _oidcProviderDisplayName = "your identity provider";
 
     protected override void OnInitialized()
     {
         _useOidc = Configuration.GetValue<bool>("UseOidc", false);
+        _oidcProviderDisplayName = ResolveOidcProviderDisplayName();
+    }
+
+    private string ResolveOidcProviderDisplayName()
+    {
+        var configuredDisplayName = Configuration["Oidc:ProviderDisplayName"];
+        if (!string.IsNullOrWhiteSpace(configuredDisplayName))
+        {
+            return configuredDisplayName;
+        }
+
+        var authority = Configuration["Oidc:Authority"];
+        if (Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri))
+        {
+            return authorityUri.Host;
+        }
+
+        return "your identity provider";
     }
 
     private async Task HandleInvalidSubmit()

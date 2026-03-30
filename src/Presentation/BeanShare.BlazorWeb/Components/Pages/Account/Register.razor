@@ -17,9 +17,9 @@
         <div class="bs-login-card">
             <div class="bs-login-header">
                 <h1 class="bs-login-title">Create Your Account</h1>
-                <p class="bs-login-subtitle">Redirecting to secure registration...</p>
+                <p class="bs-login-subtitle">Redirecting to @_oidcProviderDisplayName for secure registration...</p>
                 <noscript>
-                    <p><a href="@_oidcRegistrationUrl">Click here if not redirected</a></p>
+                    <p><a href="@_oidcRegistrationUrl">Continue with @_oidcProviderDisplayName</a></p>
                 </noscript>
             </div>
         </div>
@@ -118,11 +118,13 @@ else
     private string? _errorMessage;
     private bool _useOidc;
     private string _oidcRegistrationUrl = "";
+    private string _oidcProviderDisplayName = "your identity provider";
 
     protected override void OnInitialized()
     {
         _model ??= new();
         _useOidc = Configuration.GetValue<bool>("UseOidc", false);
+        _oidcProviderDisplayName = ResolveOidcProviderDisplayName();
 
         if (_useOidc)
         {
@@ -138,6 +140,23 @@ else
                     : Navigation.BaseUri.TrimEnd('/');
             _oidcRegistrationUrl = $"{registrationEndpoint}?client_id={clientId}&response_type=code&scope=openid&redirect_uri={Uri.EscapeDataString($"{baseUrl}/signin-oidc")}";
         }
+    }
+
+    private string ResolveOidcProviderDisplayName()
+    {
+        var configuredDisplayName = Configuration["Oidc:ProviderDisplayName"];
+        if (!string.IsNullOrWhiteSpace(configuredDisplayName))
+        {
+            return configuredDisplayName;
+        }
+
+        var authority = Configuration["Oidc:Authority"];
+        if (Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri))
+        {
+            return authorityUri.Host;
+        }
+
+        return "your identity provider";
     }
 
 

@@ -13,31 +13,13 @@
         <div class="bs-login-card">
             <div class="bs-login-header">
                 <h1 class="bs-login-title">Welcome to BeanShare</h1>
-                <p class="bs-login-subtitle">Sign in to manage your coffee spaces</p>
+                <p class="bs-login-subtitle">Sign in with @_oidcProviderDisplayName to manage your coffee spaces</p>
             </div>
 
             <div class="bs-login-providers">
                 <a href="/account/login?returnUrl=@GetReturnUrl()" class="bs-btn bs-btn-primary bs-w-full" data-enhance-nav="false">
-                    Sign In
+                    Continue with @_oidcProviderDisplayName
                 </a>
-            </div>
-
-            <div class="bs-divider">
-                <span>OR</span>
-            </div>
-
-            <div class="bs-login-providers">
-                <form action="/account/external-login" method="post">
-                    <input type="hidden" name="provider" value="Google" />
-                    <input type="hidden" name="returnUrl" value="@GetReturnUrl()" />
-                    <button type="submit" class="bs-login-button bs-login-google">
-                        <svg class="bs-login-icon" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
-                        </svg>
-                        Continue with Google
-                    </button>
-                </form>
-
             </div>
 
             <div class="bs-login-footer">
@@ -128,6 +110,7 @@ else
     private bool _isLoading;
     private string? _errorMessage;
     private bool _useOidc;
+    private string _oidcProviderDisplayName = "your identity provider";
 
     [Inject]
     private IServiceProvider ServiceProvider { get; set; } = default!;
@@ -136,6 +119,7 @@ else
     {
         _model ??= new();
         _useOidc = Configuration.GetValue<bool>("UseOidc", false);
+        _oidcProviderDisplayName = ResolveOidcProviderDisplayName();
     }
 
     private string GetReturnUrl()
@@ -190,6 +174,23 @@ else
         {
             _isLoading = false;
         }
+    }
+
+    private string ResolveOidcProviderDisplayName()
+    {
+        var configuredDisplayName = Configuration["Oidc:ProviderDisplayName"];
+        if (!string.IsNullOrWhiteSpace(configuredDisplayName))
+        {
+            return configuredDisplayName;
+        }
+
+        var authority = Configuration["Oidc:Authority"];
+        if (Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri))
+        {
+            return authorityUri.Host;
+        }
+
+        return "your identity provider";
     }
 
     private class LoginModel
