@@ -5,12 +5,15 @@ using BeanShare.Infrastructure;
 using BeanShare.Infrastructure.Identity;
 using BeanShare.Infrastructure.Persistence;
 using BeanShare.Infrastructure.Persistence.Seeds;
+using BeanShare.Infrastructure.Services;
 using BeanShare.SharedUi.Services;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +32,7 @@ builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInM
 builder.Services.AddMemoryCache();
 builder.Services.AddExchangeRates(builder.Configuration);
 builder.Services.AddCommunicationServices(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
 
 if (!useInMemoryDatabase)
 {
@@ -149,7 +153,6 @@ if (useOidc)
         };
     });
 
-    builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, OidcUserContext>();
     builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
     builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, BeanShare.Infrastructure.Identity.OidcClaimsTransformation>();
@@ -162,21 +165,16 @@ else
 
 builder.Services.AddCascadingAuthenticationState();
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
-    ?? (builder.Environment.IsDevelopment() ? "http://localhost:5247" : throw new InvalidOperationException("ApiBaseUrl must be configured in production"));
-
-builder.Services.AddHttpClient("BeanShareApi", client =>
-{
-    client.BaseAddress = new Uri(apiBaseUrl);
-});
-builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BeanShareApi"));
-builder.Services.AddHttpContextAccessor();
-
 builder.Services.AddScoped<IThemeService, ThemeService>();
-var qrCodeBaseUrl = builder.Configuration.GetValue<string>("QrCodeBaseUrl")
-    ?? (builder.Environment.IsDevelopment() ? "http://localhost:5126" : throw new InvalidOperationException("QrCodeBaseUrl must be configured in production"));
-builder.Services.AddSingleton<BeanShare.SharedUi.Services.IQrCodeService>(
-    _ => new BeanShare.SharedUi.Services.QrCodeService(qrCodeBaseUrl));
+builder.Services.AddScoped<BeanShare.SharedUi.Services.IQrCodeService>(sp =>
+{
+    var qrCodeBaseUrl = ResolvePublicBaseUrl(
+        sp,
+        builder.Configuration.GetValue<string>("QrCodeBaseUrl"),
+        "http://localhost:5126");
+
+    return new BeanShare.SharedUi.Services.QrCodeService(qrCodeBaseUrl);
+});
 builder.Services.AddSingleton<BeanShare.SharedUi.Services.IQrScannerService, BeanShare.SharedUi.Services.BrowserQrScannerService>();
 builder.Services.AddSingleton<BeanShare.SharedUi.Services.QrCodeResolveCache>();
 
@@ -202,33 +200,21 @@ app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Ensure database schema exists and seed data
-{
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<BeanShareDbContext>();
-    await context.Database.EnsureCreatedAsync();
-
-    // Create DataProtectionKeys table if it doesn't exist (EnsureCreated won't add new tables to existing DB)
-    if (!useInMemoryDatabase)
-    {
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS "DataProtectionKeys" (
-                "Id" SERIAL PRIMARY KEY,
-                "FriendlyName" TEXT NULL,
-                "Xml" TEXT NULL
-            )
-            """);
-    }
-
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
-    var seeder = new DatabaseSeeder(context, logger);
-    var includeDemoData = app.Environment.IsDevelopment()
-        || app.Configuration.GetValue<bool>("IncludeDemoData");
-    await seeder.SeedAsync(includeDemoData: includeDemoData);
-}
+var includeWebDemoData = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue<bool>("IncludeDemoData");
+await app.Services.InitializeBeanShareDatabaseAsync(includeWebDemoData);
 
 app.UseAntiforgery();
 
+var avatarStorage = app.Services.GetRequiredService<AvatarStorageService>();
+var uploadsRootPath = avatarStorage.GetUploadsRootPath();
+Directory.CreateDirectory(uploadsRootPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRootPath),
+    RequestPath = "/uploads"
+});
 app.UseStaticFiles();
 app.MapStaticAssets();
 
@@ -239,3 +225,25 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+static string ResolvePublicBaseUrl(IServiceProvider services, string? configuredValue, string developmentFallback)
+{
+    if (!string.IsNullOrWhiteSpace(configuredValue))
+    {
+        return configuredValue.TrimEnd('/');
+    }
+
+    var navigationManager = services.GetService<NavigationManager>();
+    if (navigationManager != null && !string.IsNullOrWhiteSpace(navigationManager.BaseUri))
+    {
+        return navigationManager.BaseUri.TrimEnd('/');
+    }
+
+    var httpContext = services.GetRequiredService<IHttpContextAccessor>().HttpContext;
+    if (httpContext != null)
+    {
+        return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}".TrimEnd('/');
+    }
+
+    return developmentFallback.TrimEnd('/');
+}

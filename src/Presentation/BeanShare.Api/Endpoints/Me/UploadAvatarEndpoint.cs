@@ -1,4 +1,5 @@
 using BeanShare.Application.Abstractions;
+using BeanShare.Infrastructure.Services;
 using FastEndpoints;
 
 namespace BeanShare.Api.Endpoints.Me;
@@ -6,12 +7,12 @@ namespace BeanShare.Api.Endpoints.Me;
 public sealed class UploadAvatarEndpoint : EndpointWithoutRequest<UploadAvatarResponse>
 {
     private readonly IUserContext _userContext;
-    private readonly IWebHostEnvironment _environment;
+    private readonly AvatarStorageService _avatarStorageService;
 
-    public UploadAvatarEndpoint(IUserContext userContext, IWebHostEnvironment environment)
+    public UploadAvatarEndpoint(IUserContext userContext, AvatarStorageService avatarStorageService)
     {
         _userContext = userContext;
-        _environment = environment;
+        _avatarStorageService = avatarStorageService;
     }
 
     public override void Configure()
@@ -42,48 +43,25 @@ public sealed class UploadAvatarEndpoint : EndpointWithoutRequest<UploadAvatarRe
             return;
         }
 
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowedExtensions.Contains(extension))
-        {
-            await SendAsync(new UploadAvatarResponse(false, null, "Invalid file format. Allowed: jpg, png, gif, webp"), 400, ct);
-            return;
-        }
-
-        var allowedContentTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
-        if (!allowedContentTypes.Contains(file.ContentType.ToLowerInvariant()))
-        {
-            await SendAsync(new UploadAvatarResponse(false, null, "Invalid content type"), 400, ct);
-            return;
-        }
-
         try
         {
             var userId = _userContext.CurrentUserId.Value;
-            var uploadsPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), "uploads", "avatars");
+            await using var stream = file.OpenReadStream();
+            var result = await _avatarStorageService.SaveAvatarAsync(
+                userId,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                stream,
+                ct);
 
-            if (!Directory.Exists(uploadsPath))
+            if (result.Success)
             {
-                Directory.CreateDirectory(uploadsPath);
+                await SendOkAsync(new UploadAvatarResponse(true, result.AvatarUrl, null), ct);
+                return;
             }
 
-            var fileName = $"{userId}{extension}";
-            var filePath = Path.Combine(uploadsPath, fileName);
-
-            foreach (var ext in allowedExtensions)
-            {
-                var existingPath = Path.Combine(uploadsPath, $"{userId}{ext}");
-                if (File.Exists(existingPath))
-                {
-                    File.Delete(existingPath);
-                }
-            }
-
-            await using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream, ct);
-
-            var avatarUrl = $"/uploads/avatars/{fileName}";
-            await SendOkAsync(new UploadAvatarResponse(true, avatarUrl, null), ct);
+            await SendAsync(new UploadAvatarResponse(false, null, result.Error), 400, ct);
         }
         catch (Exception)
         {

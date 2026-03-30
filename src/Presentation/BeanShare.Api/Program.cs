@@ -2,11 +2,14 @@ using BeanShare.Application;
 using BeanShare.Application.Constants;
 using BeanShare.Infrastructure;
 using BeanShare.Infrastructure.Identity;
+using BeanShare.Infrastructure.Persistence;
+using BeanShare.Infrastructure.Services;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -176,17 +179,20 @@ fhOptions.KnownNetworks.Clear();
 fhOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(fhOptions);
 
-var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
-if (!Directory.Exists(wwwrootPath))
-{
-    Directory.CreateDirectory(wwwrootPath);
-}
+var avatarStorage = app.Services.GetRequiredService<AvatarStorageService>();
+var uploadsRootPath = avatarStorage.GetUploadsRootPath();
+Directory.CreateDirectory(uploadsRootPath);
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwaggerGen();
 }
 
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRootPath),
+    RequestPath = "/uploads"
+});
 app.UseStaticFiles();
 
 app.UseAuthentication();
@@ -198,19 +204,9 @@ app.UseFastEndpoints(c =>
     c.Serializer.Options.PropertyNamingPolicy = null;
 });
 
-// Seed database: essential data (global presets) in all environments,
-// demo data (users, spaces, consumption, etc.) only in development.
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<BeanShare.Infrastructure.Persistence.BeanShareDbContext>();
-    await context.Database.EnsureCreatedAsync();
-
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder>>();
-    var seeder = new BeanShare.Infrastructure.Persistence.Seeds.DatabaseSeeder(context, logger);
-    var includeDemoData = app.Environment.IsDevelopment()
-        || app.Configuration.GetValue<bool>("IncludeDemoData");
-    await seeder.SeedAsync(includeDemoData: includeDemoData);
-}
+var includeApiDemoData = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue<bool>("IncludeDemoData");
+await app.Services.InitializeBeanShareDatabaseAsync(includeApiDemoData);
 
 // Validate critical configuration on startup
 ValidateConfiguration(app.Configuration, useOidc, app.Logger);

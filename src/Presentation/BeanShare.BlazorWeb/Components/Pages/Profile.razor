@@ -9,16 +9,15 @@
 @using BeanShare.Application.Features.Analytics.Queries.GetUserStatistics
 @using BeanShare.Application.Features.Users.Commands.UpdateProfile
 @using BeanShare.Application.Services
+@using BeanShare.Infrastructure.Services
 @using BeanShare.Domain.Common
 @using System.Linq
-@using System.Net.Http.Headers
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IMediator Mediator
 @inject IUserContext UserContext
 @inject IUserService UserService
-@inject IConfiguration Configuration
-@inject IHttpClientFactory HttpClientFactory
+@inject AvatarStorageService AvatarStorageService
 @inject IJSRuntime JSRuntime
 @attribute [Authorize]
 
@@ -349,8 +348,7 @@
 
         if (userProfile.PictureUrl.StartsWith("/uploads/"))
         {
-            var apiBaseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5247";
-            return $"{apiBaseUrl}{userProfile.PictureUrl}?v={avatarCacheBuster}";
+            return $"{userProfile.PictureUrl}?v={avatarCacheBuster}";
         }
 
         return userProfile.PictureUrl;
@@ -384,20 +382,17 @@
                 return;
             }
 
-            var apiBaseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5247";
-            var httpClient = HttpClientFactory.CreateClient();
-            using var content = new MultipartFormDataContent();
             using var fileStream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-            using var streamContent = new StreamContent(fileStream);
-            streamContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            content.Add(streamContent, "file", file.Name);
+            var result = await AvatarStorageService.SaveAvatarAsync(
+                UserContext.CurrentUserId.Value,
+                file.Name,
+                file.ContentType,
+                file.Size,
+                fileStream);
 
-            var response = await httpClient.PostAsync($"{apiBaseUrl}/api/me/avatar", content);
-
-            if (response.IsSuccessStatusCode)
+            if (result.Success)
             {
-                var result = await response.Content.ReadFromJsonAsync<AvatarUploadResponse>();
-                if (result?.Success == true && !string.IsNullOrEmpty(result.AvatarUrl))
+                if (!string.IsNullOrEmpty(result.AvatarUrl))
                 {
                     if (userProfile != null)
                     {
@@ -411,13 +406,12 @@
                 }
                 else
                 {
-                    avatarUploadError = result?.Error ?? "Upload failed";
+                    avatarUploadError = "Upload failed";
                 }
             }
             else
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                avatarUploadError = $"Upload failed: {response.StatusCode}";
+                avatarUploadError = result.Error ?? "Upload failed";
             }
         }
         catch (Exception ex)
@@ -440,9 +434,6 @@
     {
         await JSRuntime.InvokeVoidAsync("alert", "Account deletion requires contacting support. This feature is coming soon.");
     }
-
-    private record AvatarUploadResponse(bool Success, string? AvatarUrl, string? Error);
-
     private class UserProfile
     {
         public string Name { get; set; } = "";
