@@ -73,6 +73,7 @@ build-maui/
 
 # Claude Code temp files
 tmpclaude-*
+.codex
 
 # Test artifacts
 tests/screenshots/
