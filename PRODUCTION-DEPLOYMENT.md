@@ -129,7 +129,10 @@ After Keycloak starts:
 1. Open the Admin Console at `https://auth.yourdomain.com/admin`
 2. Create a new realm named `beanshare`
 3. Import `scripts/keycloak-realm.json` via Realm Settings > Partial Import
-4. Update client redirect URIs to match your production domain
+4. Update client redirect URIs to match your production domain:
+   - Web sign-in callback: `https://beanshare.example.com/signin-oidc`
+   - Web sign-out callback: `https://beanshare.example.com/signout-callback-oidc`
+   - Web home URL: `https://beanshare.example.com/`
 5. Change client secrets for `beanshare-web` and `beanshare-api`
 6. Delete demo users imported from the realm JSON (development only)
 7. Create a real admin user and assign the `admin` realm role
@@ -201,6 +204,7 @@ Host=db.example.com;Port=5432;Database=beanshare;Username=beanshare;Password=you
 ## Step 3: Set Environment Variables
 
 Both applications read configuration from environment variables using the ASP.NET Core double-underscore convention (`Oidc__Authority` maps to `Oidc:Authority` in config).
+When the web app runs behind nginx, preserve the original host and port so ASP.NET Core generates the correct `redirect_uri` values for `/signin-oidc` and `/signout-callback-oidc`.
 
 ### Required Variables
 
@@ -218,6 +222,8 @@ Both applications read configuration from environment variables using the ASP.NE
 
 | Variable | Service | Description | Default |
 |----------|---------|-------------|---------|
+| `Oidc__RegistrationEndpoint` | Web | Optional self-service registration endpoint override | Derived from `Oidc__Authority` |
+| `Oidc__IdentityProviderHintParam` | Web | Optional authorize parameter name used to force an upstream IdP | Provider-specific |
 | `OpenExchangeRates__AppId` | API | API key for currency conversion | (disabled) |
 | `Email__Enabled` | API | Enable email notifications | `false` |
 | `Email__SmtpHost` | API | SMTP server | `smtp.gmail.com` |
@@ -363,12 +369,25 @@ Equivalent NixOS module setup:
     enable = true;
     listenAddress = "127.0.0.1";
     port = 5247;
+    oidc = {
+      enable = true;
+      authority = "https://auth.example.com/realms/beanshare";
+      audience = "beanshare-api";
+    };
   };
 
   services.beanshare-blazorweb = {
     enable = true;
     listenAddress = "127.0.0.1";
     port = 8080;
+    oidc = {
+      enable = true;
+      authority = "https://auth.example.com/realms/beanshare";
+      clientId = "beanshare-web";
+      clientSecret = "use-environmentFile-in-production";
+      registrationEndpoint = "https://auth.example.com/realms/beanshare/protocol/openid-connect/registrations";
+      identityProviderHintParam = "kc_idp_hint";
+    };
 
     nginx = {
       enable = true;

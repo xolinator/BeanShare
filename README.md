@@ -110,6 +110,7 @@ Development with Nix:
 ```bash
 nix develop          # enter dev shell (.NET 10, git)
 nix run .#updateDeps # refresh NuGet lockfile (nix/deps.json)
+cp .env.oidc.local.example .env.oidc.local # optional: enable local OIDC for dev-container
 nix run .#dev-container -- up # build/load/run dev container in Docker
 ```
 
@@ -136,6 +137,7 @@ This workflow:
 - loads and starts it under Docker with systemd
 - exposes SSH on `localhost:2222` and a single HTTP endpoint on `0.0.0.0:5000`
 - serves the Blazor web app on `http://localhost:5000/` and the API on `http://localhost:5000/api/`
+- mounts `.env.oidc.local` into the container when present, so local OIDC secrets stay out of git
 - supports `up`, `exec`, `down`, `ps`, `status`, and `ssh` subcommands via `dev-container`
 
 ## Documentation

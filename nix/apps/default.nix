@@ -34,12 +34,14 @@
         text = ''
           set -euo pipefail
 
-          image_name="dev-container"
-          container_name="dev-container-instance"
-          version_file="''${XDG_CACHE_HOME:-$HOME/.cache}/dev-container-version"
+          image_name="beanshare-dev-container"
+          container_name="beanshare-dev-container-instance"
+          version_file="''${XDG_CACHE_HOME:-$HOME/.cache}/beanshare-dev-container-version"
           target_system="''${TARGET_SYSTEM:-x86_64-linux}"
           package_attr="devContainer"
           flake_ref="path:$PWD"
+          oidc_env_file="$PWD/.env.oidc.local"
+          container_oidc_env_file="/etc/beanshare-oidc.env"
 
           mkdir -p "$(dirname "$version_file")"
 
@@ -130,10 +132,25 @@
             fi
 
             echo ">>> Starting container..."
-            docker run -d --rm --privileged --cgroupns=host \
-              -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
-              -p 127.0.0.1:2222:2222 \
-              -p 0.0.0.0:5000:80 \
+            local docker_args=(
+              -d
+              --rm
+              --privileged
+              --cgroupns=host
+              -v /sys/fs/cgroup:/sys/fs/cgroup:rw
+              -p 127.0.0.1:2222:2222
+              -p 0.0.0.0:5000:80
+            )
+
+            if [ -f "$oidc_env_file" ]; then
+              echo ">>> Using local OIDC environment file: $oidc_env_file"
+              docker_args+=(-v "$oidc_env_file:$container_oidc_env_file:ro")
+            else
+              echo ">>> No local OIDC environment file found at $oidc_env_file"
+              echo ">>> Continuing with OIDC disabled inside the dev container"
+            fi
+
+            docker run "''${docker_args[@]}" \
               --name "$container_name" \
               "$image_name":latest >/dev/null
 

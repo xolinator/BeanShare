@@ -38,6 +38,10 @@
           Oidc__Authority = cfg.oidc.authority;
           Oidc__ClientId = cfg.oidc.clientId;
           Oidc__ClientSecret = cfg.oidc.clientSecret;
+        } // lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.registrationEndpoint != null) {
+          Oidc__RegistrationEndpoint = cfg.oidc.registrationEndpoint;
+        } // lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.identityProviderHintParam != null) {
+          Oidc__IdentityProviderHintParam = cfg.oidc.identityProviderHintParam;
         };
         serviceEnvironment = baseEnv // dbEnv // oidcEnv;
         apiProxyEnabled = cfg.nginx.proxyApi.enable;
@@ -48,6 +52,7 @@
         proxyHeaderConfig = ''
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Host $http_host;
           proxy_set_header X-Forwarded-Proto $scheme;
         '';
       in
@@ -178,6 +183,20 @@
               type = types.str;
               default = "";
               description = "OIDC client secret. Prefer environmentFile for secrets to avoid storing in Nix.";
+            };
+
+            registrationEndpoint = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = "Optional OIDC registration endpoint used by the web registration page. When unset, BeanShare derives a Keycloak-compatible endpoint from authority.";
+              example = "https://auth.example.com/realms/beanshare/protocol/openid-connect/registrations";
+            };
+
+            identityProviderHintParam = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = "Optional authorization request parameter used to force a specific upstream identity provider, for example kc_idp_hint for Keycloak or login_hint for some brokers.";
+              example = "kc_idp_hint";
             };
 
           };

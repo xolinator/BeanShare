@@ -17,6 +17,7 @@
         baseEnv = {
           ASPNETCORE_ENVIRONMENT = cfg.environment;
           ASPNETCORE_URLS = "http://${cfg.listenAddress}:${toString cfg.port}";
+          UseOidc = if cfg.oidc.enable then "true" else "false";
         };
         dbEnv = lib.optionalAttrs useDatabase {
           ConnectionStrings__DefaultConnection = dbConnectionString;
@@ -30,6 +31,7 @@
         proxyHeaderConfig = ''
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Host $http_host;
           proxy_set_header X-Forwarded-Proto $scheme;
         '';
       in

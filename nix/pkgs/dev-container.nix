@@ -55,6 +55,7 @@
                   listenAddress = "127.0.0.1";
                   port = 5001;
                   openFirewall = false;
+                  environmentFile = "-/etc/beanshare-oidc.env";
                   qrCodeBaseUrl = "http://localhost:5000";
                   nginx = {
                     enable = true;
@@ -71,6 +72,7 @@
                   listenAddress = "127.0.0.1";
                   port = 5247;
                   openFirewall = false;
+                  environmentFile = "-/etc/beanshare-oidc.env";
                   database.password = "beanshare";
                   database.postgresql.enable = true;
                 };
@@ -89,13 +91,13 @@
           '';
         in
         pkgs.dockerTools.buildImage {
-          name = "dev-container";
+          name = "beanshare-dev-container";
           tag = "latest";
 
           config = {
             Cmd = [ "/init" ];
             StopSignal = "SIGRTMIN+3";
-            Hostname = "dev-container";
+            Hostname = "beanshare-dev-container";
             ExposedPorts = {
               "2222/tcp" = { };
               "80/tcp" = { };
