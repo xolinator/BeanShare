@@ -6,8 +6,8 @@ BeanShare consists of three services:
 
 | Service | Description | Port |
 |---------|-------------|------|
-| **BeanShare.BlazorWeb** | Blazor Server web application | 5126 (dev) / 8080 (prod) |
-| **BeanShare.Api** | REST API (FastEndpoints) | 5247 (dev) / 8080 (prod) |
+| **BeanShare.BlazorWeb** | Blazor Server web application | 5126 (dev) / 8080 (internal prod) |
+| **BeanShare.Api** | REST API (FastEndpoints) | 5247 (dev and internal prod) |
 | **PostgreSQL** | Database (v15+) | 5432 |
 
 An external **OpenID Connect provider** is required for authentication. BeanShare works with any standards-compliant OIDC provider — Keycloak, Auth0, Azure AD/Entra ID, Google Identity Platform, Okta, and others.
@@ -189,7 +189,7 @@ CREATE USER beanshare WITH PASSWORD '<STRONG_PASSWORD>';
 GRANT ALL PRIVILEGES ON DATABASE beanshare TO beanshare;
 ```
 
-The application creates all tables automatically on first startup via EF Core (`EnsureCreatedAsync`). The database user needs CREATE TABLE permissions.
+The application applies EF Core migrations automatically on first startup. The database user needs privileges to create and alter schema objects.
 
 Connection string format:
 ```
@@ -212,8 +212,7 @@ Both applications read configuration from environment variables using the ASP.NE
 | `Oidc__ClientId` | Web | Web client ID (default: `beanshare-web`) |
 | `Oidc__ClientSecret` | Web | Web client secret |
 | `Oidc__Audience` | API | API audience (default: `beanshare-api`) |
-| `ApiBaseUrl` | Web | URL where the API is reachable from the web server |
-| `QrCodeBaseUrl` | Web | Public URL for QR code deep links |
+| `QrCodeBaseUrl` | Web | Optional public URL for QR code deep links; defaults to the current web origin |
 
 ### Optional Variables
 
@@ -226,6 +225,7 @@ Both applications read configuration from environment variables using the ASP.NE
 | `Email__SmtpUsername` | API | SMTP username | - |
 | `Email__SmtpPassword` | API | SMTP password | - |
 | `IncludeDemoData` | API, Web | Seed demo spaces/users/coffee data on startup | `false` |
+| `UploadsRootPath` | API, Web | Shared filesystem path for uploaded avatars | OS temp directory |
 
 ---
 
@@ -281,8 +281,6 @@ services:
       Oidc__Authority: ${OIDC_AUTHORITY}
       Oidc__ClientId: beanshare-web
       Oidc__ClientSecret: ${OIDC_WEB_SECRET}
-      ApiBaseUrl: http://api:8080
-      QrCodeBaseUrl: ${WEB_PUBLIC_URL}
       ASPNETCORE_ENVIRONMENT: Production
     ports:
       - "8080:8080"
@@ -319,7 +317,7 @@ The Dockerfiles work on any container platform. See `deploy/DEPLOYMENT.md` for a
 
 ## Step 5: Reverse Proxy (Nginx)
 
-Blazor Server uses WebSockets — the `Upgrade` and `Connection` headers are required.
+Blazor Server uses WebSockets, so the web upstream needs the `Upgrade` and `Connection` headers. A same-origin reverse proxy keeps the browser on one public host while routing `/api/` to the API service.
 
 ```nginx
 server {
@@ -330,7 +328,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
 
     location / {
-        proxy_pass http://localhost:5126;
+        proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -338,21 +336,46 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-}
 
-server {
-    listen 443 ssl;
-    server_name api.yourdomain.com;
-
-    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
-
-    location / {
+    location /api/ {
         proxy_pass http://localhost:5247;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    location /swagger {
+        proxy_pass http://localhost:5247;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Equivalent NixOS module setup:
+
+```nix
+{
+  services.beanshare-api = {
+    enable = true;
+    listenAddress = "127.0.0.1";
+    port = 5247;
+  };
+
+  services.beanshare-blazorweb = {
+    enable = true;
+    listenAddress = "127.0.0.1";
+    port = 8080;
+
+    nginx = {
+      enable = true;
+      domain = "beanshare.example.com";
+      proxyApi.enable = true;
+    };
+  };
 }
 ```
 
@@ -377,7 +400,7 @@ No demo users, spaces, or fake consumption data are created unless `IncludeDemoD
 | Database connection refused | Wrong connection string or firewall | Verify host, port, and credentials |
 | "State mismatch" error | Clock skew between servers | Ensure NTP is configured; check `ClockSkew` setting |
 | Roles not working | Claims not mapped | Check that your OIDC provider includes roles in the token |
-| QR codes link to wrong URL | `QrCodeBaseUrl` not set | Set to the public URL of your web application |
+| QR codes link to wrong URL | Wrong public origin detected | Set `QrCodeBaseUrl` explicitly to the public URL of your web application |
 
 ---
 

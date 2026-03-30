@@ -133,7 +133,7 @@
             docker run -d --rm --privileged --cgroupns=host \
               -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
               -p 127.0.0.1:2222:2222 \
-              -p 127.0.0.1:8080:8080 \
+              -p 0.0.0.0:5000:80 \
               --name "$container_name" \
               "$image_name":latest >/dev/null
 

@@ -132,9 +132,10 @@ nix run .#dev-container -- down
 
 This workflow:
 - builds a NixOS container image via `dockerTools` (no project Dockerfile)
-- enables `services.beanshare-blazorweb` inside the container
+- enables `services.beanshare-blazorweb`, `services.beanshare-api`, and nginx inside the container
 - loads and starts it under Docker with systemd
-- exposes SSH on `localhost:2222` and the app on `localhost:8080`
+- exposes SSH on `localhost:2222` and a single HTTP endpoint on `0.0.0.0:5000`
+- serves the Blazor web app on `http://localhost:5000/` and the API on `http://localhost:5000/api/`
 - supports `up`, `exec`, `down`, `ps`, `status`, and `ssh` subcommands via `dev-container`
 
 ## Documentation

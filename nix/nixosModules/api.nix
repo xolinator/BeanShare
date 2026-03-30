@@ -26,6 +26,11 @@
           Oidc__Audience = cfg.oidc.audience;
         };
         serviceEnvironment = baseEnv // dbEnv // oidcEnv;
+        proxyHeaderConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        '';
       in
       with lib;
       {
@@ -88,14 +93,18 @@
 
         config = mkIf cfg.enable (mkMerge [
           {
+            services.beanshare-api.package = mkDefault config.packages.apiapp;
+
             systemd.services.beanshare-api = {
               description = "BeanShare API";
               after = [ "network-online.target" ] ++ (lib.optionals cfg.database.postgresql.enable [ "postgresql.service" ]);
               wants = [ "network-online.target" ] ++ (lib.optionals cfg.database.postgresql.enable [ "postgresql.service" ]);
+              wantedBy = [ "multi-user.target" ];
 
               serviceConfig = {
                 DynamicUser = true;
                 RuntimeDirectory = "beanshare-api";
+                WorkingDirectory = cfg.package;
                 Restart = "on-failure";
                 RestartSec = "10s";
               } // lib.optionalAttrs (cfg.environmentFile != null) {
@@ -121,7 +130,7 @@
               locations."/" = {
                 proxyPass = "http://${cfg.listenAddress}:${toString cfg.port}";
                 proxyWebsockets = true;
-                proxyHeaders = true;
+                extraConfig = proxyHeaderConfig;
               };
               forceSSL = cfg.nginx.enableACME;
               enableACME = cfg.nginx.enableACME;

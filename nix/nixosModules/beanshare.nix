@@ -8,6 +8,10 @@
     perSystem @ { inputs', ... }: nixos @ { pkgs, config, lib, system, ... }:
       let
         cfg = config.services.beanshare-blazorweb;
+        apiCfg =
+          if builtins.hasAttr "beanshare-api" config.services
+          then config.services."beanshare-api"
+          else null;
         # When using local PostgreSQL, use its port and localhost; otherwise use database.* options.
         dbHost = if cfg.database.postgresql.enable then "localhost" else cfg.database.host;
         dbPort = if cfg.database.postgresql.enable then config.services.postgresql.settings.port else cfg.database.port;
@@ -20,17 +24,31 @@
         baseEnv = {
           ASPNETCORE_ENVIRONMENT = cfg.environment;
           ASPNETCORE_URLS = "http://${cfg.listenAddress}:${toString cfg.port}";
-          UseKeycloak = if cfg.oidc.enable then "true" else "false";
+          UseOidc = if cfg.oidc.enable then "true" else "false";
+        } // lib.optionalAttrs (cfg.apiBaseUrl != null) {
+          ApiBaseUrl = cfg.apiBaseUrl;
+        } // lib.optionalAttrs (cfg.qrCodeBaseUrl != null) {
+          QrCodeBaseUrl = cfg.qrCodeBaseUrl;
         };
         dbEnv = lib.optionalAttrs useDatabase {
           ConnectionStrings__DefaultConnection = dbConnectionString;
         };
         oidcEnv = lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.authority != "") {
-          Keycloak__Authority = cfg.oidc.authority;
-          Keycloak__ClientId = cfg.oidc.clientId;
-          Keycloak__ClientSecret = cfg.oidc.clientSecret;
+          Oidc__Authority = cfg.oidc.authority;
+          Oidc__ClientId = cfg.oidc.clientId;
+          Oidc__ClientSecret = cfg.oidc.clientSecret;
         };
         serviceEnvironment = baseEnv // dbEnv // oidcEnv;
+        apiProxyEnabled = cfg.nginx.proxyApi.enable;
+        apiProxyUpstream =
+          if apiCfg == null
+          then null
+          else "http://${apiCfg.listenAddress}:${toString apiCfg.port}";
+        proxyHeaderConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        '';
       in
       with lib;
       {
@@ -66,6 +84,20 @@
             type = types.str;
             default = "Production";
             description = "ASPNETCORE_ENVIRONMENT value.";
+          };
+
+          apiBaseUrl = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "Base URL of the BeanShare API consumed by the web app.";
+            example = "http://127.0.0.1:5247";
+          };
+
+          qrCodeBaseUrl = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "Public base URL used when generating QR code links.";
+            example = "http://localhost:5000";
           };
 
           database = {
@@ -125,7 +157,7 @@
             enable = mkOption {
               type = types.bool;
               default = false;
-              description = "Enable OIDC authentication (Keycloak-compatible). Sets UseKeycloak and Keycloak:* config.";
+              description = "Enable OIDC authentication. Sets UseOidc and Oidc:* config.";
             };
 
             authority = mkOption {
@@ -180,10 +212,24 @@
               default = "";
               description = "Extra nginx configuration for the location block.";
             };
+
+            proxyApi.enable = mkOption {
+              type = types.bool;
+              default = false;
+              description = "Expose BeanShare API under the same nginx virtualHost on /api/ (and /swagger). Requires services.beanshare-api.enable.";
+            };
           };
         };
 
         config = mkIf cfg.enable (mkMerge [
+          {
+            assertions = [
+              {
+                assertion = !apiProxyEnabled || (apiCfg != null && apiCfg.enable);
+                message = "services.beanshare-blazorweb.nginx.proxyApi.enable requires services.beanshare-api.enable.";
+              }
+            ];
+          }
           (mkIf cfg.database.postgresql.enable (
             let
               # Escape single quotes for PostgreSQL string literal.
@@ -210,6 +256,7 @@
               serviceConfig = {
                 DynamicUser = true;
                 RuntimeDirectory = "beanshare-blazorweb";
+                WorkingDirectory = cfg.package;
                 Restart = "on-failure";
                 RestartSec = "10s";
               } // lib.optionalAttrs (cfg.environmentFile != null) {
@@ -232,11 +279,26 @@
             services.nginx.enable = true;
             services.nginx.virtualHosts.${cfg.nginx.domain} = {
               serverName = cfg.nginx.domain;
-              locations."/" = {
-                proxyPass = "http://${cfg.listenAddress}:${toString cfg.port}";
-                proxyWebsockets = true;
-                extraConfig = cfg.nginx.extraConfig;
-              };
+              locations =
+                {
+                  "/" = {
+                    proxyPass = "http://${cfg.listenAddress}:${toString cfg.port}";
+                    proxyWebsockets = true;
+                    extraConfig = proxyHeaderConfig + cfg.nginx.extraConfig;
+                  };
+                }
+                // lib.optionalAttrs apiProxyEnabled {
+                  "/api/" = {
+                    proxyPass = apiProxyUpstream;
+                    proxyWebsockets = true;
+                    extraConfig = proxyHeaderConfig;
+                  };
+                  "/swagger" = {
+                    proxyPass = apiProxyUpstream;
+                    proxyWebsockets = true;
+                    extraConfig = proxyHeaderConfig;
+                  };
+                };
               forceSSL = cfg.nginx.enableACME;
               enableACME = cfg.nginx.enableACME;
             };
