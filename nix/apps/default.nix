@@ -34,14 +34,36 @@
         text = ''
           set -euo pipefail
 
+          find_repo_root() {
+            local dir="$PWD"
+
+            while [ "$dir" != "/" ]; do
+              if [ -f "$dir/flake.nix" ]; then
+                echo "$dir"
+                return 0
+              fi
+
+              dir="$(dirname "$dir")"
+            done
+
+            echo "Run from the repository root or one of its subdirectories so flake.nix can be found." >&2
+            exit 1
+          }
+
           image_name="beanshare-dev-container"
           container_name="beanshare-dev-container-instance"
           version_file="''${XDG_CACHE_HOME:-$HOME/.cache}/beanshare-dev-container-version"
           target_system="''${TARGET_SYSTEM:-x86_64-linux}"
           package_attr="devContainer"
-          flake_ref="path:$PWD"
-          oidc_env_file="$PWD/.env.oidc.local"
+          repo_root="$(find_repo_root)"
+          flake_ref="git+file://$repo_root"
+          oidc_env_file="$repo_root/.env.oidc.local"
           container_oidc_env_file="/etc/beanshare-oidc.env"
+          container_state_dir="/mnt/db"
+          container_data_dir="$container_state_dir/data"
+          state_volume="''${container_name}-state"
+          legacy_beanshare_state_volume="''${container_name}-beanshare"
+          legacy_postgresql_state_volume="''${container_name}-postgresql"
 
           mkdir -p "$(dirname "$version_file")"
 
@@ -64,6 +86,10 @@
             dev-container down
             dev-container ps
             dev-container status
+
+          Persistent state:
+            Shared volume:   $state_volume -> $container_state_dir
+            Inside volume:   uploads in $container_data_dir/beanshare, postgres in $container_data_dir/postgresql
           EOF
           }
 
@@ -111,7 +137,7 @@
             fi
 
             local current_version
-            current_version=$(git -C "$(git rev-parse --show-toplevel)" describe --always --dirty 2>/dev/null || date +%s)
+            current_version=$(git -C "$repo_root" describe --always --dirty 2>/dev/null || date +%s)
             local last_version=""
             [ -f "$version_file" ] && last_version=$(cat "$version_file")
 
@@ -132,12 +158,14 @@
             fi
 
             echo ">>> Starting container..."
+            echo ">>> Persistent state will be stored in Docker volume: $state_volume"
             local docker_args=(
               -d
               --rm
               --privileged
               --cgroupns=host
               -v /sys/fs/cgroup:/sys/fs/cgroup:rw
+              -v "$state_volume:$container_state_dir"
               -p 127.0.0.1:2222:2222
               -p 0.0.0.0:5000:80
             )
@@ -157,6 +185,7 @@
             echo ">>> Container '$container_name' started successfully"
             echo ">>> Use 'dev-container exec' to enter the container"
             echo ">>> Use 'dev-container status' to check status"
+            echo ">>> Persistent state is stored in Docker volumes"
           }
 
           cmd_exec() {
@@ -179,13 +208,16 @@
 
           cmd_down() {
             local force=false
+            local purge_state=false
 
             while [[ $# -gt 0 ]]; do
               case $1 in
                 --force|-f) force=true; shift ;;
+                --purge-state) purge_state=true; shift ;;
                 -h|--help)
-                  echo "Usage: dev-container down [--force|-f]"
+                  echo "Usage: dev-container down [--force|-f] [--purge-state]"
                   echo "  --force, -f  Force remove without confirmation"
+                  echo "  --purge-state  Remove persistent Docker volumes used by the dev container"
                   exit 0
                   ;;
                 *) echo "Unknown option: $1"; exit 1 ;;
@@ -204,6 +236,11 @@
                     docker image rm -f "$image_name":latest
                   fi
                 fi
+              fi
+
+              if [ "$purge_state" = true ]; then
+                echo ">>> Removing persistent Docker volumes..."
+                docker volume rm -f "$state_volume" "$legacy_beanshare_state_volume" "$legacy_postgresql_state_volume" 2>/dev/null || true
               fi
               return 0
             fi
@@ -228,6 +265,11 @@
                 fi
               fi
             fi
+
+            if [ "$purge_state" = true ]; then
+              echo ">>> Removing persistent Docker volumes..."
+              docker volume rm -f "$state_volume" "$legacy_beanshare_state_volume" "$legacy_postgresql_state_volume" 2>/dev/null || true
+            fi
           }
 
           cmd_ps() {
@@ -250,11 +292,13 @@
 
             local ps_format="table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.RunningFor}}"
             local containers
+            local docker_ps_cmd=(docker ps)
             if [ "$all" = false ]; then
-              containers=$(docker ps --filter "status=running" --format "{{.Names}}" | grep "^$container_name" || true)
+              docker_ps_cmd+=(--filter "status=running")
             else
-              containers=$(docker ps --format "{{.Names}}" | grep "^$container_name" || true)
+              docker_ps_cmd+=(-a)
             fi
+            containers=$("''${docker_ps_cmd[@]}" --format "{{.Names}}" | grep "^$container_name" || true)
 
             if [ -z "$containers" ]; then
               if [ "$quiet" = true ]; then
@@ -270,11 +314,7 @@
             else
               echo ">>> Dev Containers"
               echo "=================="
-              if [ "$all" = false ]; then
-                docker ps --filter "status=running" --filter "name=$container_name" --format "$ps_format"
-              else
-                docker ps --filter "name=$container_name" --format "$ps_format"
-              fi
+              "''${docker_ps_cmd[@]}" --filter "name=$container_name" --format "$ps_format"
             fi
           }
 
@@ -298,6 +338,8 @@
             else
               echo "Image:     Not found"
             fi
+
+            echo "State:     docker volume $state_volume -> $container_state_dir"
           }
 
           cmd_ssh() {
