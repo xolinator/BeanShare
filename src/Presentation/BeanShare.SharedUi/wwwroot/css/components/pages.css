@@ -33,7 +33,7 @@
 
 .btn-secondary {
     background: var(--bs-gray-100);
-    color: #475569;
+    color: var(--bs-text-subtle);
     border: 1px solid var(--bs-border);
 }
 
@@ -44,11 +44,11 @@
 .btn-danger {
     background: var(--bs-error-light);
     color: var(--bs-error);
-    border: 1px solid #fecaca;
+    border: 1px solid var(--bs-error-light);
 }
 
 .btn-danger:hover {
-    background: #fecaca;
+    background: var(--bs-error-light);
 }
 
 .btn-action {
@@ -171,7 +171,7 @@ kbd {
 /* --- Notifications Page --- */
 
 .notification-item {
-    background: var(--bs-white);
+    background: var(--bs-surface);
     border: 1px solid var(--bs-border);
     border-radius: 0.5rem;
     padding: 1rem;
@@ -254,7 +254,7 @@ kbd {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: white;
+    background: var(--bs-surface);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -458,8 +458,8 @@ kbd {
 }
 
 .badge-member {
-    background: #dbeafe;
-    color: #2563eb;
+    background: var(--bs-primary-light);
+    color: var(--bs-primary);
 }
 
 .space-members {
@@ -513,7 +513,7 @@ kbd {
 }
 
 .verified-badge {
-    color: #10b981;
+    color: var(--bs-success);
 }
 
 .profile-actions {
@@ -524,8 +524,8 @@ kbd {
 }
 
 .danger-zone {
-    border: 1px solid #fecaca;
-    background: #fef2f2;
+    border: 1px solid var(--bs-error-light);
+    background: var(--bs-error-light);
 }
 
 .danger-zone h2 {
@@ -545,7 +545,7 @@ kbd {
     padding: 1rem;
     background: var(--bs-surface);
     border-radius: 8px;
-    border: 1px solid #fecaca;
+    border: 1px solid var(--bs-error-light);
 }
 
 .danger-item h3 {
@@ -707,7 +707,7 @@ kbd {
 
 .settings-nav button:hover {
     background: var(--bs-gray-100);
-    color: #475569;
+    color: var(--bs-text-subtle);
 }
 
 .settings-nav button.active {
@@ -907,8 +907,8 @@ input:checked + .slider:before {
 }
 
 .two-factor-status.enabled {
-    background: #f0fdf4;
-    border-color: #86efac;
+    background: var(--bs-success-light);
+    border-color: var(--bs-success);
 }
 
 .two-factor-status span {

@@ -160,14 +160,13 @@
     private string newPassword = "";
     private string confirmPassword = "";
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await LoadSettings();
-    }
-
-    private async Task LoadSettings()
-    {
-        theme = await ThemeService.GetThemeAsync();
+        if (firstRender)
+        {
+            theme = await ThemeService.GetThemeAsync();
+            StateHasChanged();
+        }
     }
 
     private string GetNavClass(string tab)

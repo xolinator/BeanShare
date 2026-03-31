@@ -89,7 +89,7 @@
 .loading-overlay {
     position: fixed;
     inset: 0;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: var(--bs-background);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -539,7 +539,7 @@
 
 .mobile-dashboard {
     padding: 1rem;
-    background: #f8fafc;
+    background: var(--bs-background-light);
     min-height: 100vh;
 }
 
@@ -550,12 +550,12 @@
 .mobile-dashboard .mobile-header h1 {
     font-size: 1.75rem;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--bs-text);
     margin: 0 0 0.25rem 0;
 }
 
 .mobile-dashboard .subtitle {
-    color: #64748b;
+    color: var(--bs-text-subtle);
     margin: 0;
     font-size: 0.875rem;
 }
@@ -566,14 +566,14 @@
     align-items: center;
     justify-content: center;
     padding: 4rem 1rem;
-    color: #64748b;
+    color: var(--bs-text-subtle);
 }
 
 .mobile-dashboard .spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid #e2e8f0;
-    border-top-color: #4169E1;
+    border: 3px solid var(--bs-border);
+    border-top-color: var(--bs-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 1rem;
@@ -582,24 +582,24 @@
 .mobile-dashboard .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    background: white;
+    background: var(--bs-surface);
     border-radius: 12px;
     margin: 1rem 0;
 }
 
 .mobile-dashboard .empty-state span {
     font-size: 3rem;
-    color: #cbd5e1;
+    color: var(--bs-gray-300);
 }
 
 .mobile-dashboard .empty-state h2 {
     font-size: 1.25rem;
-    color: #1e293b;
+    color: var(--bs-text);
     margin: 1rem 0;
 }
 
 .mobile-dashboard .empty-state p {
-    color: #64748b;
+    color: var(--bs-text-subtle);
     margin-bottom: 1.5rem;
 }
 
@@ -647,7 +647,7 @@
 }
 
 .section-card {
-    background: white;
+    background: var(--bs-surface);
     border-radius: 12px;
     padding: 1.25rem;
     margin-bottom: 1rem;
@@ -657,7 +657,7 @@
 .section-card h2 {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--bs-text);
     margin: 0 0 1rem 0;
 }
 
@@ -672,25 +672,25 @@
     align-items: center;
     gap: 0.75rem;
     padding: 1rem;
-    background: #f8fafc;
+    background: var(--bs-background-light);
     border-radius: 8px;
 }
 
 .today-stat-item span {
     font-size: 2rem;
-    color: #4169E1;
+    color: var(--bs-primary);
 }
 
 .mobile-dashboard .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--bs-text);
     line-height: 1;
 }
 
 .mobile-dashboard .stat-label {
     font-size: 0.75rem;
-    color: #64748b;
+    color: var(--bs-text-subtle);
     margin-top: 0.25rem;
 }
 
@@ -706,7 +706,7 @@
 .coffee-icon {
     width: 48px;
     height: 48px;
-    background: white;
+    background: var(--bs-surface);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -722,12 +722,12 @@
 .mobile-dashboard .coffee-name {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #78350f;
+    color: var(--bs-text);
 }
 
 .coffee-subtitle {
     font-size: 0.75rem;
-    color: #92400e;
+    color: var(--bs-text-subtle);
     margin-top: 0.125rem;
 }
 
@@ -751,32 +751,32 @@
 
 .mobile-dashboard .coffee-name {
     font-weight: 600;
-    color: #1e293b;
+    color: var(--bs-text);
     font-size: 0.875rem;
 }
 
 .coffee-count {
     font-weight: 600;
-    color: #4169E1;
+    color: var(--bs-primary);
     font-size: 0.875rem;
 }
 
 .coffee-bar {
     height: 6px;
-    background: #f1f5f9;
+    background: var(--bs-gray-100);
     border-radius: 3px;
     overflow: hidden;
 }
 
 .coffee-fill {
     height: 100%;
-    background: linear-gradient(90deg, #4169E1 0%, #667eea 100%);
+    background: linear-gradient(90deg, var(--bs-primary) 0%, #667eea 100%);
     transition: width 0.3s;
 }
 
 .coffee-percentage {
     font-size: 0.75rem;
-    color: #64748b;
+    color: var(--bs-text-subtle);
     text-align: right;
 }
 
@@ -800,7 +800,7 @@
 
 .mini-bar {
     width: 100%;
-    background: linear-gradient(180deg, #4169E1 0%, #667eea 100%);
+    background: linear-gradient(180deg, var(--bs-primary) 0%, #667eea 100%);
     border-radius: 4px 4px 0 0;
     display: flex;
     align-items: flex-start;
@@ -817,7 +817,7 @@
 
 .mini-bar-label {
     font-size: 0.625rem;
-    color: #64748b;
+    color: var(--bs-text-subtle);
     margin-top: 4px;
     font-weight: 500;
 }
@@ -834,7 +834,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 1rem;
-    background: #4169E1;
+    background: var(--bs-primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -845,7 +845,7 @@
 }
 
 .action-btn-mobile:active {
-    background: #3058c7;
+    background: var(--bs-primary-dark);
 }
 
 .mobile-dashboard .btn-primary {
@@ -853,7 +853,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: #4169E1;
+    background: var(--bs-primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -862,7 +862,7 @@
 }
 
 .mobile-dashboard .btn-primary:active {
-    background: #3058c7;
+    background: var(--bs-primary-dark);
 }
 
 /* Currency Breakdown Modal */
@@ -881,7 +881,7 @@
 }
 
 .currency-modal {
-    background: white;
+    background: var(--bs-surface);
     border-radius: 12px;
     width: 100%;
     max-width: 350px;
@@ -897,21 +897,21 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--bs-border);
 }
 
 .modal-header-mobile h3 {
     margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--bs-text);
 }
 
 .close-btn-mobile {
     background: none;
     border: none;
     padding: 0.25rem;
-    color: #64748b;
+    color: var(--bs-text-subtle);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -927,15 +927,15 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem;
-    background: #fef3c7;
+    background: var(--bs-warning-light);
     border-radius: 8px;
-    color: #92400e;
+    color: var(--bs-warning-dark);
     margin-bottom: 1rem;
     font-size: 0.75rem;
 }
 
 .warning-box span.material-symbols-outlined {
-    color: #f59e0b;
+    color: var(--bs-warning);
     font-size: 1.25rem;
 }
 
@@ -944,7 +944,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem;
-    background: #f8fafc;
+    background: var(--bs-gray-50);
     border-radius: 8px;
     margin-bottom: 0.5rem;
 }
@@ -952,8 +952,8 @@
 .currency-badge {
     font-weight: 600;
     font-size: 0.875rem;
-    color: #1e293b;
-    background: #e2e8f0;
+    color: var(--bs-text);
+    background: var(--bs-border);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
 }
@@ -964,13 +964,13 @@
 
 .amount-original {
     font-weight: 600;
-    color: #1e293b;
+    color: var(--bs-text);
     font-size: 0.875rem;
 }
 
 .amount-converted {
     font-size: 0.75rem;
-    color: #22c55e;
+    color: var(--bs-success);
     margin-top: 0.125rem;
 }
 
@@ -1062,7 +1062,7 @@
 
 .avatar-upload-btn .material-symbols-outlined {
     font-size: 18px;
-    color: var(--primary-color, #667eea);
+    color: var(--bs-primary);
 }
 
 .avatar-upload-error {
@@ -1097,7 +1097,7 @@
 .mobile-stats-section h2 {
     font-size: 1.25rem;
     margin-bottom: 1rem;
-    color: var(--text-primary);
+    color: var(--bs-text);
 }
 
 .mobile-stats-grid {
@@ -1108,45 +1108,45 @@
 }
 
 .mobile-stat-card {
-    background: var(--surface-color);
+    background: var(--bs-surface);
     padding: 1.25rem;
     border-radius: 0.75rem;
     text-align: center;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--bs-border);
 }
 
 .mobile-stat-card .material-symbols-outlined {
     font-size: 2rem;
-    color: var(--primary-color);
+    color: var(--bs-primary);
     margin-bottom: 0.5rem;
 }
 
 .mobile-profile .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--bs-text);
 }
 
 .mobile-profile .stat-label {
     font-size: 0.85rem;
-    color: var(--text-secondary);
+    color: var(--bs-text-subtle);
     margin-top: 0.25rem;
 }
 
 .coffee-types-section,
 .cost-section {
-    background: var(--surface-color);
+    background: var(--bs-surface);
     padding: 1.25rem;
     border-radius: 0.75rem;
     margin-bottom: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--bs-border);
 }
 
 .coffee-types-section h3,
 .cost-section h3 {
     font-size: 1.1rem;
     margin-bottom: 1rem;
-    color: var(--text-primary);
+    color: var(--bs-text);
 }
 
 .coffee-types-list {
@@ -1159,7 +1159,7 @@
     display: flex;
     justify-content: space-between;
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--bs-border);
 }
 
 .coffee-type-item:last-child {
@@ -1167,18 +1167,18 @@
 }
 
 .coffee-type-name {
-    color: var(--text-primary);
+    color: var(--bs-text);
 }
 
 .coffee-type-count {
-    color: var(--text-secondary);
+    color: var(--bs-text-subtle);
     font-size: 0.9rem;
 }
 
 .total-cost-value {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--bs-primary);
 }
 
 .mobile-spaces-section {
@@ -1194,12 +1194,12 @@
 
 .mobile-profile .section-header h2 {
     font-size: 1.25rem;
-    color: var(--text-primary);
+    color: var(--bs-text);
     margin: 0;
 }
 
 .mobile-profile .badge {
-    background: var(--primary-color);
+    background: var(--bs-primary);
     color: white;
     padding: 0.25rem 0.5rem;
     border-radius: 1rem;
@@ -1214,10 +1214,10 @@
 }
 
 .mobile-space-card {
-    background: var(--surface-color);
+    background: var(--bs-surface);
     padding: 1rem;
     border-radius: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--bs-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1226,29 +1226,29 @@
 }
 
 .mobile-space-card:active {
-    background: var(--hover-color);
+    background: var(--bs-gray-100);
 }
 
 .space-info h3 {
     margin: 0 0 0.25rem 0;
     font-size: 1.1rem;
-    color: var(--text-primary);
+    color: var(--bs-text);
 }
 
 .space-info p {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: var(--bs-text-subtle);
 }
 
 .mobile-profile .empty-state {
     text-align: center;
     padding: 2rem;
-    color: var(--text-secondary);
+    color: var(--bs-text-subtle);
 }
 
 .mobile-profile .btn-primary {
-    background: var(--primary-color);
+    background: var(--bs-primary);
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -1796,7 +1796,7 @@ details[open] summary {
 .logout-content {
     text-align: center;
     padding: 2rem;
-    background: white;
+    background: var(--bs-surface);
     border-radius: 1rem;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     max-width: 400px;
@@ -1872,7 +1872,7 @@ details[open] summary {
 }
 
 .preset-card {
-    background: white;
+    background: var(--bs-surface);
     border-radius: 8px;
     padding: 1rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -1979,7 +1979,7 @@ details[open] summary {
 }
 
 .modal-content {
-    background: white;
+    background: var(--bs-surface);
     border-radius: 12px;
     padding: 1.5rem;
     max-width: 400px;
@@ -2011,7 +2011,7 @@ details[open] summary {
     border: 1px solid var(--bs-border);
     border-radius: 6px;
     font-size: 1rem;
-    background: white;
+    background: var(--bs-surface);
 }
 
 .modal-actions {
@@ -2023,7 +2023,7 @@ details[open] summary {
 
 /* Global Presets Section */
 .global-presets-section {
-    background: white;
+    background: var(--bs-surface);
     margin: 1rem;
     margin-bottom: 0;
     border-radius: 8px;

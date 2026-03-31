@@ -227,7 +227,7 @@ public sealed class BillingPeriodCommandTests
         var result = await handler.Handle(command, default);
 
         result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("INVALID_BILLING_PERIOD_STATE");
+        result.Errors[0].Code.Should().Be("DOMAIN_ERROR");
     }
 
     [Fact]

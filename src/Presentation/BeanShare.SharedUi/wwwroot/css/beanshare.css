@@ -639,8 +639,8 @@ body {
 }
 
 .bs-login-google:hover {
-    background-color: #f8f9fa;
-    border-color: #dadce0;
+    background-color: var(--bs-gray-50);
+    border-color: var(--bs-border);
 }
 
 .bs-login-facebook {
@@ -726,13 +726,13 @@ body {
 
 .bs-alert-error {
     background-color: var(--bs-error-light);
-    border: 1px solid #fecaca;
+    border: 1px solid var(--bs-error-light);
     color: var(--bs-error-dark);
 }
 
 .bs-alert-success {
     background-color: var(--bs-success-light);
-    border: 1px solid #a7f3d0;
+    border: 1px solid var(--bs-success-light);
     color: var(--bs-success-dark);
 }
 

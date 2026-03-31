@@ -113,6 +113,20 @@ public sealed class CoffeeStock : AggregateRoot
             clock.UtcNow));
     }
 
+    public void RestoreStock(CoffeeProduct product, Weight quantity, IClock clock)
+    {
+        var stockLevel = _stockLevels.FirstOrDefault(sl =>
+            sl.Product.Name == product.Name &&
+            sl.Product.Brand == product.Brand &&
+            sl.Product.Type == product.Type);
+
+        if (stockLevel == null)
+            return;
+
+        stockLevel.RestoreStock(quantity, clock);
+        UpdatedAt = clock.UtcNow;
+    }
+
     public Weight GetCurrentStock(CoffeeProduct product)
     {
         var stockLevel = _stockLevels.FirstOrDefault(sl =>

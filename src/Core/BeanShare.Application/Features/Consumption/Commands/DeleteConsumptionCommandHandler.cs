@@ -1,5 +1,6 @@
 using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
+using BeanShare.Domain.Common;
 using BeanShare.Domain.Enums;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
@@ -11,13 +12,19 @@ public sealed class DeleteConsumptionCommandHandler
 {
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly IBillingPeriodRepository _billingPeriodRepository;
+    private readonly ICoffeeStockRepository _coffeeStockRepository;
+    private readonly IClock _clock;
 
     public DeleteConsumptionCommandHandler(
         IConsumptionRepository consumptionRepository,
-        IBillingPeriodRepository billingPeriodRepository)
+        IBillingPeriodRepository billingPeriodRepository,
+        ICoffeeStockRepository coffeeStockRepository,
+        IClock clock)
     {
         _consumptionRepository = consumptionRepository;
         _billingPeriodRepository = billingPeriodRepository;
+        _coffeeStockRepository = coffeeStockRepository;
+        _clock = clock;
     }
 
     public async Task<Result<bool>> Handle(
@@ -40,6 +47,13 @@ public sealed class DeleteConsumptionCommandHandler
             if (billingPeriod != null && billingPeriod.State != BillingState.Draft && billingPeriod.State != BillingState.Open)
                 return Result<bool>.Failure(
                     Error.InvalidBillingPeriodState("delete consumption in", billingPeriod.State.ToString()));
+        }
+
+        var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(entry.SpaceId, cancellationToken);
+        if (coffeeStock != null)
+        {
+            coffeeStock.RestoreStock(entry.Product, entry.Quantity, _clock);
+            await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
         }
 
         await _consumptionRepository.RemoveAsync(entry, cancellationToken);

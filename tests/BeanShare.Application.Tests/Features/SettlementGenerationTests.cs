@@ -263,6 +263,126 @@ public sealed class SettlementGenerationTests
     }
 
     [Fact]
+    public async Task GenerateSettlement_ShouldCalculateAmountPaidFromPurchases()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 18m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 18m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithPurchasesByUser(
+            _adminUserId, 1000m, 20.00m);
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        var adminLine = result.Value.Lines.FirstOrDefault(l => l.UserId == _adminUserId.Value);
+        var user1Line = result.Value.Lines.First(l => l.UserId == _user1Id.Value);
+        var user2Line = result.Value.Lines.First(l => l.UserId == _user2Id.Value);
+
+        user1Line.AmountPaid.Should().Be(0m);
+        user2Line.AmountPaid.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_BuyerShouldHavePositiveNetBalance()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 27m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 9m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithPurchasesByUser(
+            _user2Id, 1000m, 40.00m);
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        var user1Line = result.Value.Lines.First(l => l.UserId == _user1Id.Value);
+        var user2Line = result.Value.Lines.First(l => l.UserId == _user2Id.Value);
+
+        user1Line.AmountPaid.Should().Be(0m);
+        user1Line.NetBalance.Should().BeLessThan(0m);
+
+        user2Line.AmountPaid.Should().Be(40.00m);
+        user2Line.NetBalance.Should().BeGreaterThan(0m);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_AmountDueShouldSumToTotalAmount()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 27m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 9m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithPurchasesByUser(
+            _user1Id, 1000m, 20.00m);
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        var totalAmountDue = result.Value.Lines.Sum(l => l.AmountDue);
+        totalAmountDue.Should().BeApproximately(result.Value.TotalAmount, 0.01m);
+
+        var user1Line = result.Value.Lines.First(l => l.UserId == _user1Id.Value);
+        user1Line.AmountPaid.Should().Be(20.00m);
+        user1Line.NetBalance.Should().Be(user1Line.AmountPaid - user1Line.AmountDue);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_NonConsumerBuyerShouldBeCreditor()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 18m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 18m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithPurchasesByUser(
+            _adminUserId, 1000m, 20.00m);
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var user1Line = result.Value.Lines.First(l => l.UserId == _user1Id.Value);
+        var user2Line = result.Value.Lines.First(l => l.UserId == _user2Id.Value);
+
+        user1Line.AmountPaid.Should().Be(0m);
+        user1Line.NetBalance.Should().BeLessThan(0m);
+        user2Line.AmountPaid.Should().Be(0m);
+        user2Line.NetBalance.Should().BeLessThan(0m);
+    }
+
+    [Fact]
     public async Task GenerateSettlement_WithNoPurchasesInPeriod_ShouldUseAllPurchases()
     {
         var billingPeriod = BillingPeriod.Create(
@@ -336,6 +456,22 @@ public sealed class SettlementGenerationTests
         return CreateCoffeeStockWithPurchases(1000m, 20.00m);
     }
 
+    private CoffeeStock CreateCoffeeStockWithPurchasesByUser(UserId purchasedBy, decimal grams, decimal cost, DateTime? purchaseDate = null)
+    {
+        var stock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Test Coffee", "Test Brand", CoffeeType.Espresso);
+        stock.AddPurchase(
+            product,
+            Weight.FromGrams(grams),
+            Money.Create(cost, "USD"),
+            "Test Vendor",
+            purchasedBy,
+            purchaseDate ?? new DateTime(2025, 10, 15, 0, 0, 0, DateTimeKind.Utc),
+            _clock);
+
+        return stock;
+    }
+
     private CoffeeStock CreateCoffeeStockWithPurchases(decimal grams, decimal cost, DateTime? purchaseDate = null)
     {
         var stock = CoffeeStock.Create(_spaceId, _clock);
@@ -348,6 +484,26 @@ public sealed class SettlementGenerationTests
             _adminUserId,
             purchaseDate ?? new DateTime(2025, 10, 15, 0, 0, 0, DateTimeKind.Utc),
             _clock);
+
+        return stock;
+    }
+
+    private CoffeeStock CreateCoffeeStockWithMultiplePurchases(
+        params (UserId purchasedBy, decimal grams, decimal cost)[] purchases)
+    {
+        var stock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Test Coffee", "Test Brand", CoffeeType.Espresso);
+        foreach (var (purchasedBy, grams, cost) in purchases)
+        {
+            stock.AddPurchase(
+                product,
+                Weight.FromGrams(grams),
+                Money.Create(cost, "USD"),
+                "Test Vendor",
+                purchasedBy,
+                new DateTime(2025, 10, 15, 0, 0, 0, DateTimeKind.Utc),
+                _clock);
+        }
 
         return stock;
     }
@@ -372,5 +528,208 @@ public sealed class SettlementGenerationTests
             _userContext,
             _userService,
             _clock);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_MultipleBuyers_ShouldCalculateCorrectly()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 27m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 9m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithMultiplePurchases(
+            (_adminUserId, 1000m, 20.00m),
+            (_user1Id, 500m, 15.00m));
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var expectedCostPerGram = (20.00m + 15.00m) / (1000m + 500m);
+        var expectedTotalCost = 36m * expectedCostPerGram;
+        result.Value.TotalAmount.Should().BeApproximately(expectedTotalCost, 0.01m);
+
+        var user1Line = result.Value.Lines.First(l => l.UserId == _user1Id.Value);
+        var user2Line = result.Value.Lines.First(l => l.UserId == _user2Id.Value);
+
+        var expectedUser1Due = expectedTotalCost * (27m / 36m);
+        var expectedUser2Due = expectedTotalCost * (9m / 36m);
+
+        user1Line.AmountDue.Should().BeApproximately(expectedUser1Due, 0.01m);
+        user1Line.AmountPaid.Should().Be(15.00m);
+        user1Line.NetBalance.Should().BeApproximately(15.00m - expectedUser1Due, 0.01m);
+
+        user2Line.AmountDue.Should().BeApproximately(expectedUser2Due, 0.01m);
+        user2Line.AmountPaid.Should().Be(0m);
+        user2Line.NetBalance.Should().BeApproximately(0m - expectedUser2Due, 0.01m);
+
+        result.Value.Lines.Should().NotContain(l => l.UserId == _adminUserId.Value);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_EqualConsumptionUnequalPurchases_ShouldHaveEqualDuesAndCorrectBalances()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 18m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 18m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithMultiplePurchases(
+            (_user1Id, 1000m, 20.00m));
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var user1Line = result.Value.Lines.First(l => l.UserId == _user1Id.Value);
+        var user2Line = result.Value.Lines.First(l => l.UserId == _user2Id.Value);
+
+        user1Line.AmountDue.Should().BeApproximately(user2Line.AmountDue, 0.01m);
+
+        user1Line.AmountPaid.Should().Be(20.00m);
+        user1Line.NetBalance.Should().BeGreaterThan(0m);
+
+        user2Line.AmountPaid.Should().Be(0m);
+        user2Line.NetBalance.Should().BeLessThan(0m);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_SingleUserDoesEverything_ShouldHaveExactlyOneLine()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 18m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithMultiplePurchases(
+            (_user1Id, 1000m, 20.00m));
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Lines.Should().HaveCount(1);
+
+        var line = result.Value.Lines.Single();
+        line.UserId.Should().Be(_user1Id.Value);
+        line.TotalCoffeeGrams.Should().Be(18m);
+        line.AmountDue.Should().Be(result.Value.TotalAmount);
+        line.AmountPaid.Should().Be(20.00m);
+        line.NetBalance.Should().Be(20.00m - line.AmountDue);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_MultipleUsers_AllAmountDueShouldSumToTotalAmount()
+    {
+        var user3Id = new UserId(Guid.NewGuid());
+        _space.Join(user3Id, _clock);
+
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 27m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 9m),
+            CreateConsumption(user3Id, billingPeriod.Id, 14m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithMultiplePurchases(
+            (_adminUserId, 1000m, 20.00m),
+            (_user1Id, 500m, 15.00m));
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Lines.Should().HaveCount(3);
+
+        var totalAmountDue = result.Value.Lines.Sum(l => l.AmountDue);
+        totalAmountDue.Should().BeApproximately(result.Value.TotalAmount, 0.01m);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_BuyerWithZeroConsumption_ShouldNotAppearInLines()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 27m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 9m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithMultiplePurchases(
+            (_adminUserId, 1000m, 20.00m));
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Lines.Should().HaveCount(2);
+        result.Value.Lines.Should().NotContain(l => l.UserId == _adminUserId.Value);
+
+        var expectedCostPerGram = 20.00m / 1000m;
+        var expectedTotalCost = 36m * expectedCostPerGram;
+        result.Value.TotalAmount.Should().BeApproximately(expectedTotalCost, 0.01m);
+    }
+
+    [Fact]
+    public async Task GenerateSettlement_MultiplePurchasesBySameUser_ShouldSumAmountPaid()
+    {
+        var billingPeriod = CreateClosedBillingPeriod();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumption(_user1Id, billingPeriod.Id, 27m),
+            CreateConsumption(_user2Id, billingPeriod.Id, 9m)
+        };
+
+        var coffeeStock = CreateCoffeeStockWithMultiplePurchases(
+            (_user1Id, 500m, 10.00m),
+            (_user1Id, 300m, 9.00m));
+
+        SetupRepositories(billingPeriod, consumptions, coffeeStock);
+
+        var handler = CreateHandler();
+        var command = new GenerateSettlementCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var user1Line = result.Value.Lines.First(l => l.UserId == _user1Id.Value);
+        user1Line.AmountPaid.Should().Be(19.00m);
+
+        var user2Line = result.Value.Lines.First(l => l.UserId == _user2Id.Value);
+        user2Line.AmountPaid.Should().Be(0m);
+
+        var expectedCostPerGram = 19.00m / 800m;
+        var expectedTotalCost = 36m * expectedCostPerGram;
+        result.Value.TotalAmount.Should().BeApproximately(expectedTotalCost, 0.01m);
     }
 }

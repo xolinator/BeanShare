@@ -2,7 +2,6 @@ namespace BeanShare.Contracts.Settlement;
 
 public record SettlementSummaryDto(
     Guid Id,
-    Guid BillingPeriodId,
     string BillingPeriodName,
     DateTime GeneratedAt,
     decimal TotalAmount,
@@ -10,6 +9,6 @@ public record SettlementSummaryDto(
     string Status,
     int ConfirmedLinesCount,
     int TotalLinesCount,
-    int ParticipantCount,
-    decimal? UserShare
+    int UserCount,
+    decimal YourShare
 );

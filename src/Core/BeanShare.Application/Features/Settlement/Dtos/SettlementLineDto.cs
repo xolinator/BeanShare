@@ -6,6 +6,8 @@ public sealed record SettlementLineDto(
     decimal TotalCoffeeGrams,
     decimal? TotalMilkMl,
     decimal AmountDue,
+    decimal AmountPaid,
+    decimal NetBalance,
     string Currency,
     decimal ConsumptionPercentage,
     bool IsConfirmed,

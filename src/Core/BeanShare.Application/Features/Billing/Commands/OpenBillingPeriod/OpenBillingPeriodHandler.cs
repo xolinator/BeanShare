@@ -56,9 +56,9 @@ public sealed class OpenBillingPeriodHandler : IRequestHandler<OpenBillingPeriod
             await _billingPeriodRepository.UpdateAsync(billingPeriod, cancellationToken);
             return Result.Success();
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
-            return Result.Failure(Error.InvalidBillingPeriodState("open", billingPeriod.State.ToString()));
+            return Result.Failure(Error.DomainError(ex.Message));
         }
     }
 }

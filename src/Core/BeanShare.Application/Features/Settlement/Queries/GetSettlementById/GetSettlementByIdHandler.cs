@@ -14,6 +14,7 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
     private readonly ISettlementRepository _settlementRepository;
     private readonly IBillingPeriodRepository _billingPeriodRepository;
     private readonly ISpaceRepository _spaceRepository;
+    private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly IUserService _userService;
     private readonly IUserContext _userContext;
 
@@ -21,12 +22,14 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
         ISettlementRepository settlementRepository,
         IBillingPeriodRepository billingPeriodRepository,
         ISpaceRepository spaceRepository,
+        ICoffeeStockRepository coffeeStockRepository,
         IUserService userService,
         IUserContext userContext)
     {
         _settlementRepository = settlementRepository;
         _billingPeriodRepository = billingPeriodRepository;
         _spaceRepository = spaceRepository;
+        _coffeeStockRepository = coffeeStockRepository;
         _userService = userService;
         _userContext = userContext;
     }
@@ -55,9 +58,28 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
             return Result<SettlementDto>.Failure(Error.InsufficientSpacePrivileges("view settlement"));
         }
 
+        var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(settlement.SpaceId, cancellationToken);
+        var periodPurchases = coffeeStock?.Purchases
+            .Where(p => p.PurchasedAt >= billingPeriod.StartDate && p.PurchasedAt <= billingPeriod.EndDate)
+            .ToList() ?? new();
+
+        if (!periodPurchases.Any())
+        {
+            periodPurchases = coffeeStock?.Purchases
+                .Where(p => p.PurchasedAt <= billingPeriod.EndDate)
+                .ToList() ?? new();
+        }
+
+        var purchasesByUser = periodPurchases
+            .Where(p => p.Cost.Currency == settlement.Currency)
+            .GroupBy(p => p.PurchasedBy)
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.Cost.Amount));
+
         var userIds = settlement.Lines.Select(l => l.UserId).Distinct().ToList();
         var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
         var userLookup = users.ToDictionary(u => u.Id);
+
+        var totalConsumption = settlement.Lines.Sum(l => l.TotalCoffeeGrams);
 
         var lines = new List<SettlementLineDto>();
         foreach (var line in settlement.Lines)
@@ -66,10 +88,12 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
             var userName = user?.Name ?? $"User {line.UserId.Value}";
             var userEmail = user?.Email ?? $"user{line.UserId.Value}@example.com";
 
-            var totalConsumption = settlement.Lines.Sum(l => l.TotalCoffeeGrams);
             var consumptionPercentage = totalConsumption > 0
                 ? (line.TotalCoffeeGrams / totalConsumption) * 100
                 : 0;
+
+            var amountPaid = purchasesByUser.TryGetValue(line.UserId, out var paid) ? paid : 0m;
+            var netBalance = amountPaid - line.AmountDue.Amount;
 
             var lineDto = new SettlementLineDto(
                 line.UserId.Value,
@@ -78,6 +102,8 @@ public sealed class GetSettlementByIdHandler : IRequestHandler<GetSettlementById
                 line.TotalCoffeeGrams,
                 line.TotalMilkMl ?? 0,
                 line.AmountDue.Amount,
+                amountPaid,
+                netBalance,
                 line.AmountDue.Currency,
                 consumptionPercentage,
                 line.IsConfirmed,

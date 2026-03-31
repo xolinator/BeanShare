@@ -48,7 +48,7 @@
                 </span>
             </div>
             <p class="bs-text-subtle" style="margin: 0 0 1.5rem 0;">
-                Period: @settlement.BillingPeriodStartDate.ToString("MMM dd") - @settlement.BillingPeriodEndDate.ToString("MMM dd, yyyy")
+                Period: @settlement.PeriodStart.ToString("MMM dd") - @settlement.PeriodEnd.ToString("MMM dd, yyyy")
             </p>
 
             <!-- Payment Confirmation Progress -->
@@ -84,27 +84,69 @@
             </div>
         </div>
 
+        <!-- Who Owes Whom Summary -->
+        @if (Debtors.Any() || Creditors.Any())
+        {
+            <div class="bs-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 1.25rem 0; font-size: 1.125rem; font-weight: 600;">Who Owes Whom</h3>
+                <div class="bs-flex bs-gap-4" style="flex-wrap: wrap;">
+                    @if (Debtors.Any())
+                    {
+                        <div class="bs-flex-1" style="min-width: 160px;">
+                            <div class="bs-flex bs-items-center bs-gap-1" style="margin-bottom: 0.75rem;">
+                                <span class="material-symbols-outlined" style="color: var(--bs-error, #ef4444); font-size: 1rem;">arrow_upward</span>
+                                <span style="font-weight: 600; font-size: 0.75rem; color: var(--bs-error, #ef4444);">OWE MONEY</span>
+                            </div>
+                            @foreach (var d in Debtors)
+                            {
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--bs-border);">
+                                    <span style="font-weight: 500; font-size: 0.875rem;">@d.UserName</span>
+                                    <span style="font-weight: 700; color: var(--bs-error, #ef4444); font-size: 0.875rem;">@settlement.Currency @Math.Abs(d.NetBalance).ToString("F2")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (Creditors.Any())
+                    {
+                        <div class="bs-flex-1" style="min-width: 160px;">
+                            <div class="bs-flex bs-items-center bs-gap-1" style="margin-bottom: 0.75rem;">
+                                <span class="material-symbols-outlined" style="color: var(--bs-success); font-size: 1rem;">arrow_downward</span>
+                                <span style="font-weight: 600; font-size: 0.75rem; color: var(--bs-success);">ARE OWED</span>
+                            </div>
+                            @foreach (var c in Creditors)
+                            {
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--bs-border);">
+                                    <span style="font-weight: 500; font-size: 0.875rem;">@c.UserName</span>
+                                    <span style="font-weight: 700; color: var(--bs-success); font-size: 0.875rem;">@settlement.Currency @c.NetBalance.ToString("F2")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
         <!-- Settlement Lines -->
-        <div class="bs-card" style="padding: 2rem;">
-            <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 600;">Cost Breakdown</h3>
+        <div class="bs-card" style="padding: 1.5rem;">
+            <h3 style="margin: 0 0 1.5rem 0; font-size: 1.125rem; font-weight: 600;">Cost Breakdown</h3>
 
             <div class="bs-flex bs-flex-col bs-gap-3">
                 @foreach (var line in settlement.Lines.OrderByDescending(l => l.TotalCoffeeGrams))
                 {
-                    <div class="bs-card" style="padding: 1.5rem; background: @(line.IsConfirmed ? "var(--bs-success-light, rgba(34, 197, 94, 0.1))" : "var(--bs-gray-50)"); border: 1px solid @(line.IsConfirmed ? "var(--bs-success)" : "var(--bs-border)");">
-                        <div class="bs-flex bs-items-start bs-justify-between" style="margin-bottom: 1rem;">
+                    <div class="bs-card" style="padding: 1.25rem; background: @(line.IsConfirmed ? "var(--bs-success-light, rgba(34, 197, 94, 0.1))" : "var(--bs-gray-50)"); border: 1px solid @(line.IsConfirmed ? "var(--bs-success)" : "var(--bs-border)");">
+                        <div class="bs-flex bs-items-start bs-justify-between" style="margin-bottom: 0.75rem;">
                             <div>
                                 <div class="bs-flex bs-items-center bs-gap-2" style="margin-bottom: 0.25rem;">
-                                    <h4 style="margin: 0; font-size: 1.125rem; font-weight: 600;">@line.UserName</h4>
+                                    <h4 style="margin: 0; font-size: 1rem; font-weight: 600;">@line.UserName</h4>
                                     @if (line.IsConfirmed)
                                     {
-                                        <span class="material-symbols-outlined" style="color: var(--bs-success); font-size: 1.25rem;" title="Payment Confirmed">check_circle</span>
+                                        <span class="material-symbols-outlined" style="color: var(--bs-success); font-size: 1.125rem;" title="Payment Confirmed">check_circle</span>
                                     }
                                 </div>
-                                <p class="bs-text-subtle" style="font-size: 0.875rem; margin: 0;">@line.UserEmail</p>
+                                <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0;">@line.UserEmail</p>
                             </div>
                             <div style="text-align: right;">
-                                <p style="font-size: 1.5rem; font-weight: 700; margin: 0; color: @(line.IsConfirmed ? "var(--bs-success)" : "var(--bs-warning)");">
+                                <p style="font-size: 1.25rem; font-weight: 700; margin: 0; color: @(line.IsConfirmed ? "var(--bs-success)" : "var(--bs-warning)");">
                                     @settlement.Currency @line.AmountDue.ToString("F2")
                                 </p>
                                 <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0;">
@@ -113,51 +155,58 @@
                             </div>
                         </div>
 
-                        <div class="bs-flex bs-items-end bs-justify-between">
-                            <div class="bs-flex bs-gap-4">
+                        <div class="bs-flex bs-gap-3" style="flex-wrap: wrap; margin-bottom: 0.75rem;">
+                            <div>
+                                <p class="bs-text-subtle" style="font-size: 0.7rem; margin: 0 0 0.2rem 0;">Consumed</p>
+                                <p style="font-size: 0.875rem; font-weight: 600; margin: 0;">@line.TotalCoffeeGrams.ToString("F0")g</p>
+                            </div>
+                            @if (line.TotalMilkMl.HasValue && line.TotalMilkMl.Value > 0)
+                            {
                                 <div>
-                                    <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Coffee Consumed</p>
-                                    <p style="font-size: 1.125rem; font-weight: 600; margin: 0;">@line.TotalCoffeeGrams.ToString("F0")g</p>
+                                    <p class="bs-text-subtle" style="font-size: 0.7rem; margin: 0 0 0.2rem 0;">Milk</p>
+                                    <p style="font-size: 0.875rem; font-weight: 600; margin: 0;">@line.TotalMilkMl.Value.ToString("F0")ml</p>
                                 </div>
-                                @if (line.TotalMilkMl.HasValue && line.TotalMilkMl.Value > 0)
-                                {
-                                    <div>
-                                        <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Milk Used</p>
-                                        <p style="font-size: 1.125rem; font-weight: 600; margin: 0;">@line.TotalMilkMl.Value.ToString("F0")ml</p>
-                                    </div>
-                                }
+                            }
+                            <div>
+                                <p class="bs-text-subtle" style="font-size: 0.7rem; margin: 0 0 0.2rem 0;">Purchased</p>
+                                <p style="font-size: 0.875rem; font-weight: 600; margin: 0; color: var(--bs-success);">@settlement.Currency @line.AmountPaid.ToString("F2")</p>
                             </div>
+                            <div>
+                                <p class="bs-text-subtle" style="font-size: 0.7rem; margin: 0 0 0.2rem 0;">Balance</p>
+                                <p style="font-size: 0.875rem; font-weight: 600; margin: 0; color: @(line.NetBalance >= 0 ? "var(--bs-success)" : "var(--bs-error, #ef4444)");">
+                                    @(line.NetBalance >= 0 ? "+" : "")@settlement.Currency @line.NetBalance.ToString("F2")
+                                </p>
+                            </div>
+                        </div>
 
-                            <!-- Confirmation Status / Button -->
-                            <div style="text-align: right;">
-                                @if (line.IsConfirmed)
-                                {
-                                    <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0;">
-                                        Confirmed @(line.ConfirmedAt.HasValue ? line.ConfirmedAt.Value.ToString("MMM dd, yyyy") : "")
-                                    </p>
-                                }
-                                else if (CanConfirmPayment(line.UserId))
-                                {
-                                    <button class="bs-btn bs-btn-sm bs-btn-primary"
-                                            style="font-size: 0.875rem;"
-                                            disabled="@isConfirming"
-                                            @onclick="@(() => HandleConfirmPayment(line.UserId))">
-                                        @if (isConfirming && confirmingUserId == line.UserId)
-                                        {
-                                            <span>Confirming...</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">check</span>
-                                            <span>Confirm Payment</span>
-                                        }
-                                    </button>
-                                }
-                                else
-                                {
-                                    <span class="bs-text-subtle" style="font-size: 0.75rem;">Awaiting confirmation</span>
-                                }
-                            </div>
+                        <div style="text-align: right;">
+                            @if (line.IsConfirmed)
+                            {
+                                <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0;">
+                                    Confirmed @(line.ConfirmedAt.HasValue ? line.ConfirmedAt.Value.ToString("MMM dd, yyyy") : "")
+                                </p>
+                            }
+                            else if (CanConfirmPayment(line.UserId))
+                            {
+                                <button class="bs-btn bs-btn-sm bs-btn-primary"
+                                        style="font-size: 0.875rem;"
+                                        disabled="@isConfirming"
+                                        @onclick="@(() => HandleConfirmPayment(line.UserId))">
+                                    @if (isConfirming && confirmingUserId == line.UserId)
+                                    {
+                                        <span>Confirming...</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">check</span>
+                                        <span>Confirm Payment</span>
+                                    }
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="bs-text-subtle" style="font-size: 0.75rem;">Awaiting confirmation</span>
+                            }
                         </div>
                     </div>
                 }
@@ -241,6 +290,9 @@
     private bool isAdmin;
     private bool isConfirming;
     private Guid confirmingUserId;
+
+    private List<BeanShare.Contracts.Settlement.SettlementLineDto> Debtors => settlement?.Lines.Where(l => l.NetBalance < -0.01m).OrderBy(l => l.NetBalance).ToList() ?? new();
+    private List<BeanShare.Contracts.Settlement.SettlementLineDto> Creditors => settlement?.Lines.Where(l => l.NetBalance > 0.01m).OrderByDescending(l => l.NetBalance).ToList() ?? new();
     private bool isExporting;
     private string exportType = "";
     private bool isSendingEmails;

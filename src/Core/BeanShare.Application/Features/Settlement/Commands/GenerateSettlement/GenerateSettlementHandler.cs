@@ -120,6 +120,11 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
             return Result<SettlementDto>.Failure(Error.NoConsumptionsInPeriod());
         }
 
+        var purchasesByUser = periodPurchases
+            .Where(p => p.Cost.Currency == space.Currency.Code)
+            .GroupBy(p => p.PurchasedBy)
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.Cost.Amount));
+
         var userConsumptions = periodConsumptions.GroupBy(c => c.UserId);
 
         foreach (var userGroup in userConsumptions)
@@ -155,6 +160,8 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
             userLookup.TryGetValue(line.UserId, out var user);
             var userName = user?.Name ?? $"User {line.UserId.Value}";
             var userEmail = user?.Email ?? $"user{line.UserId.Value}@example.com";
+            var amountPaid = purchasesByUser.TryGetValue(line.UserId, out var paid) ? paid : 0m;
+            var netBalance = amountPaid - line.AmountDue.Amount;
 
             lines.Add(new SettlementLineDto(
                 line.UserId.Value,
@@ -163,6 +170,8 @@ public sealed class GenerateSettlementHandler : IRequestHandler<GenerateSettleme
                 line.TotalCoffeeGrams,
                 line.TotalMilkMl,
                 line.AmountDue.Amount,
+                amountPaid,
+                netBalance,
                 line.AmountDue.Currency,
                 line.GetConsumptionPercentage(totalConsumedWeight.Grams),
                 line.IsConfirmed,

@@ -74,6 +74,18 @@ public sealed class StockLevel : Entity
         UpdatedAt = clock.UtcNow;
     }
 
+    public void RestoreStock(Weight quantity, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(quantity);
+
+        if (!quantity.IsPositive)
+            throw new ArgumentException("Quantity must be positive", nameof(quantity));
+
+        var newConsumed = TotalConsumed.Subtract(quantity);
+        TotalConsumed = newConsumed;
+        UpdatedAt = clock.UtcNow;
+    }
+
     public decimal ConsumptionPercentage => TotalPurchased.IsZero ? 0 : (TotalConsumed.Grams / TotalPurchased.Grams) * 100;
 
     public void Archive(IClock clock)
