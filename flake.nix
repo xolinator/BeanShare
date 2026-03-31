@@ -30,8 +30,10 @@
         #   nixosConfigurations.myhost = nixosSystem {
         #     system = "x86_64-linux";
         #     modules = [
+        #       self.nixosModules.beanshareCommon
         #       self.nixosModules.beanshare
         #       ({ config, ... }: {
+        #         services.beanshare.database.password = "use-environmentFile-in-production";
         #         services.beanshare-blazorweb = {
         #           enable = true;
         #           package = self.packages.${config.nixpkgs.system}.blazorwebapp;

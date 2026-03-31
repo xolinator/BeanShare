@@ -7,6 +7,11 @@
       let
         cfg = config.services.beanshare-api;
         packageContentRoot = "${cfg.package}/lib/beanshare-apiapp";
+        postgresqlSchema =
+          if builtins.hasAttr "psqlSchema" config.services.postgresql.package
+          then config.services.postgresql.package.psqlSchema
+          else lib.versions.major config.services.postgresql.package.version;
+        defaultPostgresqlDataDir = "/mnt/db/data/postgresql/${postgresqlSchema}";
         dbHost = if cfg.database.postgresql.enable then "localhost" else cfg.database.host;
         dbPort = if cfg.database.postgresql.enable then config.services.postgresql.settings.port else cfg.database.port;
         dbConnectionString =
@@ -67,7 +72,20 @@
 
           database = {
             enable = mkOption { type = types.bool; default = false; };
-            postgresql.enable = mkOption { type = types.bool; default = true; };
+            postgresql = {
+              enable = mkOption {
+                type = types.bool;
+                default = true;
+                description = "Enable and use the NixOS PostgreSQL service for the API.";
+              };
+
+              dataDir = mkOption {
+                type = types.str;
+                default = defaultPostgresqlDataDir;
+                description = "Persistent PostgreSQL data directory for the local API database. The default keeps data under /mnt/db/data and includes the PostgreSQL major version in the path.";
+                example = "/mnt/db/data/postgresql/18";
+              };
+            };
             connectionString = mkOption { type = types.nullOr types.str; default = null; };
             host = mkOption { type = types.str; default = "localhost"; };
             port = mkOption { type = types.port; default = 5432; };
@@ -95,6 +113,19 @@
         };
 
         config = mkIf cfg.enable (mkMerge [
+          (mkIf cfg.database.postgresql.enable (
+            let
+              sqlEsc = s: builtins.replaceStrings [ "'" ] [ "''" ] s;
+            in
+            {
+              services.postgresql.enable = mkDefault true;
+              services.postgresql.dataDir = mkOverride 900 cfg.database.postgresql.dataDir;
+              services.postgresql.initialScript = mkDefault (pkgs.writeText "beanshare-pg-init.sql" ''
+                CREATE USER "${cfg.database.user}" WITH PASSWORD '${sqlEsc cfg.database.password}';
+                CREATE DATABASE "${cfg.database.name}" OWNER "${cfg.database.user}";
+              '');
+            }
+          ))
           {
             services.beanshare-api.package = mkDefault config.packages.apiapp;
 

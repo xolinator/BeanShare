@@ -13,6 +13,7 @@
           testNixos = inputs.nixpkgs.lib.nixosSystem {
             system = targetSystem;
             modules = [
+              inputs.self.nixosModules.beanshareCommon
               inputs.self.nixosModules.api
               inputs.self.nixosModules.beanshare
               ({ pkgs, ... }: {
@@ -49,6 +50,8 @@
                   systemd
                 ];
 
+                services.beanshare.database.password = "beanshare";
+
                 services.beanshare-blazorweb = {
                   enable = true;
                   package = config.packages.blazorwebapp;
@@ -62,8 +65,6 @@
                     domain = "localhost";
                     proxyApi.enable = true;
                   };
-                  database.password = "beanshare";
-                  database.postgresql.enable = true;
                 };
 
                 services.beanshare-api = {
@@ -73,8 +74,6 @@
                   port = 5247;
                   openFirewall = false;
                   environmentFile = "-/etc/beanshare-oidc.env";
-                  database.password = "beanshare";
-                  database.postgresql.enable = true;
                 };
 
                 systemd.services.beanshare-api.environment.Jwt__Secret =

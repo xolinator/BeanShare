@@ -140,6 +140,10 @@ This workflow:
 - mounts `.env.oidc.local` into the container when present, so local OIDC secrets stay out of git
 - supports `up`, `exec`, `down`, `ps`, `status`, and `ssh` subcommands via `dev-container`
 
+When deploying the NixOS modules directly, import `self.nixosModules.beanshareCommon` alongside the web and API modules. It provides shared defaults for:
+- `services.beanshare.database.*` for the common PostgreSQL connection and local data directory
+- `services.beanshare.storage.uploadsRootPath` for the shared avatar upload filesystem path
+
 ## Documentation
 
 - **[Deployment Guide](DEPLOYMENT.md)** - Full deployment guide with infrastructure setup

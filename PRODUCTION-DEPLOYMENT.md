@@ -365,6 +365,21 @@ Equivalent NixOS module setup:
 
 ```nix
 {
+  imports = [
+    self.nixosModules.beanshareCommon
+    self.nixosModules.api
+    self.nixosModules.beanshare
+  ];
+
+  services.beanshare = {
+    database = {
+      password = "use-environmentFile-in-production";
+      postgresql.dataDir = "/mnt/db/data/postgresql/18";
+    };
+
+    storage.uploadsRootPath = "/mnt/db/data/beanshare/uploads";
+  };
+
   services.beanshare-api = {
     enable = true;
     listenAddress = "127.0.0.1";

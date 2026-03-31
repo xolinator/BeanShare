@@ -9,6 +9,11 @@
       let
         cfg = config.services.beanshare-blazorweb;
         packageContentRoot = "${cfg.package}/lib/beanshare-blazorwebapp";
+        postgresqlSchema =
+          if builtins.hasAttr "psqlSchema" config.services.postgresql.package
+          then config.services.postgresql.package.psqlSchema
+          else lib.versions.major config.services.postgresql.package.version;
+        defaultPostgresqlDataDir = "/mnt/db/data/postgresql/${postgresqlSchema}";
         apiCfg =
           if builtins.hasAttr "beanshare-api" config.services
           then config.services."beanshare-api"
@@ -26,8 +31,6 @@
           ASPNETCORE_ENVIRONMENT = cfg.environment;
           ASPNETCORE_URLS = "http://${cfg.listenAddress}:${toString cfg.port}";
           UseOidc = if cfg.oidc.enable then "true" else "false";
-        } // lib.optionalAttrs (cfg.apiBaseUrl != null) {
-          ApiBaseUrl = cfg.apiBaseUrl;
         } // lib.optionalAttrs (cfg.qrCodeBaseUrl != null) {
           QrCodeBaseUrl = cfg.qrCodeBaseUrl;
         };
@@ -95,13 +98,6 @@
             description = "ASPNETCORE_ENVIRONMENT value.";
           };
 
-          apiBaseUrl = mkOption {
-            type = types.nullOr types.str;
-            default = null;
-            description = "Base URL of the BeanShare API consumed by the web app.";
-            example = "http://127.0.0.1:5247";
-          };
-
           qrCodeBaseUrl = mkOption {
             type = types.nullOr types.str;
             default = null;
@@ -121,6 +117,13 @@
                 type = types.bool;
                 default = true;
                 description = "Enable and use the NixOS PostgreSQL service. Ensures database and user exist; app uses this instance by default.";
+              };
+
+              dataDir = mkOption {
+                type = types.str;
+                default = defaultPostgresqlDataDir;
+                description = "Persistent PostgreSQL data directory for the local database. The default keeps data under /mnt/db/data and includes the PostgreSQL major version in the path.";
+                example = "/mnt/db/data/postgresql/18";
               };
             };
 
@@ -261,6 +264,7 @@
             in
             {
               services.postgresql.enable = true;
+              services.postgresql.dataDir = mkOverride 900 cfg.database.postgresql.dataDir;
               # Create DB and user with password on first PostgreSQL init. If PostgreSQL was already enabled elsewhere, create database/user manually and set database.password or use environmentFile.
               services.postgresql.initialScript = pkgs.writeText "beanshare-pg-init.sql" ''
                 CREATE USER "${cfg.database.user}" WITH PASSWORD '${sqlEsc cfg.database.password}';
