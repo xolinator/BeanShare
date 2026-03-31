@@ -1,7 +1,7 @@
 { ... }:
 {
   flake.nixosModules.beanshareCommon =
-    { config, lib, options, ... }:
+    { config, pkgs, lib, options, ... }:
     let
       postgresqlSchema =
         if builtins.hasAttr "psqlSchema" config.services.postgresql.package
@@ -13,6 +13,8 @@
       blazorEnabled = lib.attrByPath [ "services" "beanshare-blazorweb" "enable" ] false config;
       apiEnabled = lib.attrByPath [ "services" "beanshare-api" "enable" ] false config;
       anyBeanShareServiceEnabled = blazorEnabled || apiEnabled;
+      # Escape single quotes for PostgreSQL string literals.
+      sqlEsc = s: builtins.replaceStrings [ "'" ] [ "''" ] s;
       uploadsRootPath = sharedCfg.storage.uploadsRootPath;
       postgresqlEnabled = config.services.postgresql.enable;
       postgresqlDataDir = config.services.postgresql.dataDir;
@@ -82,7 +84,12 @@
           password = lib.mkOption {
             type = lib.types.str;
             default = "";
-            description = "Shared default database password for BeanShare services. Prefer environmentFile for secrets in production.";
+            description = ''
+              Shared default database password for BeanShare services.
+              WARNING: values set here end up in the world-readable Nix store
+              (via the PostgreSQL initialScript). Use environmentFile for secrets
+              in production, or rely on PostgreSQL peer authentication.
+            '';
           };
 
           postgresql = {
@@ -117,6 +124,14 @@
         (lib.mkIf anyBeanShareServiceEnabled {
           users.groups.beanshare = { };
           systemd.tmpfiles.rules = uploadsTmpfilesRules;
+        })
+        (lib.mkIf (anyBeanShareServiceEnabled && sharedCfg.database.postgresql.enable) {
+          services.postgresql.enable = true;
+          services.postgresql.dataDir = lib.mkOverride 900 sharedCfg.database.postgresql.dataDir;
+          services.postgresql.initialScript = lib.mkDefault (pkgs.writeText "beanshare-pg-init.sql" ''
+            CREATE USER "${sharedCfg.database.user}" WITH PASSWORD '${sqlEsc sharedCfg.database.password}';
+            CREATE DATABASE "${sharedCfg.database.name}" OWNER "${sharedCfg.database.user}";
+          '');
         })
         (lib.mkIf (anyBeanShareServiceEnabled && postgresqlEnabled) {
           systemd.tmpfiles.rules = postgresqlTmpfilesRules;

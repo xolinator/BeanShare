@@ -9,11 +9,6 @@
       let
         cfg = config.services.beanshare-blazorweb;
         packageContentRoot = "${cfg.package}/lib/beanshare-blazorwebapp";
-        postgresqlSchema =
-          if builtins.hasAttr "psqlSchema" config.services.postgresql.package
-          then config.services.postgresql.package.psqlSchema
-          else lib.versions.major config.services.postgresql.package.version;
-        defaultPostgresqlDataDir = "/mnt/db/data/postgresql/${postgresqlSchema}";
         apiCfg =
           if builtins.hasAttr "beanshare-api" config.services
           then config.services."beanshare-api"
@@ -41,6 +36,12 @@
           Oidc__Authority = cfg.oidc.authority;
           Oidc__ClientId = cfg.oidc.clientId;
           Oidc__ClientSecret = cfg.oidc.clientSecret;
+        } // lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.providerDisplayName != null) {
+          Oidc__ProviderDisplayName = cfg.oidc.providerDisplayName;
+        } // lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.responseMode != null) {
+          Oidc__ResponseMode = cfg.oidc.responseMode;
+        } // lib.optionalAttrs cfg.oidc.enable {
+          Oidc__UseSecureCallbackCookies = if cfg.oidc.useSecureCallbackCookies then "true" else "false";
         } // lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.registrationEndpoint != null) {
           Oidc__RegistrationEndpoint = cfg.oidc.registrationEndpoint;
         } // lib.optionalAttrs (cfg.oidc.enable && cfg.oidc.identityProviderHintParam != null) {
@@ -62,144 +63,168 @@
           proxy_busy_buffers_size 24k;
         '';
       in
-      with lib;
       {
         options.services.beanshare-blazorweb = {
-          enable = mkEnableOption "BeanShare Blazor web application";
+          enable = lib.mkEnableOption "BeanShare Blazor web application";
 
-          package = mkOption {
-            type = types.package;
+          package = lib.mkOption {
+            type = lib.types.package;
             description = "BeanShare Blazor package (defaults to the flake's per-system blazorwebapp package; can be overridden, e.g. with pkgs.blazorwebapp).";
             example = "pkgs.blazorwebapp";
           };
 
-          port = mkOption {
-            type = types.port;
+          port = lib.mkOption {
+            type = lib.types.port;
             default = 5000;
             description = "Port on which Kestrel will listen (when not using nginx, bind to 0.0.0.0).";
           };
 
-          listenAddress = mkOption {
-            type = types.str;
+          listenAddress = lib.mkOption {
+            type = lib.types.str;
             default = "127.0.0.1";
             description = "Address Kestrel binds to. Use 0.0.0.0 to allow direct access; use 127.0.0.1 when behind nginx.";
             example = "127.0.0.1";
           };
 
-          openFirewall = mkOption {
-            type = types.bool;
+          openFirewall = lib.mkOption {
+            type = lib.types.bool;
             default = false;
             description = "Open the configured port in the firewall (only relevant when listenAddress is 0.0.0.0).";
           };
 
-          environment = mkOption {
-            type = types.str;
+          environment = lib.mkOption {
+            type = lib.types.str;
             default = "Production";
             description = "ASPNETCORE_ENVIRONMENT value.";
           };
 
-          qrCodeBaseUrl = mkOption {
-            type = types.nullOr types.str;
+          qrCodeBaseUrl = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
             default = null;
             description = "Public base URL used when generating QR code links.";
             example = "http://localhost:5000";
           };
 
           database = {
-            enable = mkOption {
-              type = types.bool;
+            enable = lib.mkOption {
+              type = lib.types.bool;
               default = false;
               description = "Pass database connection to the app (ConnectionStrings:DefaultConnection). Set to true when using an external DB; when database.postgresql.enable is true this is implied.";
             };
 
             postgresql = {
-              enable = mkOption {
-                type = types.bool;
+              enable = lib.mkOption {
+                type = lib.types.bool;
                 default = true;
                 description = "Enable and use the NixOS PostgreSQL service. Ensures database and user exist; app uses this instance by default.";
               };
 
-              dataDir = mkOption {
-                type = types.str;
-                default = defaultPostgresqlDataDir;
-                description = "Persistent PostgreSQL data directory for the local database. The default keeps data under /mnt/db/data and includes the PostgreSQL major version in the path.";
-                example = "/mnt/db/data/postgresql/18";
+              dataDir = lib.mkOption {
+                type = lib.types.str;
+                default = "/var/lib/postgresql";
+                description = "Persistent PostgreSQL data directory. Overridden by beanshare-common when both modules are used.";
               };
             };
 
-            connectionString = mkOption {
-              type = types.nullOr types.str;
+            connectionString = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
               default = null;
               description = "Full connection string. If set, overrides host/port/name/user/password.";
               example = "Host=localhost;Database=beanshare;Username=beanshare;Password=secret";
             };
 
-            host = mkOption {
-              type = types.str;
+            host = lib.mkOption {
+              type = lib.types.str;
               default = "localhost";
               description = "Database host.";
             };
 
-            port = mkOption {
-              type = types.port;
+            port = lib.mkOption {
+              type = lib.types.port;
               default = 5432;
               description = "Database port (e.g. 5432 for PostgreSQL).";
             };
 
-            name = mkOption {
-              type = types.str;
+            name = lib.mkOption {
+              type = lib.types.str;
               default = "beanshare";
               description = "Database name.";
             };
 
-            user = mkOption {
-              type = types.str;
+            user = lib.mkOption {
+              type = lib.types.str;
               default = "beanshare";
               description = "Database user.";
             };
 
-            password = mkOption {
-              type = types.str;
+            password = lib.mkOption {
+              type = lib.types.str;
               default = "";
-              description = "Database password. Empty is valid (e.g. for local/dev). Prefer environmentFile for secrets to avoid storing in Nix.";
+              description = ''
+                Database password. Empty is valid for local/dev setups.
+                WARNING: values set here end up in the world-readable Nix store.
+                Use environmentFile for secrets in production.
+              '';
             };
           };
 
           oidc = {
-            enable = mkOption {
-              type = types.bool;
+            enable = lib.mkOption {
+              type = lib.types.bool;
               default = false;
               description = "Enable OIDC authentication. Sets UseOidc and Oidc:* config.";
             };
 
-            authority = mkOption {
-              type = types.str;
+            authority = lib.mkOption {
+              type = lib.types.str;
               default = "";
               description = "OIDC authority URL (e.g. https://auth.example.com/realms/beanshare).";
               example = "https://keycloak.example.com/realms/beanshare";
             };
 
-            clientId = mkOption {
-              type = types.str;
+            clientId = lib.mkOption {
+              type = lib.types.str;
               default = "beanshare-web";
               description = "OIDC client ID.";
             };
 
-            clientSecret = mkOption {
-              type = types.str;
+            clientSecret = lib.mkOption {
+              type = lib.types.str;
               default = "";
-              description = "OIDC client secret. Prefer environmentFile for secrets to avoid storing in Nix.";
+              description = ''
+                OIDC client secret.
+                WARNING: values set here end up in the world-readable Nix store.
+                Use environmentFile for secrets in production.
+              '';
             };
 
-            registrationEndpoint = mkOption {
-              type = types.nullOr types.str;
+            providerDisplayName = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Display name shown on the OIDC login button.";
+            };
+
+            responseMode = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "OIDC response_mode (e.g. 'query', 'fragment', 'form_post').";
+            };
+
+            useSecureCallbackCookies = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Whether to set Secure flag on OIDC callback cookies.";
+            };
+
+            registrationEndpoint = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
               default = null;
               description = "Optional OIDC registration endpoint used by the web registration page. When unset, BeanShare derives a Keycloak-compatible endpoint from authority.";
               example = "https://auth.example.com/realms/beanshare/protocol/openid-connect/registrations";
             };
 
-            identityProviderHintParam = mkOption {
-              type = types.nullOr types.str;
+            identityProviderHintParam = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
               default = null;
               description = "Optional authorization request parameter used to force a specific upstream identity provider, for example kc_idp_hint for Keycloak or login_hint for some brokers.";
               example = "kc_idp_hint";
@@ -207,48 +232,48 @@
 
           };
 
-          environmentFile = mkOption {
-            type = types.nullOr types.str;
+          environmentFile = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
             default = null;
             description = "Path to a file loaded as systemd EnvironmentFile (e.g. for ConnectionStrings and OIDC client secret). Overrides env vars set from database/oidc options.";
             example = "/run/secrets/beanshare-blazorweb.env";
           };
 
           nginx = {
-            enable = mkOption {
-              type = types.bool;
+            enable = lib.mkOption {
+              type = lib.types.bool;
               default = false;
               description = "Configure nginx as reverse proxy in front of the Blazor app.";
             };
 
-            domain = mkOption {
-              type = types.nullOr types.str;
+            domain = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
               default = null;
               description = "Server name for the nginx virtualHost (required when nginx.enable is true).";
               example = "beanshare.example.com";
             };
 
-            enableACME = mkOption {
-              type = types.bool;
+            enableACME = lib.mkOption {
+              type = lib.types.bool;
               default = false;
               description = "Enable TLS via Let's Encrypt (requires nginx.enable and domain).";
             };
 
-            extraConfig = mkOption {
-              type = types.lines;
+            extraConfig = lib.mkOption {
+              type = lib.types.lines;
               default = "";
               description = "Extra nginx configuration for the location block.";
             };
 
-            proxyApi.enable = mkOption {
-              type = types.bool;
+            proxyApi.enable = lib.mkOption {
+              type = lib.types.bool;
               default = false;
               description = "Expose BeanShare API under the same nginx virtualHost on /api/ (and /swagger). Requires services.beanshare-api.enable.";
             };
           };
         };
 
-        config = mkIf cfg.enable (mkMerge [
+        config = lib.mkIf cfg.enable (lib.mkMerge [
           {
             assertions = [
               {
@@ -257,23 +282,8 @@
               }
             ];
           }
-          (mkIf cfg.database.postgresql.enable (
-            let
-              # Escape single quotes for PostgreSQL string literal.
-              sqlEsc = s: builtins.replaceStrings [ "'" ] [ "''" ] s;
-            in
-            {
-              services.postgresql.enable = true;
-              services.postgresql.dataDir = mkOverride 900 cfg.database.postgresql.dataDir;
-              # Create DB and user with password on first PostgreSQL init. If PostgreSQL was already enabled elsewhere, create database/user manually and set database.password or use environmentFile.
-              services.postgresql.initialScript = pkgs.writeText "beanshare-pg-init.sql" ''
-                CREATE USER "${cfg.database.user}" WITH PASSWORD '${sqlEsc cfg.database.password}';
-                CREATE DATABASE "${cfg.database.name}" OWNER "${cfg.database.user}";
-              '';
-            }
-          ))
           {
-            services.beanshare-blazorweb.package = mkDefault config.packages.blazorwebapp;
+            services.beanshare-blazorweb.package = lib.mkDefault perSystem.config.packages.blazorwebapp;
 
             systemd.services.beanshare-blazorweb = {
               description = "BeanShare Blazor web application";
@@ -299,11 +309,11 @@
             };
           }
 
-          (mkIf cfg.openFirewall {
+          (lib.mkIf cfg.openFirewall {
             networking.firewall.allowedTCPPorts = [ cfg.port ];
           })
 
-          (mkIf cfg.nginx.enable (mkIf (cfg.nginx.domain != null) {
+          (lib.mkIf cfg.nginx.enable (lib.mkIf (cfg.nginx.domain != null) {
             services.nginx.enable = true;
             services.nginx.virtualHosts.${cfg.nginx.domain} = {
               serverName = cfg.nginx.domain;

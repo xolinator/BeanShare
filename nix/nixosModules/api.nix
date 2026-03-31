@@ -7,11 +7,6 @@
       let
         cfg = config.services.beanshare-api;
         packageContentRoot = "${cfg.package}/lib/beanshare-apiapp";
-        postgresqlSchema =
-          if builtins.hasAttr "psqlSchema" config.services.postgresql.package
-          then config.services.postgresql.package.psqlSchema
-          else lib.versions.major config.services.postgresql.package.version;
-        defaultPostgresqlDataDir = "/mnt/db/data/postgresql/${postgresqlSchema}";
         dbHost = if cfg.database.postgresql.enable then "localhost" else cfg.database.host;
         dbPort = if cfg.database.postgresql.enable then config.services.postgresql.settings.port else cfg.database.port;
         dbConnectionString =
@@ -32,7 +27,13 @@
           Oidc__Authority = cfg.oidc.authority;
           Oidc__Audience = cfg.oidc.audience;
         };
-        serviceEnvironment = baseEnv // dbEnv // oidcEnv;
+        jwtEnv = lib.optionalAttrs (cfg.jwt.secret != "") {
+          Jwt__Secret = cfg.jwt.secret;
+          Jwt__Issuer = cfg.jwt.issuer;
+          Jwt__Audience = cfg.jwt.audience;
+          Jwt__ExpirationMinutes = toString cfg.jwt.expirationMinutes;
+        };
+        serviceEnvironment = baseEnv // dbEnv // oidcEnv // jwtEnv;
         proxyHeaderConfig = ''
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -40,94 +41,103 @@
           proxy_set_header X-Forwarded-Proto $scheme;
         '';
       in
-      with lib;
       {
         options.services.beanshare-api = {
-          enable = mkEnableOption "BeanShare API";
+          enable = lib.mkEnableOption "BeanShare API";
 
-          package = mkOption {
-            type = types.package;
+          package = lib.mkOption {
+            type = lib.types.package;
             description = "BeanShare API package.";
           };
 
-          port = mkOption {
-            type = types.port;
-            default = 5000;
+          port = lib.mkOption {
+            type = lib.types.port;
+            default = 5247;
+            description = "Port on which Kestrel will listen.";
           };
 
-          listenAddress = mkOption {
-            type = types.str;
+          listenAddress = lib.mkOption {
+            type = lib.types.str;
             default = "127.0.0.1";
           };
 
-          openFirewall = mkOption {
-            type = types.bool;
+          openFirewall = lib.mkOption {
+            type = lib.types.bool;
             default = false;
           };
 
-          environment = mkOption {
-            type = types.str;
+          environment = lib.mkOption {
+            type = lib.types.str;
             default = "Production";
           };
 
           database = {
-            enable = mkOption { type = types.bool; default = false; };
+            enable = lib.mkOption { type = lib.types.bool; default = false; };
             postgresql = {
-              enable = mkOption {
-                type = types.bool;
+              enable = lib.mkOption {
+                type = lib.types.bool;
                 default = true;
                 description = "Enable and use the NixOS PostgreSQL service for the API.";
               };
 
-              dataDir = mkOption {
-                type = types.str;
-                default = defaultPostgresqlDataDir;
-                description = "Persistent PostgreSQL data directory for the local API database. The default keeps data under /mnt/db/data and includes the PostgreSQL major version in the path.";
-                example = "/mnt/db/data/postgresql/18";
+              dataDir = lib.mkOption {
+                type = lib.types.str;
+                default = "/var/lib/postgresql";
+                description = "Persistent PostgreSQL data directory. Overridden by beanshare-common when both modules are used.";
               };
             };
-            connectionString = mkOption { type = types.nullOr types.str; default = null; };
-            host = mkOption { type = types.str; default = "localhost"; };
-            port = mkOption { type = types.port; default = 5432; };
-            name = mkOption { type = types.str; default = "beanshare"; };
-            user = mkOption { type = types.str; default = "beanshare"; };
-            password = mkOption { type = types.str; default = ""; };
+            connectionString = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+            host = lib.mkOption { type = lib.types.str; default = "localhost"; };
+            port = lib.mkOption { type = lib.types.port; default = 5432; };
+            name = lib.mkOption { type = lib.types.str; default = "beanshare"; };
+            user = lib.mkOption { type = lib.types.str; default = "beanshare"; };
+            password = lib.mkOption {
+              type = lib.types.str;
+              default = "";
+              description = ''
+                Database password. Empty is valid for local/dev setups.
+                WARNING: values set here end up in the world-readable Nix store.
+                Use environmentFile for secrets in production.
+              '';
+            };
           };
 
           oidc = {
-            enable = mkOption { type = types.bool; default = false; };
-            authority = mkOption { type = types.str; default = ""; };
-            audience = mkOption { type = types.str; default = "beanshare-api"; };
+            enable = lib.mkOption { type = lib.types.bool; default = false; };
+            authority = lib.mkOption { type = lib.types.str; default = ""; };
+            audience = lib.mkOption { type = lib.types.str; default = "beanshare-api"; };
           };
 
-          environmentFile = mkOption {
-            type = types.nullOr types.str;
+          jwt = {
+            secret = lib.mkOption {
+              type = lib.types.str;
+              default = "";
+              description = ''
+                JWT signing secret.
+                WARNING: values set here end up in the world-readable Nix store.
+                Use environmentFile for secrets in production.
+              '';
+            };
+            issuer = lib.mkOption { type = lib.types.str; default = "BeanShare"; description = "JWT issuer claim."; };
+            audience = lib.mkOption { type = lib.types.str; default = "BeanShare"; description = "JWT audience claim."; };
+            expirationMinutes = lib.mkOption { type = lib.types.int; default = 1440; description = "JWT token expiration in minutes."; };
+          };
+
+          environmentFile = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
             default = null;
           };
 
           nginx = {
-            enable = mkOption { type = types.bool; default = false; };
-            domain = mkOption { type = types.nullOr types.str; default = null; };
-            enableACME = mkOption { type = types.bool; default = false; };
+            enable = lib.mkOption { type = lib.types.bool; default = false; };
+            domain = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+            enableACME = lib.mkOption { type = lib.types.bool; default = false; };
           };
         };
 
-        config = mkIf cfg.enable (mkMerge [
-          (mkIf cfg.database.postgresql.enable (
-            let
-              sqlEsc = s: builtins.replaceStrings [ "'" ] [ "''" ] s;
-            in
-            {
-              services.postgresql.enable = mkDefault true;
-              services.postgresql.dataDir = mkOverride 900 cfg.database.postgresql.dataDir;
-              services.postgresql.initialScript = mkDefault (pkgs.writeText "beanshare-pg-init.sql" ''
-                CREATE USER "${cfg.database.user}" WITH PASSWORD '${sqlEsc cfg.database.password}';
-                CREATE DATABASE "${cfg.database.name}" OWNER "${cfg.database.user}";
-              '');
-            }
-          ))
+        config = lib.mkIf cfg.enable (lib.mkMerge [
           {
-            services.beanshare-api.package = mkDefault config.packages.apiapp;
+            services.beanshare-api.package = lib.mkDefault perSystem.config.packages.apiapp;
 
             systemd.services.beanshare-api = {
               description = "BeanShare API";
@@ -153,11 +163,11 @@
             };
           }
 
-          (mkIf cfg.openFirewall {
+          (lib.mkIf cfg.openFirewall {
             networking.firewall.allowedTCPPorts = [ cfg.port ];
           })
 
-          (mkIf cfg.nginx.enable (mkIf (cfg.nginx.domain != null) {
+          (lib.mkIf cfg.nginx.enable (lib.mkIf (cfg.nginx.domain != null) {
             services.nginx.enable = true;
             services.nginx.virtualHosts.${cfg.nginx.domain} = {
               serverName = cfg.nginx.domain;
