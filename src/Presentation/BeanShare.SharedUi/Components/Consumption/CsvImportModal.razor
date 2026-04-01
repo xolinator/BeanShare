@@ -139,11 +139,25 @@ jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
             else if (step == ImportStep.Result)
             {
                 <div style="padding: 1.5rem; text-align: center;">
-                    @if (importResult != null && importResult.ErrorCount == 0)
+                    @if (importResult != null && importResult.ErrorCount == 0 && importResult.Warnings.Count == 0)
                     {
                         <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-success); display: block; margin-bottom: 0.5rem;">check_circle</span>
                         <h4 style="margin-bottom: 0.5rem;">Import Successful</h4>
                         <p style="color: var(--bs-text-subtle);">@importResult.SuccessCount consumption entries imported.</p>
+                    }
+                    else if (importResult != null && importResult.ErrorCount == 0 && importResult.Warnings.Count > 0)
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-warning); display: block; margin-bottom: 0.5rem;">warning</span>
+                        <h4 style="margin-bottom: 0.5rem;">Import Completed with Warnings</h4>
+                        <p style="color: var(--bs-text-subtle); margin-bottom: 1rem;">@importResult.SuccessCount consumption entries imported.</p>
+                        <div style="text-align: left; background: var(--bs-warning-light); border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem;">
+                            @foreach (var warning in importResult.Warnings)
+                            {
+                                <div style="margin-bottom: 0.25rem; color: var(--bs-warning-dark);">
+                                    <strong>Warning:</strong> @warning
+                                </div>
+                            }
+                        </div>
                     }
                     else if (importResult != null)
                     {

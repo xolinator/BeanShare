@@ -59,6 +59,17 @@ public sealed class StockLevel : Entity
         UpdatedAt = clock.UtcNow;
     }
 
+    public void ReducePurchased(Weight quantity, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(quantity);
+
+        if (!quantity.IsPositive)
+            throw new ArgumentException("Quantity must be positive", nameof(quantity));
+
+        TotalPurchased = TotalPurchased.Subtract(quantity);
+        UpdatedAt = clock.UtcNow;
+    }
+
     public void ConsumeStock(Weight quantity, IClock clock)
     {
         ArgumentNullException.ThrowIfNull(quantity);

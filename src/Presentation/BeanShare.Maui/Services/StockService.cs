@@ -36,7 +36,7 @@ public class StockService : IStockService
         }
     }
 
-    public async Task<bool> AddStockPurchaseAsync(Guid spaceId, string productName, string coffeeType, int quantityGrams, decimal totalCost, string currency)
+    public async Task<bool> AddStockPurchaseAsync(Guid spaceId, string productName, string coffeeType, int quantityGrams, decimal totalCost, string currency, DateTime purchasedAt)
     {
         try
         {
@@ -49,7 +49,7 @@ public class StockService : IStockService
                 CostAmount = totalCost,
                 CostCurrency = currency,
                 Vendor = "Store",
-                PurchasedAt = DateTime.UtcNow
+                PurchasedAt = purchasedAt.ToUniversalTime()
             };
 
             var response = await _httpClient.PostAsJsonAsync($"/api/spaces/{spaceId}/stock/purchases", request);

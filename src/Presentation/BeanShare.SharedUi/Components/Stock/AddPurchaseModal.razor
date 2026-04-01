@@ -55,6 +55,14 @@
                     </InputSelect>
                 </div>
 
+                <div class="bs-form-group">
+                    <label class="bs-label" for="purchaseDate">Purchase Date</label>
+                    <InputDate id="purchaseDate"
+                              class="bs-input"
+                              @bind-Value="model.PurchasedAt" />
+                    <ValidationMessage For="@(() => model.PurchasedAt)" class="bs-validation-message" />
+                </div>
+
                 <div class="bs-modal-footer">
                     <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Cancel">
                         Cancel
@@ -138,6 +146,9 @@
 
         [Required]
         public string CoffeeType { get; set; } = "Espresso";
+
+        [Required(ErrorMessage = "Purchase date is required")]
+        public DateTime PurchasedAt { get; set; } = DateTime.UtcNow;
 
         public string Currency { get; set; } = "USD";
     }

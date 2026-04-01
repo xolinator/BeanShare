@@ -343,6 +343,57 @@ public sealed class BillingPeriodCommandTests
         consumption2.BillingPeriodId.Should().Be(otherPeriodId);
     }
 
+    [Fact]
+    public async Task OpenBillingPeriod_WithPastEndDate_ShouldSucceed()
+    {
+        var clockAtDec = Substitute.For<IClock>();
+        clockAtDec.UtcNow.Returns(new DateTime(2025, 12, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var billingPeriod = BillingPeriod.Create(
+            _spaceId,
+            "October 2025",
+            new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 10, 31, 0, 0, 0, DateTimeKind.Utc),
+            _adminUserId,
+            _clock);
+
+        _billingPeriodRepository.GetByIdAsync(Arg.Any<BillingPeriodId>(), default).Returns(billingPeriod);
+        _spaceRepository.GetSingleBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(_space);
+
+        var handler = new OpenBillingPeriodHandler(_billingPeriodRepository, _spaceRepository, _userContext, clockAtDec);
+        var command = new OpenBillingPeriodCommand(billingPeriod.Id.Value);
+
+        var result = await handler.Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        billingPeriod.State.Should().Be(BillingState.Open);
+        await _billingPeriodRepository.Received(1).UpdateAsync(billingPeriod, default);
+    }
+
+    [Fact]
+    public async Task FullHistoricalBillingFlow_OpenClosePastPeriod_ShouldSucceed()
+    {
+        var clockAtDec = Substitute.For<IClock>();
+        clockAtDec.UtcNow.Returns(new DateTime(2025, 12, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var billingPeriod = BillingPeriod.Create(
+            _spaceId,
+            "October 2025",
+            new DateTime(2025, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 10, 31, 0, 0, 0, DateTimeKind.Utc),
+            _adminUserId,
+            _clock);
+
+        billingPeriod.State.Should().Be(BillingState.Draft);
+
+        billingPeriod.Open(_adminUserId, clockAtDec);
+        billingPeriod.State.Should().Be(BillingState.Open);
+
+        billingPeriod.Close(_adminUserId, clockAtDec);
+        billingPeriod.State.Should().Be(BillingState.Closed);
+        billingPeriod.ClosedAt.Should().Be(new DateTime(2025, 12, 1, 0, 0, 0, DateTimeKind.Utc));
+    }
+
     private ConsumptionEntry CreateConsumption(DateTime consumedAt)
     {
         var product = CoffeeProduct.Create("Test Coffee", "Test Brand", CoffeeType.Espresso);

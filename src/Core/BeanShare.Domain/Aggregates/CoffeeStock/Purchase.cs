@@ -7,11 +7,11 @@ public sealed class Purchase : Entity
 {
     public Guid Id { get; private init; }
     public CoffeeProduct Product { get; private init; }
-    public Weight Quantity { get; private init; }
-    public Money Cost { get; private init; }
+    public Weight Quantity { get; private set; }
+    public Money Cost { get; private set; }
     public string Vendor { get; private init; }
     public UserId PurchasedBy { get; private init; }
-    public DateTime PurchasedAt { get; private init; }
+    public DateTime PurchasedAt { get; private set; }
     public DateTime CreatedAt { get; private init; }
 
     private Purchase()
@@ -81,6 +81,24 @@ public sealed class Purchase : Entity
             purchasedBy,
             purchasedAt,
             clock.UtcNow);
+    }
+
+    public void Update(Weight newQuantity, decimal newCostAmount, DateTime newPurchasedAt, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(newQuantity);
+
+        if (!newQuantity.IsPositive)
+            throw new ArgumentException("Quantity must be positive", nameof(newQuantity));
+
+        if (newCostAmount <= 0)
+            throw new ArgumentException("Cost must be positive", nameof(newCostAmount));
+
+        if (newPurchasedAt > clock.UtcNow)
+            throw new ArgumentException("Purchase date cannot be in the future", nameof(newPurchasedAt));
+
+        Quantity = newQuantity;
+        Cost = Money.Create(newCostAmount, Cost.Currency);
+        PurchasedAt = newPurchasedAt;
     }
 
     public Money CostPerGram => Cost.Divide(Quantity.Grams);

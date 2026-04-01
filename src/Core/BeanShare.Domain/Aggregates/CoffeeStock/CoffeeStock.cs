@@ -62,8 +62,8 @@ public sealed class CoffeeStock : AggregateRoot
         _purchases.Add(purchase);
 
         var existingStockLevel = _stockLevels.FirstOrDefault(sl =>
-            sl.Product.Name == product.Name &&
-            sl.Product.Brand == product.Brand &&
+            string.Equals(sl.Product.Name, product.Name, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(sl.Product.Brand, product.Brand, StringComparison.OrdinalIgnoreCase) &&
             sl.Product.Type == product.Type);
 
         if (existingStockLevel != null)
@@ -91,11 +91,42 @@ public sealed class CoffeeStock : AggregateRoot
             clock.UtcNow));
     }
 
+    public void UpdatePurchase(Guid purchaseId, Weight newQuantity, decimal newCostAmount, DateTime newPurchasedAt, IClock clock)
+    {
+        var purchase = _purchases.FirstOrDefault(p => p.Id == purchaseId);
+        if (purchase == null)
+            throw new InvalidOperationException($"Purchase {purchaseId} not found");
+
+        var oldQuantity = purchase.Quantity;
+        purchase.Update(newQuantity, newCostAmount, newPurchasedAt, clock);
+
+        var stockLevel = _stockLevels.FirstOrDefault(sl =>
+            string.Equals(sl.Product.Name, purchase.Product.Name, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(sl.Product.Brand, purchase.Product.Brand, StringComparison.OrdinalIgnoreCase) &&
+            sl.Product.Type == purchase.Product.Type);
+
+        if (stockLevel != null)
+        {
+            var diff = newQuantity.Grams - oldQuantity.Grams;
+            if (diff > 0)
+                stockLevel.AddPurchase(Weight.FromGrams(diff), clock);
+            else if (diff < 0)
+            {
+                var maxReduction = stockLevel.TotalPurchased.Grams - stockLevel.TotalConsumed.Grams;
+                var reduction = Math.Min(-diff, maxReduction);
+                if (reduction > 0)
+                    stockLevel.ReducePurchased(Weight.FromGrams(reduction), clock);
+            }
+        }
+
+        UpdatedAt = clock.UtcNow;
+    }
+
     public void ConsumeStock(CoffeeProduct product, Weight quantity, IClock clock)
     {
         var stockLevel = _stockLevels.FirstOrDefault(sl =>
-            sl.Product.Name == product.Name &&
-            sl.Product.Brand == product.Brand &&
+            string.Equals(sl.Product.Name, product.Name, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(sl.Product.Brand, product.Brand, StringComparison.OrdinalIgnoreCase) &&
             sl.Product.Type == product.Type);
 
         if (stockLevel == null)
@@ -116,8 +147,8 @@ public sealed class CoffeeStock : AggregateRoot
     public void RestoreStock(CoffeeProduct product, Weight quantity, IClock clock)
     {
         var stockLevel = _stockLevels.FirstOrDefault(sl =>
-            sl.Product.Name == product.Name &&
-            sl.Product.Brand == product.Brand &&
+            string.Equals(sl.Product.Name, product.Name, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(sl.Product.Brand, product.Brand, StringComparison.OrdinalIgnoreCase) &&
             sl.Product.Type == product.Type);
 
         if (stockLevel == null)
@@ -130,8 +161,8 @@ public sealed class CoffeeStock : AggregateRoot
     public Weight GetCurrentStock(CoffeeProduct product)
     {
         var stockLevel = _stockLevels.FirstOrDefault(sl =>
-            sl.Product.Name == product.Name &&
-            sl.Product.Brand == product.Brand &&
+            string.Equals(sl.Product.Name, product.Name, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(sl.Product.Brand, product.Brand, StringComparison.OrdinalIgnoreCase) &&
             sl.Product.Type == product.Type);
 
         return stockLevel?.CurrentStock ?? Weight.Zero;
@@ -140,8 +171,8 @@ public sealed class CoffeeStock : AggregateRoot
     public Money CalculateAverageCostPerGram(CoffeeProduct product)
     {
         var productPurchases = _purchases.Where(p =>
-            p.Product.Name == product.Name &&
-            p.Product.Brand == product.Brand &&
+            string.Equals(p.Product.Name, product.Name, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(p.Product.Brand, product.Brand, StringComparison.OrdinalIgnoreCase) &&
             p.Product.Type == product.Type).ToList();
 
         if (!productPurchases.Any())
