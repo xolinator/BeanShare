@@ -5,12 +5,15 @@ using BeanShare.Infrastructure;
 using BeanShare.Infrastructure.Identity;
 using BeanShare.Infrastructure.Persistence;
 using BeanShare.Infrastructure.Persistence.Seeds;
+using BeanShare.Infrastructure.Services;
 using BeanShare.SharedUi.Services;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +32,7 @@ builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInM
 builder.Services.AddMemoryCache();
 builder.Services.AddExchangeRates(builder.Configuration);
 builder.Services.AddCommunicationServices(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
 
 if (!useInMemoryDatabase)
 {
@@ -44,6 +48,11 @@ if (useOidc)
     var oidcClientId = builder.Configuration["Oidc:ClientId"] ?? "beanshare-web";
     var oidcClientSecret = builder.Configuration["Oidc:ClientSecret"]
         ?? throw new InvalidOperationException("Oidc:ClientSecret not configured");
+    var oidcIdentityProviderHintParam = builder.Configuration["Oidc:IdentityProviderHintParam"];
+    var oidcResponseMode = builder.Configuration["Oidc:ResponseMode"];
+    var oidcUseSecureCallbackCookies =
+        builder.Configuration.GetValue<bool?>("Oidc:UseSecureCallbackCookies")
+        ?? builder.Environment.IsProduction();
 
     builder.Services.AddAuthentication(options =>
     {
@@ -63,10 +72,28 @@ if (useOidc)
         options.ClientId = oidcClientId;
         options.ClientSecret = oidcClientSecret;
         options.ResponseType = "code";
-        options.SaveTokens = true;
+        if (!string.IsNullOrWhiteSpace(oidcResponseMode))
+        {
+            options.ResponseMode = oidcResponseMode;
+        }
+        options.SaveTokens = false;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = builder.Environment.IsProduction();
         options.MapInboundClaims = false;
+        options.CorrelationCookie.SecurePolicy = oidcUseSecureCallbackCookies
+            ? CookieSecurePolicy.Always
+            : CookieSecurePolicy.SameAsRequest;
+        options.NonceCookie.SecurePolicy = oidcUseSecureCallbackCookies
+            ? CookieSecurePolicy.Always
+            : CookieSecurePolicy.SameAsRequest;
+
+        var useFormPostResponseMode = string.IsNullOrWhiteSpace(options.ResponseMode)
+            || string.Equals(options.ResponseMode, "form_post", StringComparison.OrdinalIgnoreCase);
+        var callbackCookieSameSite = useFormPostResponseMode
+            ? SameSiteMode.None
+            : SameSiteMode.Lax;
+        options.CorrelationCookie.SameSite = callbackCookieSameSite;
+        options.NonceCookie.SameSite = callbackCookieSameSite;
 
         options.Scope.Clear();
         options.Scope.Add("openid");
@@ -81,6 +108,17 @@ if (useOidc)
 
         options.Events = new OpenIdConnectEvents
         {
+            OnRedirectToIdentityProvider = context =>
+            {
+                if (!string.IsNullOrWhiteSpace(oidcIdentityProviderHintParam) &&
+                    context.Properties.Items.TryGetValue(oidcIdentityProviderHintParam, out var hintValue) &&
+                    !string.IsNullOrWhiteSpace(hintValue))
+                {
+                    context.ProtocolMessage.SetParameter(oidcIdentityProviderHintParam, hintValue);
+                }
+
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async context =>
             {
                 // Extract roles from multiple OIDC claim formats for provider compatibility
@@ -100,9 +138,7 @@ if (useOidc)
                                 {
                                     foreach (var role in rolesElement.EnumerateArray())
                                     {
-                                        var roleValue = role.GetString() ?? "";
-                                        identity.AddClaim(new System.Security.Claims.Claim(
-                                            System.Security.Claims.ClaimTypes.Role, roleValue));
+                                        AddRoleClaims(identity, role.GetString());
                                     }
                                 }
                             }
@@ -114,19 +150,14 @@ if (useOidc)
                         }
 
                         var rolesClaim = identity.FindFirst("roles");
-                        if (rolesClaim != null && rolesClaim.Value.TrimStart().StartsWith("["))
+                        if (rolesClaim != null)
                         {
-                            try
-                            {
-                                using var rolesDoc = System.Text.Json.JsonDocument.Parse(rolesClaim.Value);
-                                foreach (var role in rolesDoc.RootElement.EnumerateArray())
-                                {
-                                    var roleValue = role.GetString() ?? "";
-                                    identity.AddClaim(new System.Security.Claims.Claim(
-                                        System.Security.Claims.ClaimTypes.Role, roleValue));
-                                }
-                            }
-                            catch (Exception) { }
+                            AddRoleClaims(identity, rolesClaim.Value);
+                        }
+
+                        foreach (var groupsClaim in identity.FindAll("groups").ToList())
+                        {
+                            AddRoleClaims(identity, groupsClaim.Value);
                         }
                     }
                 }
@@ -149,7 +180,6 @@ if (useOidc)
         };
     });
 
-    builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<BeanShare.Application.Abstractions.IUserContext, OidcUserContext>();
     builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
     builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, BeanShare.Infrastructure.Identity.OidcClaimsTransformation>();
@@ -162,21 +192,16 @@ else
 
 builder.Services.AddCascadingAuthenticationState();
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
-    ?? (builder.Environment.IsDevelopment() ? "http://localhost:5247" : throw new InvalidOperationException("ApiBaseUrl must be configured in production"));
-
-builder.Services.AddHttpClient("BeanShareApi", client =>
-{
-    client.BaseAddress = new Uri(apiBaseUrl);
-});
-builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("BeanShareApi"));
-builder.Services.AddHttpContextAccessor();
-
 builder.Services.AddScoped<IThemeService, ThemeService>();
-var qrCodeBaseUrl = builder.Configuration.GetValue<string>("QrCodeBaseUrl")
-    ?? (builder.Environment.IsDevelopment() ? "http://localhost:5126" : throw new InvalidOperationException("QrCodeBaseUrl must be configured in production"));
-builder.Services.AddSingleton<BeanShare.SharedUi.Services.IQrCodeService>(
-    _ => new BeanShare.SharedUi.Services.QrCodeService(qrCodeBaseUrl));
+builder.Services.AddScoped<BeanShare.SharedUi.Services.IQrCodeService>(sp =>
+{
+    var qrCodeBaseUrl = ResolvePublicBaseUrl(
+        sp,
+        builder.Configuration.GetValue<string>("QrCodeBaseUrl"),
+        "http://localhost:5126");
+
+    return new BeanShare.SharedUi.Services.QrCodeService(qrCodeBaseUrl);
+});
 builder.Services.AddSingleton<BeanShare.SharedUi.Services.IQrScannerService, BeanShare.SharedUi.Services.BrowserQrScannerService>();
 builder.Services.AddSingleton<BeanShare.SharedUi.Services.QrCodeResolveCache>();
 
@@ -184,7 +209,10 @@ var app = builder.Build();
 
 var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedHost |
+        ForwardedHeaders.XForwardedProto
 };
 #pragma warning disable ASPDEPR005
 forwardedHeadersOptions.KnownNetworks.Clear();
@@ -202,33 +230,21 @@ app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Ensure database schema exists and seed data
-{
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<BeanShareDbContext>();
-    await context.Database.EnsureCreatedAsync();
-
-    // Create DataProtectionKeys table if it doesn't exist (EnsureCreated won't add new tables to existing DB)
-    if (!useInMemoryDatabase)
-    {
-        await context.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS "DataProtectionKeys" (
-                "Id" SERIAL PRIMARY KEY,
-                "FriendlyName" TEXT NULL,
-                "Xml" TEXT NULL
-            )
-            """);
-    }
-
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>();
-    var seeder = new DatabaseSeeder(context, logger);
-    var includeDemoData = app.Environment.IsDevelopment()
-        || app.Configuration.GetValue<bool>("IncludeDemoData");
-    await seeder.SeedAsync(includeDemoData: includeDemoData);
-}
+var includeWebDemoData = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue<bool>("IncludeDemoData");
+await app.Services.InitializeBeanShareDatabaseAsync(includeWebDemoData);
 
 app.UseAntiforgery();
 
+var avatarStorage = app.Services.GetRequiredService<AvatarStorageService>();
+var uploadsRootPath = avatarStorage.GetUploadsRootPath();
+Directory.CreateDirectory(uploadsRootPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRootPath),
+    RequestPath = "/uploads"
+});
 app.UseStaticFiles();
 app.MapStaticAssets();
 
@@ -239,3 +255,92 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+static string ResolvePublicBaseUrl(IServiceProvider services, string? configuredValue, string developmentFallback)
+{
+    if (!string.IsNullOrWhiteSpace(configuredValue))
+    {
+        return configuredValue.TrimEnd('/');
+    }
+
+    var navigationManager = services.GetService<NavigationManager>();
+    if (navigationManager != null && !string.IsNullOrWhiteSpace(navigationManager.BaseUri))
+    {
+        return navigationManager.BaseUri.TrimEnd('/');
+    }
+
+    var httpContext = services.GetRequiredService<IHttpContextAccessor>().HttpContext;
+    if (httpContext != null)
+    {
+        return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}".TrimEnd('/');
+    }
+
+    return developmentFallback.TrimEnd('/');
+}
+
+static void AddRoleClaims(System.Security.Claims.ClaimsIdentity identity, string? rawValue)
+{
+    foreach (var roleValue in ExpandMultiValueClaim(rawValue))
+    {
+        if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, roleValue))
+        {
+            identity.AddClaim(new System.Security.Claims.Claim(
+                System.Security.Claims.ClaimTypes.Role,
+                roleValue));
+        }
+    }
+}
+
+static IEnumerable<string> ExpandMultiValueClaim(string? rawValue)
+{
+    if (string.IsNullOrWhiteSpace(rawValue))
+    {
+        yield break;
+    }
+
+    var trimmedValue = rawValue.Trim();
+
+    if (trimmedValue.StartsWith("["))
+    {
+        var parsedValues = TryParseJsonArrayClaim(trimmedValue);
+        if (parsedValues != null)
+        {
+            foreach (var value in parsedValues)
+            {
+                yield return value;
+            }
+
+            yield break;
+        }
+    }
+
+    yield return trimmedValue;
+}
+
+static List<string>? TryParseJsonArrayClaim(string rawValue)
+{
+    try
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(rawValue);
+        if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var values = new List<string>();
+        foreach (var item in doc.RootElement.EnumerateArray())
+        {
+            var value = item.GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                values.Add(value);
+            }
+        }
+
+        return values;
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return null;
+    }
+}

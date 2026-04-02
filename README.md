@@ -110,24 +110,39 @@ Development with Nix:
 ```bash
 nix develop          # enter dev shell (.NET 10, git)
 nix run .#updateDeps # refresh NuGet lockfile (nix/deps.json)
-nix run .#blazorwebModuleTestContainer # build/load/run NixOS module test container in Docker
+cp .env.oidc.local.example .env.oidc.local # optional: enable local OIDC for dev-container
+nix run .#dev-container -- up # build/load/run dev container in Docker
 ```
 
-Test the `services.beanshare-blazorweb` NixOS module in a Docker-based NixOS container:
+Run the development container for the `services.beanshare-blazorweb` NixOS module in Docker:
 
 ```bash
-# default (builds x86_64-linux image)
-nix run .#blazorwebModuleTestContainer
+# build and start
+nix run .#dev-container -- up
 
-# Apple Silicon / ARM Linux target
-TARGET_SYSTEM=aarch64-linux nix run .#blazorwebModuleTestContainer
+# open a shell in the running container
+nix run .#dev-container -- exec
+
+# connect over SSH (nixos@localhost:2222, password: nixos)
+nix run .#dev-container -- ssh
+
+# inspect and stop it
+nix run .#dev-container -- status
+nix run .#dev-container -- down
 ```
 
-This command:
+This workflow:
 - builds a NixOS container image via `dockerTools` (no project Dockerfile)
-- enables `services.beanshare-blazorweb` inside the container
+- enables `services.beanshare-blazorweb`, `services.beanshare-api`, and nginx inside the container
 - loads and starts it under Docker with systemd
-- opens SSH (`nixos@localhost -p 2222`, password: `nixos`) for interactive testing
+- exposes SSH on `localhost:2222` and a single HTTP endpoint on `0.0.0.0:5000`
+- serves the Blazor web app on `http://localhost:5000/` and the API on `http://localhost:5000/api/`
+- mounts `.env.oidc.local` into the container when present, so local OIDC secrets stay out of git
+- supports `up`, `exec`, `down`, `ps`, `status`, and `ssh` subcommands via `dev-container`
+
+When deploying the NixOS modules directly, import `self.nixosModules.beanshareCommon` alongside the web and API modules. It provides shared defaults for:
+- `services.beanshare.database.*` for the common PostgreSQL connection and local data directory
+- `services.beanshare.storage.uploadsRootPath` for the shared avatar upload filesystem path
 
 ## Documentation
 

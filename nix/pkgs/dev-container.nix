@@ -13,13 +13,15 @@
           testNixos = inputs.nixpkgs.lib.nixosSystem {
             system = targetSystem;
             modules = [
-              inputs.self.nixosModules.blazorweb
+              inputs.self.nixosModules.beanshareCommon
+              inputs.self.nixosModules.api
+              inputs.self.nixosModules.beanshare
               ({ pkgs, ... }: {
                 boot.isContainer = true;
 
                 networking = {
                   firewall.enable = false;
-                  hostName = "blazorweb-module-test";
+                  hostName = "beanshare-module-test";
                   useDHCP = false;
                   interfaces = { };
                   nameservers = [ "1.1.1.1" "8.8.8.8" ];
@@ -48,14 +50,34 @@
                   systemd
                 ];
 
+                services.beanshare.database.password = "beanshare";
+
                 services.beanshare-blazorweb = {
                   enable = true;
                   package = config.packages.blazorwebapp;
-                  listenAddress = "0.0.0.0";
-                  port = 5000;
+                  listenAddress = "127.0.0.1";
+                  port = 5001;
                   openFirewall = false;
-                  database.postgresql.enable = true;
+                  environmentFile = "-/etc/beanshare-oidc.env";
+                  qrCodeBaseUrl = "http://localhost:5000";
+                  nginx = {
+                    enable = true;
+                    domain = "localhost";
+                    proxyApi.enable = true;
+                  };
                 };
+
+                services.beanshare-api = {
+                  enable = true;
+                  package = config.packages.apiapp;
+                  listenAddress = "127.0.0.1";
+                  port = 5247;
+                  openFirewall = false;
+                  environmentFile = "-/etc/beanshare-oidc.env";
+                };
+
+                systemd.services.beanshare-api.environment.Jwt__Secret =
+                  "BeanShareSecretKeyForJwtTokenGeneration2024SuperSecure!";
 
                 system.stateVersion = "25.11";
               })
@@ -68,21 +90,21 @@
           '';
         in
         pkgs.dockerTools.buildImage {
-          name = "blazorweb-module-test-container";
+          name = "beanshare-dev-container";
           tag = "latest";
 
           config = {
             Cmd = [ "/init" ];
             StopSignal = "SIGRTMIN+3";
-            Hostname = "blazorweb-module-test";
+            Hostname = "beanshare-dev-container";
             ExposedPorts = {
               "2222/tcp" = { };
-              "5000/tcp" = { };
+              "80/tcp" = { };
             };
           };
 
           copyToRoot = pkgs.symlinkJoin {
-            name = "blazorweb-module-test-root";
+            name = "beanshare-module-test-root";
             paths = [
               testNixos.config.system.build.toplevel
               initFix
@@ -91,6 +113,6 @@
         };
     in
     lib.optionalAttrs (lib.elem system [ "x86_64-linux" "aarch64-linux" ]) {
-      packages.blazorweb-module-test-container = mkModuleTestContainer system;
+      packages.devContainer = mkModuleTestContainer system;
     };
 }

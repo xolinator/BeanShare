@@ -46,19 +46,25 @@ public sealed class UserSynchronizationService : IUserSynchronizationService
             throw new InvalidOperationException("User is not authenticated");
         }
 
-        // Extract OIDC user ID (sub claim)
+        // Extract provider-specific OIDC subject identifier.
         var subClaim = principal.FindFirst("sub")?.Value
             ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (string.IsNullOrEmpty(subClaim) || !Guid.TryParse(subClaim, out var oidcUserId))
+        if (string.IsNullOrWhiteSpace(subClaim))
         {
             throw new InvalidOperationException($"Invalid or missing sub claim: {subClaim}");
         }
 
-        var userId = new UserId(oidcUserId);
+        var identityProvider = principal.FindFirst("identity_provider")?.Value ?? "oidc";
+        var provider = identityProvider.ToLowerInvariant() switch
+        {
+            "google" => AuthenticationProvider.Google,
+            "facebook" => AuthenticationProvider.Facebook,
+            _ => AuthenticationProvider.Oidc
+        };
 
-        // Check if user already exists by OIDC provider UUID
-        var existingUser = await _userService.GetByIdForUpdateAsync(userId, cancellationToken);
+        // Prefer an exact provider+subject match for generic OIDC providers with opaque sub values.
+        var existingUser = await _userService.GetByProviderUserIdAsync(provider, subClaim, cancellationToken);
 
         if (existingUser is not null)
         {
@@ -67,7 +73,10 @@ public sealed class UserSynchronizationService : IUserSynchronizationService
             await _userService.UpdateAsync(existingUser, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogDebug("Updated last login for existing user {UserId}", userId);
+            _logger.LogDebug(
+                "Updated last login for existing user {UserId} via provider subject {ProviderUserId}",
+                existingUser.Id,
+                subClaim);
             return existingUser;
         }
 
@@ -84,8 +93,11 @@ public sealed class UserSynchronizationService : IUserSynchronizationService
                 await _userService.UpdateAsync(userByEmail, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-                _logger.LogInformation("Matched OIDC user {OidcId} to existing DB user {DbUserId} by email {Email}",
-                    oidcUserId, userByEmail.Id, email);
+                _logger.LogInformation(
+                    "Matched OIDC user {ProviderUserId} to existing DB user {DbUserId} by email {Email}",
+                    subClaim,
+                    userByEmail.Id,
+                    email);
                 return userByEmail;
             }
         }
@@ -103,20 +115,15 @@ public sealed class UserSynchronizationService : IUserSynchronizationService
 
         var pictureUrl = principal.FindFirst("picture")?.Value;
 
-        // Determine authentication provider from identity_provider claim (for social logins brokered through the OIDC provider)
-        var identityProvider = principal.FindFirst("identity_provider")?.Value ?? "oidc";
-        var provider = identityProvider.ToLowerInvariant() switch
-        {
-            "google" => AuthenticationProvider.Google,
-            "facebook" => AuthenticationProvider.Facebook,
-            _ => AuthenticationProvider.Oidc
-        };
-
-        var newUser = User.CreateFromOidc(oidcUserId, email, name, provider, _clock.UtcNow, pictureUrl);
+        var newUser = User.CreateWithProvider(email, name, provider, subClaim, _clock.UtcNow, pictureUrl);
 
         await _userService.AddAsync(newUser, cancellationToken);
 
-        _logger.LogInformation("Created new user {UserId} ({Email}) from OIDC provider", userId, email);
+        _logger.LogInformation(
+            "Created new user {UserId} ({Email}) from OIDC provider subject {ProviderUserId}",
+            newUser.Id,
+            email,
+            subClaim);
         return newUser;
     }
 }

@@ -51,6 +51,7 @@ nunit-*.xml
 .env
 .env.*
 !.env.example
+!.env.oidc.local.example
 
 # Log files
 *.log
@@ -60,6 +61,7 @@ nunit-*.xml
 *~
 nul
 /nul
+.process-state/
 
 # Code coverage
 CodeCoverage/
@@ -73,6 +75,7 @@ build-maui/
 
 # Claude Code temp files
 tmpclaude-*
+.codex
 
 # Test artifacts
 tests/screenshots/

@@ -8,6 +8,11 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace BeanShare.Infrastructure.Identity;
 
+/// <summary>
+/// Remaps the OIDC "sub" claim to the database user ID when they differ,
+/// and adds database-backed system role claims. This supports both GUID-based
+/// and opaque provider subject identifiers.
+/// </summary>
 public sealed class OidcClaimsTransformation : IClaimsTransformation
 {
     private readonly IUserService _userService;
@@ -36,26 +41,25 @@ public sealed class OidcClaimsTransformation : IClaimsTransformation
         var sub = principal.FindFirst("sub")?.Value
                   ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var oidcId))
+        if (string.IsNullOrWhiteSpace(sub))
             return principal;
 
-        var cacheKey = $"oidc_transform_{sub}";
-        if (!_cache.TryGetValue(cacheKey, out CachedUserResult? cached))
+        var identityProvider = principal.FindFirst("identity_provider")?.Value ?? "oidc";
+        var provider = identityProvider.ToLowerInvariant() switch
         {
-            var userById = await _userService.GetByIdAsync(new UserId(oidcId));
+            "google" => AuthenticationProvider.Google,
+            "facebook" => AuthenticationProvider.Facebook,
+            _ => AuthenticationProvider.Oidc
+        };
 
-            var email = principal.FindFirst("email")?.Value;
-            User? userByEmail = null;
-            if (!string.IsNullOrEmpty(email))
-                userByEmail = await _userService.GetByEmailAsync(email);
+        var userByProvider = await _userService.GetByProviderUserIdAsync(provider, sub);
 
-            var user = userByEmail ?? userById;
-            if (user != null)
-            {
-                cached = new CachedUserResult(user.Id.Value, user.SystemRole);
-                _cache.Set(cacheKey, cached, TimeSpan.FromMinutes(5));
-            }
-        }
+        var email = principal.FindFirst("email")?.Value;
+        User? userByEmail = null;
+        if (!string.IsNullOrEmpty(email))
+            userByEmail = await _userService.GetByEmailAsync(email);
+
+        var user = userByProvider ?? userByEmail;
 
         if (cached is null)
         {
@@ -63,7 +67,7 @@ public sealed class OidcClaimsTransformation : IClaimsTransformation
             return principal;
         }
 
-        if (cached.DbUserId != oidcId)
+        if (!string.Equals(sub, user.Id.Value.ToString(), StringComparison.Ordinal))
         {
             var oldSub = identity.FindFirst("sub");
             if (oldSub is not null)

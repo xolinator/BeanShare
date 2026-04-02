@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddPersistence(connectionString, useInMemoryDatabase);
 
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<AvatarStorageService>();
         services.AddMemoryCache();
 
         // Document generation

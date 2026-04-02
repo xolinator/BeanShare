@@ -15,6 +15,11 @@
     "hash": "sha256-Wm1Mlu9nNYJc/qak109EM0E4tpXr47Xhpklggdn413A="
   },
   {
+    "pname": "CsvHelper",
+    "version": "33.1.0",
+    "hash": "sha256-pEfX4o63xupI7uuwe6qa05One0pJ7UbzzJqLh4Shju8="
+  },
+  {
     "pname": "DocumentFormat.OpenXml",
     "version": "2.16.0",
     "hash": "sha256-Pdl5aFIaGH9yCt4+tYatLz3UdWhZvO3WU1OPw7clmu4="
@@ -125,6 +130,11 @@
     "hash": "sha256-7QEKn/KCcvlgAxJjint3jlzEg0dqeN/gwqyUR3nOSt4="
   },
   {
+    "pname": "MediatR.Contracts",
+    "version": "2.0.1",
+    "hash": "sha256-89ULOtn0fPqX0R7ulvnIjjz+rjKYq4//REhKNO3rUvw="
+  },
+  {
     "pname": "MediatR.Extensions.Microsoft.DependencyInjection",
     "version": "11.1.0",
     "hash": "sha256-JOl0bURaPbPJezbtOwmd5ZVz1lddTIkgtqJT9Hrmwd8="
@@ -178,6 +188,26 @@
     "pname": "Microsoft.AspNetCore.Components.Web",
     "version": "10.0.0-preview.7.25380.108",
     "hash": "sha256-Rb7PehDz1sRef09LRYH9vfHg7n/62QYESELlxi2T1L0="
+  },
+  {
+    "pname": "Microsoft.AspNetCore.Cryptography.Internal",
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-lvVPt2Lw4X9M/Apt/7S2U4p8krkMzLmmVaAt4wKtjpY="
+  },
+  {
+    "pname": "Microsoft.AspNetCore.DataProtection",
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-ugk0QKvA98NJ6akZFFn/vokrO+KzAgXTQWn1GwT3aSk="
+  },
+  {
+    "pname": "Microsoft.AspNetCore.DataProtection.Abstractions",
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-svmgI2n1+uMjfoG7TGKn8zrmREO8IOIsHGfqHJoGuxE="
+  },
+  {
+    "pname": "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore",
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-Oot2kDd3kZ3guGfgX2YmA/e+zes2KSiLy8BT8x1732E="
   },
   {
     "pname": "Microsoft.AspNetCore.Metadata",
@@ -365,9 +395,19 @@
     "hash": "sha256-YmBt2/cA4Xvf4u7uJTqo8vgC5ZnHdOyAll2XMgxLvAs="
   },
   {
+    "pname": "Microsoft.Extensions.FileProviders.Abstractions",
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-xpLuh1h7OY9UtNZXvJxsPMgDG7LBgpCOY15ArSDJP4I="
+  },
+  {
     "pname": "Microsoft.Extensions.FileProviders.Embedded",
     "version": "8.0.0",
     "hash": "sha256-TueGeSls8KFgMavmAqPyd4irQ61yKm0+W6GAru6Leuw="
+  },
+  {
+    "pname": "Microsoft.Extensions.Hosting.Abstractions",
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-tXYlQ2yetT46onRFtoC7kyhdDSyRAHu8IhsMN4qwFqM="
   },
   {
     "pname": "Microsoft.Extensions.Logging",
@@ -575,6 +615,11 @@
     "hash": "sha256-aCzJHqWyQU1brHVmSd6rwGYC0qUma74pGiiiJT1HE7k="
   },
   {
+    "pname": "QRCoder",
+    "version": "1.6.0",
+    "hash": "sha256-2Ev/6d7PH6K4dVYQQHlZ+ZggkCnDtrlaGygs65mDo28="
+  },
+  {
     "pname": "QuestPDF",
     "version": "2024.10.2",
     "hash": "sha256-t4X1jkjyY9OuZRS+BuOT+MJxEXw98A37HbG5+jckyJI="
@@ -583,6 +628,11 @@
     "pname": "SixLabors.Fonts",
     "version": "1.0.0",
     "hash": "sha256-kyAQcZZOdD50Lo7l7z8qnFMerJjlAV66HNBq7BI6TNM="
+  },
+  {
+    "pname": "SixLabors.ImageSharp",
+    "version": "3.1.7",
+    "hash": "sha256-jMD/FiIwW1kNhTI6hKig8/QFOO3eTQX/C22cSAcKBH4="
   },
   {
     "pname": "System.CodeDom",
@@ -681,8 +731,8 @@
   },
   {
     "pname": "System.Security.Cryptography.Pkcs",
-    "version": "7.0.0",
-    "hash": "sha256-3J3vL9hcKSuZjT2GKappa2A9p2xJm1nH2asTNAl8ZCA="
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-cEKbd55tqCwx1mtA1ZM05euYFoAUiB1+ieDXC3ORv3k="
   },
   {
     "pname": "System.Security.Cryptography.Pkcs",
@@ -703,6 +753,11 @@
     "pname": "System.Security.Cryptography.ProtectedData",
     "version": "9.0.0",
     "hash": "sha256-gPgPU7k/InTqmXoRzQfUMEKL3QuTnOKowFqmXTnWaBQ="
+  },
+  {
+    "pname": "System.Security.Cryptography.Xml",
+    "version": "10.0.0-preview.7.25380.108",
+    "hash": "sha256-z6jSHWNRFTC+H4TaklSA/iovXHnGYgViWt1TWPKiMx0="
   },
   {
     "pname": "System.Security.Cryptography.Xml",

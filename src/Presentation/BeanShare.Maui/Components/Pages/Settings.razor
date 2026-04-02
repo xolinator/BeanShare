@@ -6,6 +6,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IThemeService ThemeService
 @inject IAlertService AlertService
+@inject IConfiguration Configuration
 
 <div class="settings-page">
     <div class="settings-tabs">
@@ -83,10 +84,10 @@
                         <div class="account-list">
                             <div class="account-item">
                                 <div class="account-info">
-                                    <div class="account-icon" style="background: #4285f4;">G</div>
-                                    <span>Google</span>
+                                    <div class="account-icon" style="background: #4285f4;">@connectedAccountBadge</div>
+                                    <span>@connectedAccountName</span>
                                 </div>
-                                <span style="color: var(--bs-text-subtle); font-size: 0.8125rem;">Via Keycloak</span>
+                                <span style="color: var(--bs-text-subtle); font-size: 0.8125rem;">@connectedAccountDescription</span>
                             </div>
                         </div>
                     </div>
@@ -152,14 +153,18 @@
     private string currentPassword = "";
     private string newPassword = "";
     private string confirmPassword = "";
+    private bool useOidc;
+    private string oidcProviderDisplayName = "your identity provider";
+    private string connectedAccountName = "Email & password";
+    private string connectedAccountDescription = "Managed directly by BeanShare";
+    private string connectedAccountBadge = "B";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            await LoadSettings();
-            StateHasChanged();
-        }
+        useOidc = Configuration.GetValue<bool>("UseOidc", false);
+        oidcProviderDisplayName = ResolveOidcProviderDisplayName();
+        ConfigureConnectedAccountCard();
+        await LoadSettings();
     }
 
     private async Task LoadSettings()
@@ -209,8 +214,47 @@
             return;
         }
         // Password management is handled by the identity provider
-        await AlertService.ShowAlertAsync("Info", "Password changes are managed through your identity provider.");
+        var passwordManagerName = useOidc ? oidcProviderDisplayName : "BeanShare";
+        await AlertService.ShowAlertAsync("Info", $"Password changes are managed through {passwordManagerName}.");
         ClosePasswordModal();
+    }
+
+    private void ConfigureConnectedAccountCard()
+    {
+        if (useOidc)
+        {
+            connectedAccountName = oidcProviderDisplayName;
+            connectedAccountDescription = "Connected via OpenID Connect";
+            connectedAccountBadge = GetProviderBadge(oidcProviderDisplayName);
+            return;
+        }
+
+        connectedAccountName = "Email & password";
+        connectedAccountDescription = "Managed directly by BeanShare";
+        connectedAccountBadge = "B";
+    }
+
+    private string ResolveOidcProviderDisplayName()
+    {
+        var configuredDisplayName = Configuration["Oidc:ProviderDisplayName"];
+        if (!string.IsNullOrWhiteSpace(configuredDisplayName))
+        {
+            return configuredDisplayName;
+        }
+
+        var authority = Configuration["Oidc:Authority"];
+        if (Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri))
+        {
+            return authorityUri.Host;
+        }
+
+        return "your identity provider";
+    }
+
+    private static string GetProviderBadge(string value)
+    {
+        var first = value.Trim().FirstOrDefault(char.IsLetterOrDigit);
+        return first == default ? "I" : char.ToUpperInvariant(first).ToString();
     }
 
     private void Cancel()

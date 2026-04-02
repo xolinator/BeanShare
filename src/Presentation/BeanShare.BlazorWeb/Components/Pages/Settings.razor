@@ -7,6 +7,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JSRuntime
 @inject IThemeService ThemeService
+@inject IConfiguration Configuration
 @attribute [Authorize]
 
 <PageTitle>Settings - BeanShare</PageTitle>
@@ -88,10 +89,10 @@
                             <div class="connected-accounts">
                                 <div class="account-item">
                                     <div class="account-info">
-                                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #4285f4; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">G</div>
-                                        <span>Google</span>
+                                        <div style="width: 24px; height: 24px; border-radius: 50%; background: #4285f4; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">@_connectedAccountBadge</div>
+                                        <span>@_connectedAccountName</span>
                                     </div>
-                                    <span style="color: var(--bs-text-subtle); font-size: 0.875rem;">Connected via Keycloak</span>
+                                    <span style="color: var(--bs-text-subtle); font-size: 0.875rem;">@_connectedAccountDescription</span>
                                 </div>
                             </div>
                         </div>
@@ -159,14 +160,23 @@
     private string currentPassword = "";
     private string newPassword = "";
     private string confirmPassword = "";
+    private bool useOidc;
+    private string oidcProviderDisplayName = "your identity provider";
+    private string _connectedAccountName = "Email & password";
+    private string _connectedAccountDescription = "Managed directly by BeanShare";
+    private string _connectedAccountBadge = "B";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            theme = await ThemeService.GetThemeAsync();
-            StateHasChanged();
-        }
+        useOidc = Configuration.GetValue<bool>("UseOidc", false);
+        oidcProviderDisplayName = ResolveOidcProviderDisplayName();
+        ConfigureConnectedAccountCard();
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        theme = await ThemeService.GetThemeAsync();
     }
 
     private string GetNavClass(string tab)
@@ -211,8 +221,47 @@
             return;
         }
         // Password management is handled by the identity provider
-        await JSRuntime.InvokeVoidAsync("alert", "Password changes are managed through your identity provider.");
+        var passwordManagerName = useOidc ? oidcProviderDisplayName : "BeanShare";
+        await JSRuntime.InvokeVoidAsync("alert", $"Password changes are managed through {passwordManagerName}.");
         ClosePasswordModal();
+    }
+
+    private void ConfigureConnectedAccountCard()
+    {
+        if (useOidc)
+        {
+            _connectedAccountName = oidcProviderDisplayName;
+            _connectedAccountDescription = "Connected via OpenID Connect";
+            _connectedAccountBadge = GetProviderBadge(oidcProviderDisplayName);
+            return;
+        }
+
+        _connectedAccountName = "Email & password";
+        _connectedAccountDescription = "Managed directly by BeanShare";
+        _connectedAccountBadge = "B";
+    }
+
+    private string ResolveOidcProviderDisplayName()
+    {
+        var configuredDisplayName = Configuration["Oidc:ProviderDisplayName"];
+        if (!string.IsNullOrWhiteSpace(configuredDisplayName))
+        {
+            return configuredDisplayName;
+        }
+
+        var authority = Configuration["Oidc:Authority"];
+        if (Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri))
+        {
+            return authorityUri.Host;
+        }
+
+        return "your identity provider";
+    }
+
+    private static string GetProviderBadge(string value)
+    {
+        var first = value.Trim().FirstOrDefault(char.IsLetterOrDigit);
+        return first == default ? "I" : char.ToUpperInvariant(first).ToString();
     }
 
     private void Cancel()

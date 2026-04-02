@@ -1,6 +1,7 @@
 using BeanShare.Application.Services;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
+using BeanShare.Domain.Enums;
 
 namespace BeanShare.Api.Infrastructure.Mocks;
 
@@ -66,6 +67,21 @@ public sealed class MockUserService : IUserService
 
         var emailLower = email.ToLowerInvariant();
         var user = _users.FirstOrDefault(u => u.Email.ToLowerInvariant() == emailLower);
+        return Task.FromResult(user);
+    }
+
+    public Task<User?> GetByProviderUserIdAsync(
+        AuthenticationProvider provider,
+        string providerUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(providerUserId))
+        {
+            return Task.FromResult<User?>(null);
+        }
+
+        var user = _users.FirstOrDefault(
+            u => u.Provider == provider && string.Equals(u.ProviderUserId, providerUserId, StringComparison.Ordinal));
         return Task.FromResult(user);
     }
 
