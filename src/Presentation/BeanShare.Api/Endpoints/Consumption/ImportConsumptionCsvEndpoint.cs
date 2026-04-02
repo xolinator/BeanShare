@@ -15,7 +15,7 @@ public sealed class ImportConsumptionCsvEndpoint(IMediator mediator)
         Summary(s =>
         {
             s.Summary = "Bulk import consumption entries from CSV data";
-            s.Description = "Imports consumption entries in bulk. Requires space admin privileges. Does not deduct stock.";
+            s.Description = "Imports consumption entries in bulk. Requires space admin privileges. Deducts stock when matching products are found.";
         });
     }
 

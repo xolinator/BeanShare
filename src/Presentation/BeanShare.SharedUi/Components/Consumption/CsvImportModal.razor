@@ -31,7 +31,7 @@
 
                     @if (!string.IsNullOrEmpty(uploadError))
                     {
-                        <div style="background: #fef2f2; color: #dc2626; padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;">
+                        <div style="background: var(--bs-error-light); color: var(--bs-error); padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem;">
                             <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">error</span>
                             @uploadError
                         </div>
@@ -39,7 +39,7 @@
 
                     <div style="background: var(--bs-gray-100); border-radius: 0.5rem; padding: 1rem; font-size: 0.8rem;">
                         <p style="font-weight: 600; margin-bottom: 0.5rem;">CSV Format (date-column pivot):</p>
-                        <code style="display: block; background: white; padding: 0.5rem; border-radius: 0.25rem; overflow-x: auto; white-space: pre; font-size: 0.75rem;">Email,ProductName,ProductBrand,ProductType,2026-01-15,2026-01-16,2026-01-17
+                        <code style="display: block; background: var(--bs-surface); padding: 0.5rem; border-radius: 0.25rem; overflow-x: auto; white-space: pre; font-size: 0.75rem;">Email,ProductName,ProductBrand,ProductType,2026-01-15,2026-01-16,2026-01-17
 john.smith@beanshare.dev,Super Crema,Lavazza,Espresso,18,,14
 jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
                         <p style="margin-top: 0.5rem; color: var(--bs-text-subtle);">
@@ -61,13 +61,13 @@ jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
             {
                 <div style="padding: 1.5rem;">
                     <div class="bs-flex bs-gap-4" style="margin-bottom: 1rem;">
-                        <div style="background: #f0fdf4; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
-                            <span style="color: #16a34a; font-weight: 600;">@validRows.Count valid</span>
+                        <div style="background: var(--bs-success-light); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
+                            <span style="color: var(--bs-success); font-weight: 600;">@validRows.Count valid</span>
                         </div>
                         @if (invalidRows.Count > 0)
                         {
-                            <div style="background: #fef2f2; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
-                                <span style="color: #dc2626; font-weight: 600;">@invalidRows.Count with errors</span>
+                            <div style="background: var(--bs-error-light); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
+                                <span style="color: var(--bs-error); font-weight: 600;">@invalidRows.Count with errors</span>
                             </div>
                         }
                         <div style="background: var(--bs-gray-100); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;">
@@ -95,16 +95,16 @@ jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
                                 {
                                     var error = parseErrors.FirstOrDefault(e => e.RowNumber == row.RowNumber);
                                     var hasError = error != null;
-                                    <tr style="@(hasError ? "background: #fef2f2;" : "")">
+                                    <tr style="@(hasError ? "background: var(--bs-error-light);" : "")">
                                         <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.RowNumber</td>
                                         <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">
                                             @if (hasError)
                                             {
-                                                <span class="material-symbols-outlined" style="color: #dc2626; font-size: 1rem;">close</span>
+                                                <span class="material-symbols-outlined" style="color: var(--bs-error); font-size: 1rem;">close</span>
                                             }
                                             else
                                             {
-                                                <span class="material-symbols-outlined" style="color: #16a34a; font-size: 1rem;">check</span>
+                                                <span class="material-symbols-outlined" style="color: var(--bs-success); font-size: 1rem;">check</span>
                                             }
                                         </td>
                                         <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.Email</td>
@@ -113,7 +113,7 @@ jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
                                         <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.ProductType</td>
                                         <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border); text-align: right;">@row.QuantityGrams</td>
                                         <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border);">@row.ConsumedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border); color: #dc2626; font-size: 0.75rem;">@(error?.Message ?? "")</td>
+                                        <td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--bs-border); color: var(--bs-error); font-size: 0.75rem;">@(error?.Message ?? "")</td>
                                     </tr>
                                 }
                             </tbody>
@@ -139,15 +139,29 @@ jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
             else if (step == ImportStep.Result)
             {
                 <div style="padding: 1.5rem; text-align: center;">
-                    @if (importResult != null && importResult.ErrorCount == 0)
+                    @if (importResult != null && importResult.ErrorCount == 0 && importResult.Warnings.Count == 0)
                     {
-                        <span class="material-symbols-outlined" style="font-size: 3rem; color: #16a34a; display: block; margin-bottom: 0.5rem;">check_circle</span>
+                        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-success); display: block; margin-bottom: 0.5rem;">check_circle</span>
                         <h4 style="margin-bottom: 0.5rem;">Import Successful</h4>
                         <p style="color: var(--bs-text-subtle);">@importResult.SuccessCount consumption entries imported.</p>
                     }
+                    else if (importResult != null && importResult.ErrorCount == 0 && importResult.Warnings.Count > 0)
+                    {
+                        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-warning); display: block; margin-bottom: 0.5rem;">warning</span>
+                        <h4 style="margin-bottom: 0.5rem;">Import Completed with Warnings</h4>
+                        <p style="color: var(--bs-text-subtle); margin-bottom: 1rem;">@importResult.SuccessCount consumption entries imported.</p>
+                        <div style="text-align: left; background: var(--bs-warning-light); border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem;">
+                            @foreach (var warning in importResult.Warnings)
+                            {
+                                <div style="margin-bottom: 0.25rem; color: var(--bs-warning-dark);">
+                                    <strong>Warning:</strong> @warning
+                                </div>
+                            }
+                        </div>
+                    }
                     else if (importResult != null)
                     {
-                        <span class="material-symbols-outlined" style="font-size: 3rem; color: #f59e0b; display: block; margin-bottom: 0.5rem;">warning</span>
+                        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-warning); display: block; margin-bottom: 0.5rem;">warning</span>
                         <h4 style="margin-bottom: 0.5rem;">Import Completed with Errors</h4>
                         <p style="color: var(--bs-text-subtle); margin-bottom: 1rem;">
                             @importResult.SuccessCount imported, @importResult.ErrorCount failed.
@@ -155,7 +169,7 @@ jane.doe@example.com,Pike Place,Starbucks,Filter,,20,20</code>
 
                         @if (importResult.Errors.Count > 0)
                         {
-                            <div style="text-align: left; max-height: 12rem; overflow-y: auto; background: #fef2f2; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem;">
+                            <div style="text-align: left; max-height: 12rem; overflow-y: auto; background: var(--bs-error-light); border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem;">
                                 @foreach (var err in importResult.Errors)
                                 {
                                     <div style="margin-bottom: 0.25rem;">

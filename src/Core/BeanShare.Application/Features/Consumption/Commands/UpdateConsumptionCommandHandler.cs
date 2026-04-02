@@ -13,15 +13,18 @@ public sealed class UpdateConsumptionCommandHandler
 {
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly IBillingPeriodRepository _billingPeriodRepository;
+    private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly IClock _clock;
 
     public UpdateConsumptionCommandHandler(
         IConsumptionRepository consumptionRepository,
         IBillingPeriodRepository billingPeriodRepository,
+        ICoffeeStockRepository coffeeStockRepository,
         IClock clock)
     {
         _consumptionRepository = consumptionRepository;
         _billingPeriodRepository = billingPeriodRepository;
+        _coffeeStockRepository = coffeeStockRepository;
         _clock = clock;
     }
 
@@ -53,6 +56,9 @@ public sealed class UpdateConsumptionCommandHandler
         var product = CoffeeProduct.Create(request.ProductName.Trim(), request.ProductBrand.Trim(), coffeeType);
         var quantity = Weight.FromGrams(request.QuantityGrams);
 
+        var oldProduct = entry.Product;
+        var oldQuantity = entry.Quantity;
+
         try
         {
             entry.Update(product, quantity, request.ConsumedAt, _clock);
@@ -60,6 +66,14 @@ public sealed class UpdateConsumptionCommandHandler
         catch (ArgumentException ex)
         {
             return Result<ConsumptionEntryDto>.Failure(Error.DomainError(ex.Message));
+        }
+
+        var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(entry.SpaceId, cancellationToken);
+        if (coffeeStock != null)
+        {
+            coffeeStock.RestoreStock(oldProduct, oldQuantity, _clock);
+            coffeeStock.ConsumeStock(product, quantity, _clock);
+            await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
         }
 
         await _consumptionRepository.UpdateAsync(entry, cancellationToken);

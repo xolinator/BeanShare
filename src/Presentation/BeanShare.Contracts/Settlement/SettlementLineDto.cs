@@ -7,6 +7,8 @@ public record SettlementLineDto(
     decimal TotalCoffeeGrams,
     decimal? TotalMilkMl,
     decimal AmountDue,
+    decimal AmountPaid,
+    decimal NetBalance,
     decimal ConsumptionPercentage,
     bool IsConfirmed,
     Guid? ConfirmedBy,

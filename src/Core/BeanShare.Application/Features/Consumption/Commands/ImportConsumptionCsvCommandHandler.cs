@@ -3,6 +3,7 @@ using BeanShare.Application.Common;
 using BeanShare.Application.Features.Consumption.Dtos;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
+using BeanShare.Domain.Exceptions;
 using BeanShare.Domain.Specifications;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
@@ -12,17 +13,20 @@ namespace BeanShare.Application.Features.Consumption.Commands;
 public sealed class ImportConsumptionCsvCommandHandler
     : IRequestHandler<ImportConsumptionCsvCommand, Result<ImportConsumptionCsvResult>>
 {
+    private readonly ICoffeeStockRepository _coffeeStockRepository;
     private readonly IConsumptionRepository _consumptionRepository;
     private readonly ISpaceRepository _spaceRepository;
     private readonly IUserRepository _userRepository;
     private readonly IClock _clock;
 
     public ImportConsumptionCsvCommandHandler(
+        ICoffeeStockRepository coffeeStockRepository,
         IConsumptionRepository consumptionRepository,
         ISpaceRepository spaceRepository,
         IUserRepository userRepository,
         IClock clock)
     {
+        _coffeeStockRepository = coffeeStockRepository;
         _consumptionRepository = consumptionRepository;
         _spaceRepository = spaceRepository;
         _userRepository = userRepository;
@@ -83,11 +87,46 @@ public sealed class ImportConsumptionCsvCommandHandler
             await _consumptionRepository.AddAsync(entry, cancellationToken);
         }
 
+        var warnings = new List<string>();
+        var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(spaceId, cancellationToken);
+        if (coffeeStock != null)
+        {
+            var failedProducts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in entriesToCreate)
+            {
+                var productKey = $"{entry.Product.Name}|{entry.Product.Brand}|{entry.Product.Type}";
+                if (failedProducts.Contains(productKey))
+                    continue;
+
+                try
+                {
+                    coffeeStock.ConsumeStock(entry.Product, entry.Quantity, _clock);
+                }
+                catch (ProductNotFoundException)
+                {
+                    failedProducts.Add(productKey);
+                    warnings.Add($"Product '{entry.Product.Name}' by '{entry.Product.Brand}' ({entry.Product.Type}) not found in stock. Consumption entries were imported but stock was not deducted.");
+                }
+                catch (InsufficientStockException)
+                {
+                    warnings.Add($"Insufficient stock for '{entry.Product.Name}' by '{entry.Product.Brand}'. Remaining entries for this product were not deducted from stock.");
+                    failedProducts.Add(productKey);
+                }
+            }
+
+            await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
+        }
+        else
+        {
+            warnings.Add("No stock record found for this space. Consumption entries were imported but stock was not deducted.");
+        }
+
         var result = new ImportConsumptionCsvResult
         {
             TotalRows = request.Rows.Count,
             SuccessCount = entriesToCreate.Count,
             ErrorCount = errors.Count,
+            Warnings = warnings,
             Errors = errors
         };
 

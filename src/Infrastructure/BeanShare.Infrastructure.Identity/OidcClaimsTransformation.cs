@@ -4,6 +4,7 @@ using BeanShare.Domain.Common;
 using BeanShare.Domain.Entities;
 using BeanShare.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace BeanShare.Infrastructure.Identity;
 
@@ -15,10 +16,14 @@ namespace BeanShare.Infrastructure.Identity;
 public sealed class OidcClaimsTransformation : IClaimsTransformation
 {
     private readonly IUserService _userService;
+    private readonly IMemoryCache _cache;
 
-    public OidcClaimsTransformation(IUserService userService)
+    private sealed record CachedUserResult(Guid DbUserId, SystemRole SystemRole);
+
+    public OidcClaimsTransformation(IUserService userService, IMemoryCache cache)
     {
         _userService = userService;
+        _cache = cache;
     }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
@@ -56,7 +61,7 @@ public sealed class OidcClaimsTransformation : IClaimsTransformation
 
         var user = userByProvider ?? userByEmail;
 
-        if (user is null)
+        if (cached is null)
         {
             identity.AddClaim(new Claim("beanshare_transformed", "true"));
             return principal;
@@ -67,16 +72,15 @@ public sealed class OidcClaimsTransformation : IClaimsTransformation
             var oldSub = identity.FindFirst("sub");
             if (oldSub is not null)
                 identity.RemoveClaim(oldSub);
-            identity.AddClaim(new Claim("sub", user.Id.Value.ToString()));
+            identity.AddClaim(new Claim("sub", cached.DbUserId.ToString()));
 
             var oldNameId = identity.FindFirst(ClaimTypes.NameIdentifier);
             if (oldNameId is not null)
                 identity.RemoveClaim(oldNameId);
-            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.Value.ToString()));
+            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, cached.DbUserId.ToString()));
         }
 
-        // Add database-backed admin role if the OIDC token doesn't already include it
-        if (user.SystemRole == SystemRole.SystemAdmin && !principal.IsInRole("admin"))
+        if (cached.SystemRole == SystemRole.SystemAdmin && !principal.IsInRole("admin"))
             identity.AddClaim(new Claim(ClaimTypes.Role, "admin"));
 
         identity.AddClaim(new Claim("beanshare_transformed", "true"));

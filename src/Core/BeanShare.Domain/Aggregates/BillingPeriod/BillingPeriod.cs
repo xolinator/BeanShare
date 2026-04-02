@@ -80,16 +80,6 @@ public sealed class BillingPeriod : AggregateRoot
             throw new InvalidOperationException($"Cannot open billing period in state {State}");
         }
 
-        if (clock.UtcNow < StartDate)
-        {
-            throw new InvalidOperationException("Cannot open billing period before its start date");
-        }
-
-        if (clock.UtcNow > EndDate)
-        {
-            throw new InvalidOperationException("Cannot open billing period after its end date");
-        }
-
         State = BillingState.Open;
 
         RaiseDomainEvent(new BillingPeriodOpened(
@@ -155,9 +145,9 @@ public sealed class BillingPeriod : AggregateRoot
         return startDate < EndDate && endDate > StartDate;
     }
 
-    public bool CanBeOpened(IClock clock)
+    public bool CanBeOpened()
     {
-        return State == BillingState.Draft && clock.UtcNow >= StartDate;
+        return State == BillingState.Draft;
     }
 
     public bool CanBeClosed()

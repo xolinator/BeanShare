@@ -78,7 +78,14 @@ public sealed class AddStockPurchaseRequestValidator : Validator<AddStockPurchas
 
     private static bool BeValidCurrency(string currency)
     {
-        var validCurrencies = new[] { "USD", "EUR", "GBP", "CAD", "AUD", "CHF", "JPY" };
-        return validCurrencies.Contains(currency?.ToUpperInvariant());
+        try
+        {
+            Currency.Create(currency);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

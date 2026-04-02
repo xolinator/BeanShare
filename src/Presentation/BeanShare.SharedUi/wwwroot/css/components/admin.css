@@ -213,7 +213,7 @@
 
 .status-active {
     background: rgba(16, 185, 129, 0.1);
-    color: #059669;
+    color: var(--bs-success);
 }
 
 .status-inactive {
@@ -381,8 +381,8 @@
 
 .action-btn-full.reactivate:hover {
     background: rgba(16, 185, 129, 0.1);
-    border-color: #10b981;
-    color: #059669;
+    border-color: var(--bs-success);
+    color: var(--bs-success);
 }
 
 .user-details-section {
@@ -556,7 +556,7 @@
 
 .preset-status.active {
     background: rgba(16, 185, 129, 0.1);
-    color: #059669;
+    color: var(--bs-success);
 }
 
 .preset-status.inactive {

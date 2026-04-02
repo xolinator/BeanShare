@@ -1,5 +1,5 @@
+using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
-using MediatR;
 
 namespace BeanShare.Application.Features.Billing.Commands.OpenBillingPeriod;
-public sealed record OpenBillingPeriodCommand(Guid BillingPeriodId) : IRequest<Result>;
+public sealed record OpenBillingPeriodCommand(Guid BillingPeriodId) : ICommand<Result>;

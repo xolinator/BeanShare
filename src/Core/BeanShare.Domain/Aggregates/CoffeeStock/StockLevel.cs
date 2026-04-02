@@ -59,6 +59,17 @@ public sealed class StockLevel : Entity
         UpdatedAt = clock.UtcNow;
     }
 
+    public void ReducePurchased(Weight quantity, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(quantity);
+
+        if (!quantity.IsPositive)
+            throw new ArgumentException("Quantity must be positive", nameof(quantity));
+
+        TotalPurchased = TotalPurchased.Subtract(quantity);
+        UpdatedAt = clock.UtcNow;
+    }
+
     public void ConsumeStock(Weight quantity, IClock clock)
     {
         ArgumentNullException.ThrowIfNull(quantity);
@@ -70,6 +81,18 @@ public sealed class StockLevel : Entity
         if (newConsumed > TotalPurchased)
             throw new InsufficientStockException(Product.Name, Product.Brand, quantity.Grams, CurrentStock.Grams);
 
+        TotalConsumed = newConsumed;
+        UpdatedAt = clock.UtcNow;
+    }
+
+    public void RestoreStock(Weight quantity, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(quantity);
+
+        if (!quantity.IsPositive)
+            throw new ArgumentException("Quantity must be positive", nameof(quantity));
+
+        var newConsumed = TotalConsumed.Subtract(quantity);
         TotalConsumed = newConsumed;
         UpdatedAt = clock.UtcNow;
     }

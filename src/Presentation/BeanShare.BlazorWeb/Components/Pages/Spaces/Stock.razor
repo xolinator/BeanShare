@@ -123,7 +123,8 @@ else
 
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
-                           CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                           CurrencyCode="@(space?.CurrencyCode ?? "USD")"
+                           OnEditPurchase="HandleEditPurchase" />
 
             @if (isAdmin)
             {
@@ -314,7 +315,7 @@ else
                 model.TotalCost,
                 model.Currency,
                 "Store",
-                DateTime.UtcNow
+                model.PurchasedAt.ToUniversalTime()
             ));
 
             if (result.IsSuccess)
@@ -331,6 +332,33 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to add purchase: {ex.Message}");
+        }
+    }
+
+    private async Task HandleEditPurchase(BeanShare.SharedUi.Components.Stock.PurchaseRow.PurchaseEditModel model)
+    {
+        try
+        {
+            var result = await Mediator.Send(new UpdateStockPurchaseCommand(
+                Guid.Parse(SpaceId),
+                model.PurchaseId,
+                model.QuantityGrams,
+                model.CostAmount,
+                model.PurchasedAt.ToUniversalTime()));
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Purchase updated successfully!");
+                await LoadStock();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to update purchase: {ex.Message}");
         }
     }
 

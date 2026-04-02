@@ -159,7 +159,7 @@
     private string connectedAccountDescription = "Managed directly by BeanShare";
     private string connectedAccountBadge = "B";
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         useOidc = Configuration.GetValue<bool>("UseOidc", false);
         oidcProviderDisplayName = ResolveOidcProviderDisplayName();

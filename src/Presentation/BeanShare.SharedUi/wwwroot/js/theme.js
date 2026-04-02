@@ -16,10 +16,4 @@ window.beanshareTheme = {
     }
 };
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-        window.beanshareTheme.init();
-    });
-} else {
-    window.beanshareTheme.init();
-}
+window.beanshareTheme.init();

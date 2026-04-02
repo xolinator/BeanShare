@@ -264,7 +264,13 @@ else
         StateHasChanged();
         try
         {
-            var consumptionData = await ConsumptionService.GetRecentConsumptionsAsync(spaceGuid);
+            var consumptionTask = ConsumptionService.GetRecentConsumptionsAsync(spaceGuid);
+            var stockTask = StockService.GetSpaceStockAsync(spaceGuid);
+            var presetsTask = PresetService.GetQuickPresetsAsync(spaceGuid);
+
+            await Task.WhenAll(consumptionTask, stockTask, presetsTask);
+
+            var consumptionData = consumptionTask.Result;
             if (consumptionData != null)
             {
                 recentConsumptions = consumptionData.Entries.ToList();
@@ -273,13 +279,13 @@ else
                 remainingStock = consumptionData.RemainingStockGrams;
             }
 
-            var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
+            var stockData = stockTask.Result;
             if (stockData?.StockLevels != null)
             {
                 stockProducts = stockData.StockLevels.ToList();
             }
 
-            quickPresets = await PresetService.GetQuickPresetsAsync(spaceGuid);
+            quickPresets = presetsTask.Result;
         }
         catch (Exception ex)
         {
@@ -477,7 +483,8 @@ else
                 model.CoffeeType,
                 model.QuantityGrams,
                 model.TotalCost,
-                model.Currency
+                model.Currency,
+                model.PurchasedAt
             );
 
             if (success)

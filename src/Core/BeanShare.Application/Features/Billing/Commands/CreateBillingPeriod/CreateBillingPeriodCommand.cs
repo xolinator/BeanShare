@@ -1,6 +1,6 @@
+using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Application.Features.Billing.Dtos;
-using MediatR;
 
 namespace BeanShare.Application.Features.Billing.Commands.CreateBillingPeriod;
 public sealed record CreateBillingPeriodCommand(
@@ -8,4 +8,4 @@ public sealed record CreateBillingPeriodCommand(
     string Name,
     DateTime StartDate,
     DateTime EndDate
-) : IRequest<Result<BillingPeriodDto>>;
+) : ICommand<Result<BillingPeriodDto>>;
