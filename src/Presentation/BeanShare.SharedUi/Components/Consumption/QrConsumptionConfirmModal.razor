@@ -5,7 +5,7 @@
 @if (IsVisible && Payload != null)
 {
     <div class="bs-modal-backdrop" @onclick="HandleCancel">
-        <div class="bs-modal" role="dialog" aria-label="Confirm QR consumption" aria-modal="true" @onclick:stopPropagation="true" style="max-width: 26rem;">
+        <div class="bs-modal" role="dialog" aria-label="Confirm QR consumption" aria-modal="true" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true" style="max-width: 26rem;">
             <div class="bs-modal-header bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
                 <h3 class="bs-modal-title" style="margin: 0;">
                     <span class="material-symbols-outlined bs-qr-scan-title">check_circle</span>

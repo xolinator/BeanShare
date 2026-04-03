@@ -4,6 +4,7 @@
 @using BeanShare.Application.Features.Admin.Users.Queries
 @using BeanShare.Application.Features.Admin.Users.Commands
 @using BeanShare.Application.Features.Admin.Users.Dtos
+@using BeanShare.Application.Common
 @using BeanShare.Domain.Enums
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "admin")]
@@ -130,7 +131,48 @@
                 </div>
 
                 <div class="detail-card">
-                    <h3>Space Memberships (@user.Memberships.Count)</h3>
+                    <div class="detail-card-header">
+                        <h3>Space Memberships (@user.Memberships.Count)</h3>
+                        @if (!showAssignForm)
+                        {
+                            <button class="bs-btn bs-btn-sm bs-btn-primary" @onclick="ShowAssignForm">
+                                <span class="material-symbols-outlined" style="font-size: 1rem;">add</span>
+                                Add to Space
+                            </button>
+                        }
+                    </div>
+
+                    @if (showAssignForm)
+                    {
+                        <div class="assign-space-form">
+                            <div class="assign-space-row">
+                                <select class="form-input" @bind="selectedSpaceId" disabled="@isAssigning">
+                                    <option value="">Select a space...</option>
+                                    @foreach (var space in availableSpaces)
+                                    {
+                                        <option value="@space.Id">@space.Name</option>
+                                    }
+                                </select>
+                                <button class="bs-btn bs-btn-sm bs-btn-primary"
+                                        @onclick="AssignUserToSpace"
+                                        disabled="@(selectedSpaceId == Guid.Empty || isAssigning)">
+                                    @if (isAssigning)
+                                    {
+                                        <span class="loading-spinner-small"></span>
+                                    }
+                                    Add
+                                </button>
+                                <button class="bs-btn bs-btn-sm bs-btn-secondary" @onclick="CancelAssign" disabled="@isAssigning">
+                                    Cancel
+                                </button>
+                            </div>
+                            @if (!availableSpaces.Any())
+                            {
+                                <p class="assign-space-hint">No available spaces to assign. The user is already a member of all active spaces.</p>
+                            }
+                        </div>
+                    }
+
                     @if (user.Memberships.Any())
                     {
                         <div class="memberships-list">
@@ -179,6 +221,11 @@
     private bool isToastError;
     private string toastTitle = "";
     private string toastMessage = "";
+
+    private bool showAssignForm;
+    private bool isAssigning;
+    private Guid selectedSpaceId;
+    private List<SpaceOptionDto> availableSpaces = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,6 +343,70 @@
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to reactivate user: {ex.Message}");
+        }
+    }
+
+    private async Task ShowAssignForm()
+    {
+        try
+        {
+            var result = await Mediator.Send(new GetAllSpacesForAssignmentQuery());
+            if (result.IsSuccess)
+            {
+                var memberSpaceIds = user!.Memberships.Select(m => m.SpaceId).ToHashSet();
+                availableSpaces = result.Value
+                    .Where(s => !memberSpaceIds.Contains(s.Id))
+                    .ToList();
+                selectedSpaceId = Guid.Empty;
+                showAssignForm = true;
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to load spaces");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to load spaces: {ex.Message}");
+        }
+    }
+
+    private void CancelAssign()
+    {
+        showAssignForm = false;
+        selectedSpaceId = Guid.Empty;
+    }
+
+    private async Task AssignUserToSpace()
+    {
+        if (selectedSpaceId == Guid.Empty)
+        {
+            return;
+        }
+
+        isAssigning = true;
+        try
+        {
+            var result = await Mediator.Send(new AssignUserToSpaceCommand(UserId, selectedSpaceId));
+            if (result.IsSuccess)
+            {
+                showAssignForm = false;
+                selectedSpaceId = Guid.Empty;
+                ShowToast(false, "Success", "User assigned to space successfully");
+                await LoadUser();
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to assign user to space");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to assign user: {ex.Message}");
+        }
+        finally
+        {
+            isAssigning = false;
         }
     }
 

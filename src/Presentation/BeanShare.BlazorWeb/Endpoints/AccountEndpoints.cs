@@ -158,9 +158,7 @@ public static class AccountEndpoints
                 RedirectUri = "/"
             };
 
-            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-            return Results.SignOut(properties, new[] { OpenIdConnectDefaults.AuthenticationScheme });
+            return Results.SignOut(properties, new[] { CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme });
         }
 
         var authService = serviceProvider.GetService<Infrastructure.Identity.IAuthenticationService>();

@@ -222,8 +222,13 @@
 }
 
 .actions-cell {
-    display: flex;
-    gap: 0.25rem;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.actions-cell .action-btn {
+    display: inline-flex;
+    vertical-align: middle;
 }
 
 .action-btn {
@@ -403,6 +408,41 @@
     font-size: 1rem;
     font-weight: 600;
     color: var(--bs-text);
+}
+
+.detail-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.detail-card-header h3 {
+    margin: 0;
+}
+
+.assign-space-form {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--bs-gray-50);
+    border-radius: 0.375rem;
+}
+
+.assign-space-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.assign-space-row select {
+    flex: 1;
+    min-width: 0;
+}
+
+.assign-space-hint {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.8125rem;
+    color: var(--bs-text-subtle);
 }
 
 .detail-grid {

@@ -77,6 +77,18 @@
     width: 72px;
 }
 
+.sidebar-start-collapsed .sidebar {
+    width: 72px;
+}
+
+.sidebar-start-collapsed .main-content {
+    margin-left: 72px;
+}
+
+.sidebar-start-collapsed .app-header {
+    left: 72px;
+}
+
 .sidebar.mobile {
     transform: translateX(-100%);
 }
@@ -121,7 +133,9 @@
 }
 
 .sidebar-toggle {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: none;
     color: var(--bs-text);
@@ -133,6 +147,10 @@
 
 .sidebar-toggle:hover {
     background-color: var(--bs-gray-100);
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    display: none;
 }
 
 .sidebar-nav {
@@ -249,6 +267,14 @@
     margin-top: auto;
 }
 
+.sidebar.collapsed .sidebar-footer {
+    padding: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-user-info {
+    display: none;
+}
+
 .sidebar-user {
     display: flex;
     align-items: center;
@@ -330,11 +356,6 @@
         pointer-events: auto !important;
     }
 
-    /* Show toggle button on mobile */
-    .sidebar-toggle {
-        display: block;
-    }
-
     /* Keep text visible on mobile - no mobile class needed */
     .sidebar .sidebar-brand,
     .sidebar.mobile .sidebar-brand,
@@ -348,18 +369,23 @@
         width: auto !important;
     }
 
+    .sidebar .sidebar-user-info,
+    .sidebar.mobile .sidebar-user-info {
+        display: flex !important;
+        flex-direction: column;
+    }
+
+    .sidebar .sidebar-footer,
+    .sidebar.mobile .sidebar-footer {
+        padding: 1rem !important;
+    }
+
     /* Ensure main content takes full width on mobile when sidebar hidden */
     .main-content {
         margin-left: 0 !important;
     }
 }
 
-/* Desktop and tablet: Show toggle button */
-@media (min-width: 769px) {
-    .sidebar-toggle {
-        display: block;
-    }
-}
 
 /* Backdrop for mobile menu */
 .sidebar-backdrop {
@@ -407,7 +433,9 @@
 }
 
 .header-menu-toggle {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: none;
     color: var(--bs-text);
@@ -655,10 +683,6 @@
     .app-header {
         left: 0;
         padding: 0 1rem;
-    }
-
-    .header-menu-toggle {
-        display: block;
     }
 
     .header-center {

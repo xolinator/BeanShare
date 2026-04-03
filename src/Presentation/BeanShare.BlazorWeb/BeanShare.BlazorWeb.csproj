@@ -11,6 +11,11 @@
   <ItemGroup>
     <PackageReference Include="FastEndpoints" Version="7.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="18.4.0" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="18.4.0" />
+    <PackageReference Include="MimeKit" Version="4.15.1" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageReference Include="System.IO.Packaging" Version="10.0.5" />
   </ItemGroup>
 
   <PropertyGroup>

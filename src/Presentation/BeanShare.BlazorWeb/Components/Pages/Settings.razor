@@ -112,7 +112,7 @@
 @if (showPasswordModal)
 {
     <div class="modal-overlay" @onclick="ClosePasswordModal">
-        <div class="modal" @onclick:stopPropagation="true">
+        <div class="modal" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true">
             <div class="modal-header">
                 <h2>Change Password</h2>
                 <button class="modal-close" @onclick="ClosePasswordModal">

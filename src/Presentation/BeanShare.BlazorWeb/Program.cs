@@ -76,7 +76,7 @@ if (useOidc)
         {
             options.ResponseMode = oidcResponseMode;
         }
-        options.SaveTokens = false;
+        options.SaveTokens = true;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = builder.Environment.IsProduction();
         options.MapInboundClaims = false;

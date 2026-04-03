@@ -1,7 +1,7 @@
 @if (IsVisible)
 {
     <div class="bs-modal-backdrop" @onclick="Cancel">
-        <div class="bs-modal" @onclick:stopPropagation="true">
+        <div class="bs-modal" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true">
             <div class="bs-modal-header">
                 <h3 class="bs-modal-title">Create New Space</h3>
             </div>

@@ -5,14 +5,14 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JSRuntime
 
-<aside class="@GetSidebarClasses()">
+<aside class="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-logo" @onclick="NavigateHome">
             <img src="_content/BeanShare.SharedUi/images/logo.svg" alt="BeanShare" class="sidebar-logo-img" />
             <span class="sidebar-brand">BeanShare</span>
         </div>
         <button class="sidebar-toggle" @onclick="ToggleSidebar">
-            <span class="material-symbols-outlined">@(isCollapsed ? "menu" : "close")</span>
+            <span class="material-symbols-outlined">@sidebarIcon</span>
         </button>
     </div>
 
@@ -100,31 +100,28 @@
         </AuthorizeView>
     </nav>
 
-    @if (!isCollapsed)
-    {
-        <div class="sidebar-footer">
-            <div class="sidebar-user">
-                <AuthorizeView>
-                    <Authorized>
-                        <div class="sidebar-user-avatar">
-                            @if (!string.IsNullOrEmpty(userPictureUrl))
-                            {
-                                <img src="@userPictureUrl" alt="@userName" />
-                            }
-                            else
-                            {
-                                @userName.GetInitials()
-                            }
-                        </div>
-                        <div class="sidebar-user-info">
-                            <div class="sidebar-user-name">@userName</div>
-                            <div class="sidebar-user-email">@userEmail</div>
-                        </div>
-                    </Authorized>
-                </AuthorizeView>
-            </div>
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <AuthorizeView>
+                <Authorized>
+                    <div class="sidebar-user-avatar">
+                        @if (!string.IsNullOrEmpty(userPictureUrl))
+                        {
+                            <img src="@userPictureUrl" alt="@userName" />
+                        }
+                        else
+                        {
+                            @userName.GetInitials()
+                        }
+                    </div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-name">@userName</div>
+                        <div class="sidebar-user-email">@userEmail</div>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
         </div>
-    }
+    </div>
 </aside>
 
 
@@ -132,11 +129,11 @@
     [Parameter] public EventCallback OnCreateSpace { get; set; }
     [Parameter] public EventCallback OnJoinSpace { get; set; }
 
-    private bool isCollapsed = false;
     private List<SpaceInfo> recentSpaces = new();
     private string userName = "";
     private string userEmail = "";
     private string? userPictureUrl = null;
+    private string sidebarIcon = "close";
 
     protected override async Task OnInitializedAsync()
     {
@@ -149,11 +146,12 @@
         }
     }
 
-    private string GetSidebarClasses()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var classes = "sidebar";
-        if (isCollapsed) classes += " collapsed";
-        return classes;
+        if (firstRender)
+        {
+            await UpdateSidebarIcon();
+        }
     }
 
     private async Task ToggleSidebar()
@@ -165,7 +163,24 @@
         }
         else
         {
-            isCollapsed = !isCollapsed;
+            await JSRuntime.InvokeVoidAsync("beanshare.sidebar.toggle");
+            await UpdateSidebarIcon();
+        }
+    }
+
+    private async Task UpdateSidebarIcon()
+    {
+        try
+        {
+            var collapsed = await JSRuntime.InvokeAsync<bool>("beanshare.sidebar.isCollapsed");
+            sidebarIcon = collapsed ? "menu" : "close";
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 

@@ -12,8 +12,8 @@
 
 <header class="app-header">
     <div class="header-left">
-        <button class="header-menu-toggle" @onclick="ToggleMobileSidebar">
-            <span class="material-symbols-outlined">menu</span>
+        <button class="header-menu-toggle" @onclick="ToggleSidebarButton">
+            <span class="material-symbols-outlined">@sidebarToggleIcon</span>
         </button>
 
         @if (Breadcrumbs?.Any() == true)
@@ -119,7 +119,6 @@
 </header>
 
 @code {
-    [Parameter] public EventCallback OnToggleSidebar { get; set; }
     [Parameter] public List<BreadcrumbItem>? Breadcrumbs { get; set; }
 
     private bool isUserDropdownOpen = false;
@@ -128,6 +127,7 @@
     private string userName = "";
     private string userEmail = "";
     private string? userPictureUrl = null;
+    private string sidebarToggleIcon = "menu";
 
     protected override async Task OnInitializedAsync()
     {
@@ -192,6 +192,8 @@
     {
         if (firstRender)
         {
+            await JSRuntime.InvokeVoidAsync("beanshare.sidebar.restoreState");
+            await UpdateSidebarIcon();
             await LoadUnreadNotifications();
             await InvokeAsync(StateHasChanged);
         }
@@ -204,16 +206,14 @@
             var isMobile = await JSRuntime.InvokeAsync<bool>("beanshare.isMobile");
             if (isMobile)
             {
-                await CloseMobileSidebar();
+                await JSRuntime.InvokeVoidAsync("beanshare.sidebar.close");
             }
         }
         catch (ObjectDisposedException)
         {
-            // Component was disposed before callback completed
         }
         catch (JSDisconnectedException)
         {
-            // Circuit disconnected
         }
     }
 
@@ -223,23 +223,43 @@
         Navigation.LocationChanged -= OnLocationChanged;
     }
 
-    private async Task ToggleMobileSidebar()
+    private async Task ToggleSidebarButton()
     {
-        var isOpen = await JSRuntime.InvokeAsync<bool>("beanshare.sidebar.isOpen");
+        var isMobile = await JSRuntime.InvokeAsync<bool>("beanshare.isMobile");
 
-        if (isOpen)
+        if (isMobile)
         {
-            await CloseMobileSidebar();
+            var isOpen = await JSRuntime.InvokeAsync<bool>("beanshare.sidebar.isOpen");
+            if (isOpen)
+            {
+                await JSRuntime.InvokeVoidAsync("beanshare.sidebar.close");
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("beanshare.sidebar.open");
+            }
         }
         else
         {
-            await JSRuntime.InvokeVoidAsync("beanshare.sidebar.open");
+            await JSRuntime.InvokeVoidAsync("beanshare.sidebar.toggle");
+            await UpdateSidebarIcon();
         }
     }
 
-    private async Task CloseMobileSidebar()
+    private async Task UpdateSidebarIcon()
     {
-        await JSRuntime.InvokeVoidAsync("beanshare.sidebar.close");
+        try
+        {
+            var collapsed = await JSRuntime.InvokeAsync<bool>("beanshare.sidebar.isCollapsed");
+            sidebarToggleIcon = collapsed ? "menu" : "menu_open";
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private void ToggleUserDropdown()

@@ -8,7 +8,7 @@
 @if (IsVisible)
 {
     <div class="bs-modal-backdrop" @onclick="HandleClose">
-        <div class="bs-modal" role="dialog" aria-label="Scan QR code" aria-modal="true" @onclick:stopPropagation="true" style="max-width: 28rem;">
+        <div class="bs-modal" role="dialog" aria-label="Scan QR code" aria-modal="true" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true" style="max-width: 28rem;">
             <div class="bs-modal-header bs-flex bs-items-center bs-justify-between" style="margin-bottom: 1rem;">
                 <h3 class="bs-modal-title" style="margin: 0;">Scan QR Code</h3>
                 <button class="bs-btn-icon" aria-label="Close" @onclick="HandleClose" style="background: transparent; border: none; cursor: pointer;">

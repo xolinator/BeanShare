@@ -147,7 +147,7 @@ else
 @if (showSplitModal && selectedStockLevel != null)
 {
     <div class="bs-modal-overlay" @onclick="@(() => showSplitModal = false)">
-        <div class="bs-modal" @onclick:stopPropagation="true">
+        <div class="bs-modal" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true">
             <div class="bs-modal-header">
                 <h3 class="bs-font-bold" style="margin: 0;">Split Remaining Stock</h3>
                 <button class="bs-btn-icon" @onclick="@(() => showSplitModal = false)">

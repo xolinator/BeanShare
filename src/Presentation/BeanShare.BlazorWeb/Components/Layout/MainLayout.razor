@@ -11,8 +11,8 @@
             <Sidebar OnCreateSpace="ShowCreateSpace" OnJoinSpace="ShowJoinSpace" />
             <div class="sidebar-backdrop"></div>
 
-            <div class="main-content @GetMainContentClasses()">
-                <Header OnToggleSidebar="ToggleSidebar" Breadcrumbs="@breadcrumbs" />
+            <div class="main-content">
+                <Header Breadcrumbs="@breadcrumbs" />
 
                 <div class="page-content">
                     @Body
@@ -45,7 +45,6 @@
 
 
 @code {
-    private bool isSidebarCollapsed = false;
     private bool showCreateSpaceModal = false;
     private bool showJoinSpaceModal = false;
     private List<Header.BreadcrumbItem> breadcrumbs = new();
@@ -97,16 +96,6 @@
                 breadcrumbs.Add(new Header.BreadcrumbItem { Text = text, Link = link });
             }
         }
-    }
-
-    private string GetMainContentClasses()
-    {
-        return isSidebarCollapsed ? "sidebar-collapsed" : "";
-    }
-
-    private void ToggleSidebar()
-    {
-        isSidebarCollapsed = !isSidebarCollapsed;
     }
 
     private void ShowCreateSpace()

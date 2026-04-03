@@ -34,6 +34,54 @@ window.beanshare = {
                 backdrop.style.display = 'none';
                 backdrop.onclick = null;
             }
+        },
+        isCollapsed: function () {
+            var sidebar = document.querySelector('.sidebar');
+            return sidebar ? sidebar.classList.contains('collapsed') : false;
+        },
+        collapse: function () {
+            var sidebar = document.querySelector('.sidebar');
+            var mainContent = document.querySelector('.main-content');
+            var header = document.querySelector('.app-header');
+            if (sidebar) {
+                sidebar.classList.add('collapsed');
+            }
+            if (mainContent) {
+                mainContent.classList.add('sidebar-collapsed');
+            }
+            if (header) {
+                header.classList.add('sidebar-collapsed');
+            }
+            localStorage.setItem('beanshare-sidebar-collapsed', 'true');
+        },
+        expand: function () {
+            var sidebar = document.querySelector('.sidebar');
+            var mainContent = document.querySelector('.main-content');
+            var header = document.querySelector('.app-header');
+            if (sidebar) {
+                sidebar.classList.remove('collapsed');
+            }
+            if (mainContent) {
+                mainContent.classList.remove('sidebar-collapsed');
+            }
+            if (header) {
+                header.classList.remove('sidebar-collapsed');
+            }
+            document.documentElement.classList.remove('sidebar-start-collapsed');
+            localStorage.setItem('beanshare-sidebar-collapsed', 'false');
+        },
+        toggle: function () {
+            if (window.beanshare.sidebar.isCollapsed()) {
+                window.beanshare.sidebar.expand();
+            } else {
+                window.beanshare.sidebar.collapse();
+            }
+        },
+        restoreState: function () {
+            var saved = localStorage.getItem('beanshare-sidebar-collapsed');
+            if (saved === 'true') {
+                window.beanshare.sidebar.collapse();
+            }
         }
     },
     clickElement: function (id) {

@@ -8,6 +8,9 @@
     (function(){
         var s=localStorage.getItem('beanshare-theme')||'light';
         document.documentElement.setAttribute('data-theme',s);
+        if(localStorage.getItem('beanshare-sidebar-collapsed')==='true'){
+            document.documentElement.classList.add('sidebar-start-collapsed');
+        }
         var applying=false;
         new MutationObserver(function(){
             if(applying)return;

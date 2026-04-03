@@ -186,7 +186,7 @@
 @if (showCreateModal || showEditModal)
 {
     <div class="bs-modal-overlay" @onclick="CloseModal">
-        <div class="bs-modal" @onclick:stopPropagation="true">
+        <div class="bs-modal" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true">
             <div class="bs-modal-header">
                 <h2 class="bs-modal-title">@(showEditModal ? "Edit" : "Create") Preset Recipe</h2>
                 <button class="bs-modal-close" @onclick="CloseModal">

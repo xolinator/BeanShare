@@ -61,7 +61,7 @@ public sealed class OidcClaimsTransformation : IClaimsTransformation
 
         var user = userByProvider ?? userByEmail;
 
-        if (cached is null)
+        if (user is null)
         {
             identity.AddClaim(new Claim("beanshare_transformed", "true"));
             return principal;
@@ -72,15 +72,15 @@ public sealed class OidcClaimsTransformation : IClaimsTransformation
             var oldSub = identity.FindFirst("sub");
             if (oldSub is not null)
                 identity.RemoveClaim(oldSub);
-            identity.AddClaim(new Claim("sub", cached.DbUserId.ToString()));
+            identity.AddClaim(new Claim("sub", user.Id.Value.ToString()));
 
             var oldNameId = identity.FindFirst(ClaimTypes.NameIdentifier);
             if (oldNameId is not null)
                 identity.RemoveClaim(oldNameId);
-            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, cached.DbUserId.ToString()));
+            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.Value.ToString()));
         }
 
-        if (cached.SystemRole == SystemRole.SystemAdmin && !principal.IsInRole("admin"))
+        if (user.SystemRole == SystemRole.SystemAdmin && !principal.IsInRole("admin"))
             identity.AddClaim(new Claim(ClaimTypes.Role, "admin"));
 
         identity.AddClaim(new Claim("beanshare_transformed", "true"));
