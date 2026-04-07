@@ -7,9 +7,10 @@ using BeanShare.Infrastructure.Persistence;
 using BeanShare.Infrastructure.Persistence.Seeds;
 using BeanShare.Infrastructure.Services;
 using BeanShare.SharedUi.Services;
-using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -76,7 +77,7 @@ if (useOidc)
         {
             options.ResponseMode = oidcResponseMode;
         }
-        options.SaveTokens = true;
+        options.SaveTokens = false;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = builder.Environment.IsProduction();
         options.MapInboundClaims = false;
@@ -99,6 +100,20 @@ if (useOidc)
         options.Scope.Add("openid");
         options.Scope.Add("profile");
         options.Scope.Add("email");
+
+        // Only map the claims we actually need from the UserInfo endpoint response.
+        // This prevents Authentik group lists, extra profile fields, and other bulk
+        // claims from being written into the auth cookie.
+        options.ClaimActions.Clear();
+        options.ClaimActions.MapUniqueJsonKey("sub", "sub");
+        options.ClaimActions.MapUniqueJsonKey("email", "email");
+        options.ClaimActions.MapUniqueJsonKey("preferred_username", "preferred_username");
+        options.ClaimActions.MapUniqueJsonKey("name", "name");
+        options.ClaimActions.MapUniqueJsonKey("identity_provider", "identity_provider");
+        // Map groups/roles from UserInfo so that role-based authorization still works
+        // for providers that only include these claims in the UserInfo response.
+        options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Role, "roles");
+        options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Role, "groups");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -174,6 +189,41 @@ if (useOidc)
                     {
                         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                         logger.LogError(ex, "Failed to sync user from OIDC claims");
+                    }
+                }
+
+                // Strip non-essential claims from the ID token before the auth ticket is
+                // written to the cookie. Keeping only what the application actually reads
+                // prevents the cookie from chunking into multiple browser cookies (which
+                // causes "400 Request Header Or Cookie Too Large" behind nginx).
+                //
+                // Removed claim types and why they are safe to remove:
+                //   iss, aud, exp, iat, nbf, jti  – JWT validation fields; already consumed by the handler
+                //   nonce, auth_time, acr, amr, sid, at_hash, c_hash, azp, session_state
+                //                                  – OIDC protocol fields; not used after validation
+                //   realm_access                   – Keycloak JSON blob; roles already expanded above
+                //   roles, groups                  – raw claim strings; already expanded into ClaimTypes.Role
+                //   given_name, family_name, locale, zoneinfo, updated_at, picture,
+                //   website, phone_number, email_verified
+                //                                  – extended profile fields not read by this application
+                if (context.Principal?.Identity is System.Security.Claims.ClaimsIdentity idToClean)
+                {
+                    var essentialClaimTypes = new HashSet<string>(StringComparer.Ordinal)
+                    {
+                        "sub",
+                        System.Security.Claims.ClaimTypes.NameIdentifier,
+                        "email",
+                        "preferred_username",
+                        "name",
+                        "identity_provider",
+                        System.Security.Claims.ClaimTypes.Role,
+                    };
+
+                    foreach (var claim in idToClean.Claims
+                        .Where(c => !essentialClaimTypes.Contains(c.Type))
+                        .ToList())
+                    {
+                        idToClean.RemoveClaim(claim);
                     }
                 }
             }
