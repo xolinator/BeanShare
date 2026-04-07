@@ -1,0 +1,41 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "releaseRules": [
+          { "message": "*BREAKING*", "release": "major" },
+          { "message": "*breaking change*", "release": "major" },
+          { "message": "*Breaking change*", "release": "major" },
+          { "message": "*Breaking Change*", "release": "major" },
+          { "message": "*feat*", "release": "minor" },
+          { "message": "*Feat*", "release": "minor" },
+          { "message": "*feature*", "release": "minor" },
+          { "message": "*Feature*", "release": "minor" },
+          { "message": "*add*", "release": "minor" },
+          { "message": "*Add*", "release": "minor" },
+          { "message": "*new*", "release": "minor" },
+          { "message": "*New*", "release": "minor" },
+          { "message": "*fix*", "release": "patch" },
+          { "message": "*Fix*", "release": "patch" },
+          { "message": "*bug*", "release": "patch" },
+          { "message": "*Bug*", "release": "patch" },
+          { "message": "*patch*", "release": "patch" },
+          { "message": "*Patch*", "release": "patch" },
+          { "message": "*update*", "release": "patch" },
+          { "message": "*Update*", "release": "patch" },
+          { "message": "*refactor*", "release": "patch" },
+          { "message": "*Refactor*", "release": "patch" },
+          { "message": "*chore*", "release": false },
+          { "message": "*Chore*", "release": false },
+          { "message": "*[skip ci]*", "release": false },
+          { "message": "*docs*", "release": false },
+          { "message": "*Docs*", "release": false }
+        ]
+      }
+    ],
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/github"
+  ]
+}

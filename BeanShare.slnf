@@ -1,0 +1,21 @@
+{
+  "solution": {
+    "path": "BeanShare.sln",
+    "projects": [
+      "src/Core/BeanShare.Application/BeanShare.Application.csproj",
+      "src/Core/BeanShare.Domain/BeanShare.Domain.csproj",
+      "src/Infrastructure/BeanShare.Infrastructure.Communication/BeanShare.Infrastructure.Communication.csproj",
+      "src/Infrastructure/BeanShare.Infrastructure.Identity/BeanShare.Infrastructure.Identity.csproj",
+      "src/Infrastructure/BeanShare.Infrastructure.Persistence/BeanShare.Infrastructure.Persistence.csproj",
+      "src/Infrastructure/BeanShare.Infrastructure/BeanShare.Infrastructure.csproj",
+      "src/Presentation/BeanShare.Api/BeanShare.Api.csproj",
+      "src/Presentation/BeanShare.BlazorWeb/BeanShare.BlazorWeb.csproj",
+      "src/Presentation/BeanShare.Contracts/BeanShare.Contracts.csproj",
+      "src/Presentation/BeanShare.SharedUi/BeanShare.SharedUi.csproj",
+      "tests/BeanShare.Application.Tests/BeanShare.Application.Tests.csproj",
+      "tests/BeanShare.Infrastructure.Tests/BeanShare.Infrastructure.Tests.csproj",
+      "tests/BeanShare.Tests.Integration/BeanShare.Tests.Integration.csproj",
+      "tests/BeanShare.Tests.Unit/BeanShare.Tests.Unit.csproj"
+    ]
+  }
+}
