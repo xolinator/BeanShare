@@ -76,7 +76,26 @@ public class OidcTokenHandler
                 return new AuthResult(false, null, "Failed to extract user information.");
             }
 
-            await SyncUserWithApiAsync(tokenResponse.AccessToken);
+            var syncedEmail = await SyncUserWithApiAsync(tokenResponse.AccessToken);
+            if (!string.IsNullOrEmpty(syncedEmail) && string.IsNullOrEmpty(userInfo.Email))
+            {
+                // The OIDC token did not include the email claim; use the email returned by the
+                // server sync (which reads it from the database).
+                var emailStorageTask = new TaskCompletionSource<bool>();
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    try
+                    {
+                        await SecureStorage.Default.SetAsync("user_email", syncedEmail);
+                        emailStorageTask.SetResult(true);
+                    }
+                    catch (Exception ex) { emailStorageTask.SetException(ex); }
+                });
+                await emailStorageTask.Task;
+                UserContextStub.SetUser(userInfo.Id, syncedEmail);
+                userInfo = userInfo with { Email = syncedEmail };
+            }
+
             await FetchAndUpdateDatabaseUserIdAsync(tokenResponse.AccessToken);
 
             _httpClient.DefaultRequestHeaders.Remove("Authorization");
@@ -278,7 +297,7 @@ public class OidcTokenHandler
         }
     }
 
-    private async Task SyncUserWithApiAsync(string accessToken)
+    private async Task<string?> SyncUserWithApiAsync(string accessToken)
     {
         try
         {
@@ -290,6 +309,9 @@ public class OidcTokenHandler
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("User synced with API successfully");
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement?>();
+                if (json.HasValue && json.Value.TryGetProperty("Email", out var emailProp))
+                    return emailProp.GetString();
             }
             else
             {
@@ -301,6 +323,8 @@ public class OidcTokenHandler
         {
             _logger.LogWarning(ex, "Failed to sync user with API (non-fatal)");
         }
+
+        return null;
     }
 
     internal class OidcTokenResponse

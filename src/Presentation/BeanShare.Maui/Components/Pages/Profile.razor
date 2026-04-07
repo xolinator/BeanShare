@@ -171,7 +171,9 @@
                 userProfile = new UserProfileDto
                 {
                     Name = user.Identity.Name ?? "Unknown User",
-                    Email = user.FindFirst("email")?.Value ?? "",
+                    Email = user.FindFirst("email")?.Value
+                        ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                        ?? "",
                     JoinedDate = statistics?.FirstConsumptionDate ?? DateTime.UtcNow,
                     PictureUrl = null
                 };
