@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components;
+using System.Security.Claims;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -112,13 +113,13 @@ if (useOidc)
         options.ClaimActions.MapUniqueJsonKey("identity_provider", "identity_provider");
         // Map groups/roles from UserInfo so that role-based authorization still works
         // for providers that only include these claims in the UserInfo response.
-        options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Role, "roles");
-        options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Role, "groups");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Role, "roles");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Role, "groups");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
             NameClaimType = "preferred_username",
-            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+            RoleClaimType = ClaimTypes.Role
         };
 
         options.Events = new OpenIdConnectEvents
@@ -139,7 +140,7 @@ if (useOidc)
                 // Extract roles from multiple OIDC claim formats for provider compatibility
                 if (context.Principal != null)
                 {
-                    var identity = context.Principal.Identity as System.Security.Claims.ClaimsIdentity;
+                    var identity = context.Principal.Identity as ClaimsIdentity;
                     if (identity != null)
                     {
                         // Keycloak: realm_access JSON with nested roles array
@@ -206,17 +207,17 @@ if (useOidc)
                 //   given_name, family_name, locale, zoneinfo, updated_at, picture,
                 //   website, phone_number, email_verified
                 //                                  – extended profile fields not read by this application
-                if (context.Principal?.Identity is System.Security.Claims.ClaimsIdentity idToClean)
+                if (context.Principal?.Identity is ClaimsIdentity idToClean)
                 {
                     var essentialClaimTypes = new HashSet<string>(StringComparer.Ordinal)
                     {
                         "sub",
-                        System.Security.Claims.ClaimTypes.NameIdentifier,
+                        ClaimTypes.NameIdentifier,
                         "email",
                         "preferred_username",
                         "name",
                         "identity_provider",
-                        System.Security.Claims.ClaimTypes.Role,
+                        ClaimTypes.Role,
                     };
 
                     foreach (var claim in idToClean.Claims
@@ -328,14 +329,14 @@ static string ResolvePublicBaseUrl(IServiceProvider services, string? configured
     return developmentFallback.TrimEnd('/');
 }
 
-static void AddRoleClaims(System.Security.Claims.ClaimsIdentity identity, string? rawValue)
+static void AddRoleClaims(ClaimsIdentity identity, string? rawValue)
 {
     foreach (var roleValue in ExpandMultiValueClaim(rawValue))
     {
-        if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, roleValue))
+        if (!identity.HasClaim(ClaimTypes.Role, roleValue))
         {
-            identity.AddClaim(new System.Security.Claims.Claim(
-                System.Security.Claims.ClaimTypes.Role,
+            identity.AddClaim(new Claim(
+                ClaimTypes.Role,
                 roleValue));
         }
     }
