@@ -1,3 +1,4 @@
+using BeanShare.Api.Infrastructure.Mocks;
 using BeanShare.Application;
 using BeanShare.Application.Constants;
 using BeanShare.Infrastructure;
@@ -7,6 +8,7 @@ using BeanShare.Infrastructure.Services;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Mapster;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
@@ -32,7 +34,22 @@ builder.Services.AddCommunicationServices(builder.Configuration);
 
 builder.Services.AddScoped<BeanShare.Application.Services.IUserSynchronizationService, BeanShare.Application.Services.UserSynchronizationService>();
 
-if (useOidc)
+var useMockAuthentication = builder.Configuration.GetValue<bool>("UseMockAuthentication", false);
+
+if (useMockAuthentication)
+{
+    builder.Services.AddAuthentication("Mock")
+        .AddScheme<AuthenticationSchemeOptions, MockAuthenticationHandler>("Mock", _ => { });
+
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+            .AddAuthenticationSchemes("Mock")
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+}
+else if (useOidc)
 {
     // OIDC configuration
     var oidcAuthority = builder.Configuration["Oidc:Authority"]
