@@ -71,7 +71,9 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
 
         var joinRequest = new JoinSpaceRequest { InviteCode = createdSpace!.InviteCode };
 
+        _client.WithTestUser(SecondUserId, "second@test.com");
         var response = await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        _client.AsDefaultUser();
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -130,7 +132,9 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
         createdSpace.Should().NotBeNull();
 
         var joinRequest = new JoinSpaceRequest { InviteCode = createdSpace!.InviteCode };
+        _client.WithTestUser(SecondUserId, "second@test.com");
         var joinResponse = await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        _client.AsDefaultUser();
         joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var listResponse = await _client.GetAsync("/api/spaces");
@@ -197,7 +201,7 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
 
         var response = await _client.PostAsJsonAsync($"/api/spaces/{invalidSpaceId}/members/{invalidUserId}/promote", promoteRequest);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -254,7 +258,7 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
         };
         var response = await _client.PostAsJsonAsync($"/api/spaces/{createdSpace.SpaceId}/members/{adminMember.UserId}/demote", demoteRequest);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     [Fact]
@@ -479,7 +483,9 @@ public sealed class SpaceEndpointsTests : IClassFixture<PostgreSqlFixture>
         regenerateResult!.InviteCode.Should().NotBe(createdSpace.InviteCode);
 
         var joinRequest = new JoinSpaceRequest { InviteCode = regenerateResult.InviteCode };
+        _client.WithTestUser(SecondUserId, "second@test.com");
         var joinResponse = await _client.PostAsJsonAsync("/api/spaces/join", joinRequest);
+        _client.AsDefaultUser();
         joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var deactivateRequest = new DeactivateSpaceRequest
