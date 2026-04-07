@@ -15,7 +15,7 @@ public static class ApplicationServiceRegistration
     {
         var assembly = Assembly.GetExecutingAssembly();
         
-        services.AddMediatR(assembly);
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
         services.AddMapster();
 
