@@ -102,7 +102,9 @@ else
 
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
-                           CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                           CurrencyCode="@(space?.CurrencyCode ?? "USD")"
+                           OnEditPurchase="HandleEditPurchase"
+                           OnDeletePurchase="HandleDeletePurchase" />
 
             @if (isAdmin)
             {
@@ -443,5 +445,60 @@ else
         toastTitle = title;
         toastMessage = message;
         showToast = true;
+    }
+
+    private async Task HandleEditPurchase(BeanShare.SharedUi.Components.Stock.PurchaseRow.PurchaseEditModel model)
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid)) return;
+
+        try
+        {
+            var success = await StockService.UpdateStockPurchaseAsync(
+                spaceGuid,
+                model.PurchaseId,
+                model.ProductName,
+                model.ProductBrand,
+                model.CoffeeType,
+                model.QuantityGrams,
+                model.CostAmount,
+                model.PurchasedAt);
+
+            if (success)
+            {
+                ShowToast(false, "Success", "Purchase updated successfully!");
+                await LoadStock();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to update purchase. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to update purchase: {ex.Message}");
+        }
+    }
+
+    private async Task HandleDeletePurchase(Guid purchaseId)
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid)) return;
+
+        try
+        {
+            var success = await StockService.DeleteStockPurchaseAsync(spaceGuid, purchaseId);
+            if (success)
+            {
+                ShowToast(false, "Deleted", "Purchase deleted successfully.");
+                await LoadStock();
+            }
+            else
+            {
+                ShowToast(true, "Error", "Failed to delete purchase. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to delete purchase: {ex.Message}");
+        }
     }
 }

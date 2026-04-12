@@ -6,7 +6,7 @@ namespace BeanShare.Domain.Aggregates.CoffeeStock;
 public sealed class Purchase : Entity
 {
     public Guid Id { get; private init; }
-    public CoffeeProduct Product { get; private init; }
+    public CoffeeProduct Product { get; private set; }
     public Weight Quantity { get; private set; }
     public Money Cost { get; private set; }
     public string Vendor { get; private init; }
@@ -99,6 +99,12 @@ public sealed class Purchase : Entity
         Quantity = newQuantity;
         Cost = Money.Create(newCostAmount, Cost.Currency);
         PurchasedAt = newPurchasedAt;
+    }
+
+    public void UpdateProduct(CoffeeProduct newProduct)
+    {
+        ArgumentNullException.ThrowIfNull(newProduct);
+        Product = newProduct;
     }
 
     public Money CostPerGram => Cost.Divide(Quantity.Grams);

@@ -91,14 +91,83 @@ public sealed class CoffeeStock : AggregateRoot
             clock.UtcNow));
     }
 
-    public void UpdatePurchase(Guid purchaseId, Weight newQuantity, decimal newCostAmount, DateTime newPurchasedAt, IClock clock)
+    public void UpdatePurchase(Guid purchaseId, Weight newQuantity, decimal newCostAmount, DateTime newPurchasedAt, IClock clock,
+        string? newProductName = null, string? newProductBrand = null, CoffeeType? newCoffeeType = null)
     {
         var purchase = _purchases.FirstOrDefault(p => p.Id == purchaseId);
         if (purchase == null)
             throw new InvalidOperationException($"Purchase {purchaseId} not found");
 
+        var oldProduct = purchase.Product;
         var oldQuantity = purchase.Quantity;
         purchase.Update(newQuantity, newCostAmount, newPurchasedAt, clock);
+
+        var isProductChanging = (newProductName != null && !string.Equals(newProductName, oldProduct.Name, StringComparison.OrdinalIgnoreCase))
+            || (newProductBrand != null && !string.Equals(newProductBrand, oldProduct.Brand, StringComparison.OrdinalIgnoreCase))
+            || (newCoffeeType.HasValue && newCoffeeType.Value != oldProduct.Type);
+
+        if (isProductChanging)
+        {
+            var updatedProduct = CoffeeProduct.Create(
+                newProductName ?? oldProduct.Name,
+                newProductBrand ?? oldProduct.Brand,
+                newCoffeeType ?? oldProduct.Type);
+
+            purchase.UpdateProduct(updatedProduct);
+
+            var oldStockLevel = _stockLevels.FirstOrDefault(sl =>
+                string.Equals(sl.Product.Name, oldProduct.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(sl.Product.Brand, oldProduct.Brand, StringComparison.OrdinalIgnoreCase) &&
+                sl.Product.Type == oldProduct.Type);
+
+            if (oldStockLevel != null)
+            {
+                var maxReduction = oldStockLevel.TotalPurchased.Grams - oldStockLevel.TotalConsumed.Grams;
+                var reduction = Math.Min(newQuantity.Grams, maxReduction);
+                if (reduction > 0)
+                    oldStockLevel.ReducePurchased(Weight.FromGrams(reduction), clock);
+            }
+
+            var newStockLevel = _stockLevels.FirstOrDefault(sl =>
+                string.Equals(sl.Product.Name, updatedProduct.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(sl.Product.Brand, updatedProduct.Brand, StringComparison.OrdinalIgnoreCase) &&
+                sl.Product.Type == updatedProduct.Type);
+
+            if (newStockLevel != null)
+                newStockLevel.AddPurchase(newQuantity, clock);
+            else
+                _stockLevels.Add(StockLevel.Create(updatedProduct, newQuantity, clock));
+        }
+        else
+        {
+            var stockLevel = _stockLevels.FirstOrDefault(sl =>
+                string.Equals(sl.Product.Name, purchase.Product.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(sl.Product.Brand, purchase.Product.Brand, StringComparison.OrdinalIgnoreCase) &&
+                sl.Product.Type == purchase.Product.Type);
+
+            if (stockLevel != null)
+            {
+                var diff = newQuantity.Grams - oldQuantity.Grams;
+                if (diff > 0)
+                    stockLevel.AddPurchase(Weight.FromGrams(diff), clock);
+                else if (diff < 0)
+                {
+                    var maxReduction = stockLevel.TotalPurchased.Grams - stockLevel.TotalConsumed.Grams;
+                    var reduction = Math.Min(-diff, maxReduction);
+                    if (reduction > 0)
+                        stockLevel.ReducePurchased(Weight.FromGrams(reduction), clock);
+                }
+            }
+        }
+
+        UpdatedAt = clock.UtcNow;
+    }
+
+    public void DeletePurchase(Guid purchaseId, IClock clock)
+    {
+        var purchase = _purchases.FirstOrDefault(p => p.Id == purchaseId);
+        if (purchase == null)
+            throw new InvalidOperationException($"Purchase {purchaseId} not found");
 
         var stockLevel = _stockLevels.FirstOrDefault(sl =>
             string.Equals(sl.Product.Name, purchase.Product.Name, StringComparison.OrdinalIgnoreCase) &&
@@ -107,18 +176,13 @@ public sealed class CoffeeStock : AggregateRoot
 
         if (stockLevel != null)
         {
-            var diff = newQuantity.Grams - oldQuantity.Grams;
-            if (diff > 0)
-                stockLevel.AddPurchase(Weight.FromGrams(diff), clock);
-            else if (diff < 0)
-            {
-                var maxReduction = stockLevel.TotalPurchased.Grams - stockLevel.TotalConsumed.Grams;
-                var reduction = Math.Min(-diff, maxReduction);
-                if (reduction > 0)
-                    stockLevel.ReducePurchased(Weight.FromGrams(reduction), clock);
-            }
+            var maxReduction = stockLevel.TotalPurchased.Grams - stockLevel.TotalConsumed.Grams;
+            var reduction = Math.Min(purchase.Quantity.Grams, maxReduction);
+            if (reduction > 0)
+                stockLevel.ReducePurchased(Weight.FromGrams(reduction), clock);
         }
 
+        _purchases.Remove(purchase);
         UpdatedAt = clock.UtcNow;
     }
 

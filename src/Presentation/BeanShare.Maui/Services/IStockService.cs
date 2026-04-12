@@ -6,4 +6,6 @@ public interface IStockService
 {
     Task<CoffeeStockDto?> GetSpaceStockAsync(Guid spaceId);
     Task<bool> AddStockPurchaseAsync(Guid spaceId, string productName, string coffeeType, int quantityGrams, decimal totalCost, string currency, DateTime purchasedAt);
+    Task<bool> UpdateStockPurchaseAsync(Guid spaceId, Guid purchaseId, string productName, string productBrand, string coffeeType, decimal quantityGrams, decimal costAmount, DateTime purchasedAt);
+    Task<bool> DeleteStockPurchaseAsync(Guid spaceId, Guid purchaseId);
 }

@@ -42,13 +42,15 @@
             {
                 <PurchaseRow PurchaseId="@purchase.Id"
                             ProductName="@purchase.ProductName"
+                            ProductBrand="@purchase.ProductBrand"
                             TotalCost="@purchase.TotalCost"
                             CurrencyCode="@purchase.CostCurrency"
                             QuantityGrams="@((int)purchase.QuantityGrams)"
                             CoffeeType="@purchase.CoffeeType"
                             PurchasedAt="@purchase.PurchasedAt"
                             PurchasedByName="@purchase.PurchasedByName"
-                            OnEdit="OnEditPurchase" />
+                            OnEdit="OnEditPurchase"
+                            OnDelete="OnDeletePurchase" />
             }
         </div>
     }
@@ -66,6 +68,9 @@
 
     [Parameter]
     public EventCallback<PurchaseRow.PurchaseEditModel> OnEditPurchase { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDeletePurchase { get; set; }
 
     private int TotalPurchases => Purchases?.Count() ?? 0;
     private int TotalGrams => (int)(Purchases?.Sum(p => p.QuantityGrams) ?? 0);

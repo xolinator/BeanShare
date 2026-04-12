@@ -12,6 +12,9 @@ public sealed class UpdateStockPurchaseRequest
     public decimal QuantityGrams { get; set; }
     public decimal CostAmount { get; set; }
     public DateTime PurchasedAt { get; set; }
+    public string? ProductName { get; set; }
+    public string? ProductBrand { get; set; }
+    public string? CoffeeType { get; set; }
 }
 
 public sealed class UpdateStockPurchaseEndpoint : Endpoint<UpdateStockPurchaseRequest, StockPurchaseDto>
@@ -35,7 +38,10 @@ public sealed class UpdateStockPurchaseEndpoint : Endpoint<UpdateStockPurchaseRe
             req.PurchaseId,
             req.QuantityGrams,
             req.CostAmount,
-            req.PurchasedAt);
+            req.PurchasedAt,
+            req.ProductName,
+            req.ProductBrand,
+            req.CoffeeType);
 
         var result = await _mediator.Send(command, ct);
 

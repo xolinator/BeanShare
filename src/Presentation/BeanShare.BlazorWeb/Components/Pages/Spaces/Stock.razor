@@ -124,7 +124,8 @@ else
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
                            CurrencyCode="@(space?.CurrencyCode ?? "USD")"
-                           OnEditPurchase="HandleEditPurchase" />
+                           OnEditPurchase="HandleEditPurchase"
+                           OnDeletePurchase="HandleDeletePurchase" />
 
             @if (isAdmin)
             {
@@ -344,7 +345,10 @@ else
                 model.PurchaseId,
                 model.QuantityGrams,
                 model.CostAmount,
-                model.PurchasedAt.ToUniversalTime()));
+                model.PurchasedAt.ToUniversalTime(),
+                model.ProductName,
+                model.ProductBrand,
+                model.CoffeeType));
 
             if (result.IsSuccess)
             {
@@ -359,6 +363,30 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to update purchase: {ex.Message}");
+        }
+    }
+
+    private async Task HandleDeletePurchase(Guid purchaseId)
+    {
+        try
+        {
+            var result = await Mediator.Send(new DeleteStockPurchaseCommand(
+                Guid.Parse(SpaceId),
+                purchaseId));
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Deleted", "Purchase deleted successfully.");
+                await LoadStock();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to delete purchase: {ex.Message}");
         }
     }
 

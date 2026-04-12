@@ -9,5 +9,8 @@ public sealed record UpdateStockPurchaseCommand(
     Guid PurchaseId,
     decimal QuantityGrams,
     decimal CostAmount,
-    DateTime PurchasedAt
+    DateTime PurchasedAt,
+    string? ProductName = null,
+    string? ProductBrand = null,
+    string? CoffeeType = null
 ) : ICommand<Result<StockPurchaseDto>>;
