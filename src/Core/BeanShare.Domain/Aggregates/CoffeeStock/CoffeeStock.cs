@@ -102,11 +102,7 @@ public sealed class CoffeeStock : AggregateRoot
         var oldQuantity = purchase.Quantity;
         purchase.Update(newQuantity, newCostAmount, newPurchasedAt, clock);
 
-        var isProductChanging = (newProductName != null && !string.Equals(newProductName, oldProduct.Name, StringComparison.OrdinalIgnoreCase))
-            || (newProductBrand != null && !string.Equals(newProductBrand, oldProduct.Brand, StringComparison.OrdinalIgnoreCase))
-            || (newCoffeeType.HasValue && newCoffeeType.Value != oldProduct.Type);
-
-        if (isProductChanging)
+        if (IsProductIdentityChanged(oldProduct, newProductName, newProductBrand, newCoffeeType))
         {
             var updatedProduct = CoffeeProduct.Create(
                 newProductName ?? oldProduct.Name,
@@ -302,4 +298,12 @@ public sealed class CoffeeStock : AggregateRoot
 
     public Weight TotalCurrentStock => Weight.FromGrams(
         _stockLevels.Where(sl => !sl.IsArchived).Sum(sl => sl.CurrentStock.Grams));
+
+    private static bool IsProductIdentityChanged(
+        CoffeeProduct oldProduct, string? newProductName, string? newProductBrand, CoffeeType? newCoffeeType)
+    {
+        return (newProductName != null && !string.Equals(newProductName, oldProduct.Name, StringComparison.OrdinalIgnoreCase))
+            || (newProductBrand != null && !string.Equals(newProductBrand, oldProduct.Brand, StringComparison.OrdinalIgnoreCase))
+            || (newCoffeeType.HasValue && newCoffeeType.Value != oldProduct.Type);
+    }
 }

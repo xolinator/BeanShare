@@ -145,23 +145,23 @@
         model.QuantityGrams != 0 ||
         model.TotalCost != 0;
 
-    private void HandleBackdropClick()
+    private async Task HandleBackdropClick()
     {
         if (IsDirty)
             showDiscardConfirm = true;
         else
-            DiscardChanges();
+            await DiscardChanges();
     }
 
-    private void Cancel()
+    private async Task Cancel()
     {
         if (IsDirty)
             showDiscardConfirm = true;
         else
-            DiscardChanges();
+            await DiscardChanges();
     }
 
-    private async void DiscardChanges()
+    private async Task DiscardChanges()
     {
         model = new AddPurchaseModel { Currency = CurrencyCode };
         showDiscardConfirm = false;
