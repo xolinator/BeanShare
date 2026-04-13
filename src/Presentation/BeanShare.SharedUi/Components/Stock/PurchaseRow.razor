@@ -48,6 +48,12 @@ else
             </span>
             <div class="bs-flex bs-items-center bs-gap-2">
                 <span class="bs-text-subtle">by @PurchasedByInitials</span>
+                <button style="background: none; border: none; cursor: pointer; padding: 0.125rem; display: flex; align-items: center;"
+                        title="Clone purchase"
+                        @onclick="HandleClone"
+                        @onclick:stopPropagation="true">
+                    <span class="material-symbols-outlined bs-text-subtle" style="font-size: 1rem;">content_copy</span>
+                </button>
                 <span class="material-symbols-outlined bs-text-subtle" style="font-size: 1rem;">edit</span>
             </div>
         </div>
@@ -57,6 +63,7 @@ else
 @code {
     [Parameter] public Guid PurchaseId { get; set; }
     [Parameter] public string ProductName { get; set; } = "";
+    [Parameter] public string ProductBrand { get; set; } = "";
     [Parameter] public decimal TotalCost { get; set; }
     [Parameter] public string CurrencyCode { get; set; } = "USD";
     [Parameter] public int QuantityGrams { get; set; }
@@ -64,12 +71,25 @@ else
     [Parameter] public DateTime PurchasedAt { get; set; }
     [Parameter] public string PurchasedByName { get; set; } = "";
     [Parameter] public EventCallback<PurchaseEditModel> OnEdit { get; set; }
+    [Parameter] public EventCallback<PurchaseCloneModel> OnClone { get; set; }
 
     private bool isEditing;
     private bool isSaving;
     private decimal editQuantity;
     private decimal editCost;
     private DateTime editDate;
+
+    private async Task HandleClone()
+    {
+        await OnClone.InvokeAsync(new PurchaseCloneModel
+        {
+            ProductBrand = ProductBrand,
+            ProductName = ProductName,
+            QuantityGrams = QuantityGrams,
+            CostAmount = TotalCost,
+            CoffeeType = CoffeeType
+        });
+    }
 
     private void StartEdit()
     {
@@ -141,5 +161,14 @@ else
         public decimal QuantityGrams { get; set; }
         public decimal CostAmount { get; set; }
         public DateTime PurchasedAt { get; set; }
+    }
+
+    public class PurchaseCloneModel
+    {
+        public string ProductBrand { get; set; } = "";
+        public string ProductName { get; set; } = "";
+        public int QuantityGrams { get; set; }
+        public decimal CostAmount { get; set; }
+        public string CoffeeType { get; set; } = "Espresso";
     }
 }

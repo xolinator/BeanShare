@@ -102,7 +102,13 @@ else
 
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
-                           CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                           CurrencyCode="@(space?.CurrencyCode ?? "USD")"
+                           TotalPurchaseCount="@totalPurchaseCount"
+                           TotalStockGrams="@totalStockGrams"
+                           TotalInvestmentAmount="@totalInvestmentAmount"
+                           IsLoadingMore="@isLoadingMorePurchases"
+                           OnLoadMore="HandleLoadMorePurchases"
+                           OnClonePurchase="HandleClonePurchase" />
 
             @if (isAdmin)
             {
@@ -119,8 +125,9 @@ else
 
 <AddPurchaseModal IsVisible="@showAddPurchaseModal"
                  OnSubmit="HandleAddPurchase"
-                 OnCancel="@(() => showAddPurchaseModal = false)"
-                 CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                 OnCancel="HandleAddPurchaseCancel"
+                 CurrencyCode="@(space?.CurrencyCode ?? "USD")"
+                 PrefillFrom="@purchasePrefill" />
 
 <QrCodeModal IsVisible="@showQrModal"
             StockLevel="@selectedQrStockLevel"
@@ -148,8 +155,14 @@ else
 
     private List<StockPurchaseDto> purchases = new();
     private List<StockLevelDto> stockLevels = new();
+    private int totalPurchaseCount;
+    private decimal totalStockGrams;
+    private decimal totalInvestmentAmount;
+    private int currentPurchasePage = 1;
+    private bool isLoadingMorePurchases;
 
     private bool showAddPurchaseModal;
+    private AddPurchaseModal.PurchasePrefill? purchasePrefill;
     private bool showQrModal;
     private StockLevelDto? selectedQrStockLevel;
     private List<ActiveQrCodeDto> activeQrCodes = new();
@@ -206,6 +219,7 @@ else
         }
 
         isLoadingStock = true;
+        currentPurchasePage = 1;
         StateHasChanged();
 
         try
@@ -215,6 +229,9 @@ else
             {
                 purchases = stockData.RecentPurchases.ToList();
                 stockLevels = stockData.StockLevels?.ToList() ?? new();
+                totalPurchaseCount = stockData.TotalPurchaseCount;
+                totalStockGrams = stockData.TotalCurrentStockGrams;
+                totalInvestmentAmount = stockData.TotalInvestmentAmount;
             }
         }
         catch (Exception ex)
@@ -224,6 +241,35 @@ else
         finally
         {
             isLoadingStock = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleLoadMorePurchases()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid)) return;
+
+        isLoadingMorePurchases = true;
+        StateHasChanged();
+
+        try
+        {
+            currentPurchasePage++;
+            var stockData = await StockService.GetSpaceStockAsync(spaceGuid, currentPurchasePage);
+            if (stockData != null)
+            {
+                purchases.AddRange(stockData.RecentPurchases);
+                totalPurchaseCount = stockData.TotalPurchaseCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            currentPurchasePage--;
+            ShowToast(true, "Error", $"Failed to load more purchases: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingMorePurchases = false;
             StateHasChanged();
         }
     }
@@ -256,12 +302,14 @@ else
                 model.CoffeeType,
                 model.QuantityGrams,
                 model.TotalCost,
-                model.Currency
+                model.Currency,
+                model.PurchasedAt
             );
 
             if (success)
             {
                 showAddPurchaseModal = false;
+                purchasePrefill = null;
                 ShowToast(false, "Success", "Stock purchase added successfully!");
                 await LoadStock();
             }
@@ -274,6 +322,25 @@ else
         {
             ShowToast(true, "Error", $"Failed to add purchase: {ex.Message}");
         }
+    }
+
+    private void HandleAddPurchaseCancel()
+    {
+        showAddPurchaseModal = false;
+        purchasePrefill = null;
+    }
+
+    private void HandleClonePurchase(PurchaseRow.PurchaseCloneModel model)
+    {
+        purchasePrefill = new AddPurchaseModal.PurchasePrefill
+        {
+            ProductBrand = model.ProductBrand,
+            ProductName = model.ProductName,
+            QuantityGrams = model.QuantityGrams,
+            CostAmount = model.CostAmount,
+            CoffeeType = model.CoffeeType
+        };
+        showAddPurchaseModal = true;
     }
 
     private async Task CopyInviteCode()

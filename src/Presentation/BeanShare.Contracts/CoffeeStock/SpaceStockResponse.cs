@@ -11,6 +11,7 @@ public sealed record SpaceStockResponse
     public required decimal TotalCurrentStockGrams { get; init; }
     public required decimal TotalInvestmentAmount { get; init; }
     public required string TotalInvestmentCurrency { get; init; }
+    public required int TotalPurchaseCount { get; init; }
     public required IReadOnlyList<StockLevelResponse> StockLevels { get; init; }
     public required IReadOnlyList<StockPurchaseResponse> RecentPurchases { get; init; }
 }

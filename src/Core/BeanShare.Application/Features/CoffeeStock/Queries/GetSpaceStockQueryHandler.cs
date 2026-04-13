@@ -65,10 +65,13 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
                 TotalCurrentStockGrams = 0,
                 TotalInvestmentAmount = 0,
                 TotalInvestmentCurrency = space.Currency.Code,
+                TotalPurchaseCount = 0,
                 StockLevels = [],
                 RecentPurchases = []
             });
         }
+
+        var totalPurchaseCount = coffeeStock.Purchases.Count;
 
         var dto = new CoffeeStockDto
         {
@@ -76,13 +79,14 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
             SpaceId = coffeeStock.SpaceId.Value,
             CreatedAt = coffeeStock.CreatedAt,
             UpdatedAt = coffeeStock.UpdatedAt,
-            PurchaseCount = coffeeStock.Purchases.Count,
+            PurchaseCount = totalPurchaseCount,
             ProductVarietyCount = coffeeStock.ProductVarietyCount,
             TotalCurrentStockGrams = coffeeStock.TotalCurrentStock.Grams,
             TotalInvestmentAmount = coffeeStock.Purchases.Sum(p => p.Cost.Amount),
             TotalInvestmentCurrency = space.Currency.Code,
+            TotalPurchaseCount = totalPurchaseCount,
             StockLevels = _mapper.Map<List<StockLevelDto>>(coffeeStock.StockLevels.Where(sl => !sl.IsArchived).ToList()),
-            RecentPurchases = await BuildPurchaseDtosAsync(coffeeStock, cancellationToken)
+            RecentPurchases = await BuildPurchaseDtosAsync(coffeeStock, query.Page, query.PageSize, cancellationToken)
         };
 
         return Result<CoffeeStockDto>.Success(dto);
@@ -90,11 +94,14 @@ public sealed class GetSpaceStockQueryHandler : IRequestHandler<GetSpaceStockQue
 
     private async Task<List<StockPurchaseDto>> BuildPurchaseDtosAsync(
         BeanShare.Domain.Aggregates.CoffeeStock.CoffeeStock coffeeStock,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken)
     {
         var recentPurchases = coffeeStock.Purchases
             .OrderByDescending(p => p.CreatedAt)
-            .Take(10)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToList();
 
         var distinctUserIds = recentPurchases

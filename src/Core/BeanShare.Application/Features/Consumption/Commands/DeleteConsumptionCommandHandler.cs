@@ -2,6 +2,7 @@ using BeanShare.Application.Abstractions;
 using BeanShare.Application.Common;
 using BeanShare.Domain.Common;
 using BeanShare.Domain.Enums;
+using BeanShare.Domain.Exceptions;
 using BeanShare.Domain.ValueObjects;
 using MediatR;
 
@@ -52,8 +53,16 @@ public sealed class DeleteConsumptionCommandHandler
         var coffeeStock = await _coffeeStockRepository.GetBySpaceIdAsync(entry.SpaceId, cancellationToken);
         if (coffeeStock != null)
         {
-            coffeeStock.RestoreStock(entry.Product, entry.Quantity, _clock);
-            await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
+            try
+            {
+                coffeeStock.RestoreStock(entry.Product, entry.Quantity, _clock);
+                await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
+            }
+            catch (DomainException)
+            {
+                // Product may no longer exist in stock (e.g. archived or renamed).
+                // Proceed with consumption deletion regardless.
+            }
         }
 
         await _consumptionRepository.RemoveAsync(entry, cancellationToken);
