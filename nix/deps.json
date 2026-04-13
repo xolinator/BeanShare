@@ -116,28 +116,13 @@
   },
   {
     "pname": "MediatR",
-    "version": "11.0.0",
-    "hash": "sha256-DSJQx0/2Z9PC1t7Y2YNUNBFKz3irD7hy3TqOr81ZaI4="
-  },
-  {
-    "pname": "MediatR",
-    "version": "11.1.0",
-    "hash": "sha256-tITBpDuNVYQ6MXorPuXKtLwLYDn0JE5hteRaJeD7x+I="
-  },
-  {
-    "pname": "MediatR.Contracts",
-    "version": "1.0.1",
-    "hash": "sha256-7QEKn/KCcvlgAxJjint3jlzEg0dqeN/gwqyUR3nOSt4="
+    "version": "12.4.1",
+    "hash": "sha256-JtcP2PUhGgxf8UX0dfj3H3nBjcAiEoUb6+TNjVvVHEk="
   },
   {
     "pname": "MediatR.Contracts",
     "version": "2.0.1",
     "hash": "sha256-89ULOtn0fPqX0R7ulvnIjjz+rjKYq4//REhKNO3rUvw="
-  },
-  {
-    "pname": "MediatR.Extensions.Microsoft.DependencyInjection",
-    "version": "11.1.0",
-    "hash": "sha256-JOl0bURaPbPJezbtOwmd5ZVz1lddTIkgtqJT9Hrmwd8="
   },
   {
     "pname": "Microsoft.AspNetCore.Authentication.Facebook",
@@ -366,8 +351,8 @@
   },
   {
     "pname": "Microsoft.Extensions.DependencyInjection.Abstractions",
-    "version": "7.0.0",
-    "hash": "sha256-55lsa2QdX1CJn1TpW1vTnkvbGXKCeE9P0O6AkW49LaA="
+    "version": "8.0.0",
+    "hash": "sha256-75KzEGWjbRELczJpCiJub+ltNUMMbz5A/1KQU+5dgP8="
   },
   {
     "pname": "Microsoft.Extensions.DependencyInjection.Abstractions",
