@@ -173,9 +173,13 @@ fhOptions.KnownNetworks.Clear();
 fhOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(fhOptions);
 
-var avatarStorage = app.Services.GetRequiredService<AvatarStorageService>();
-var uploadsRootPath = avatarStorage.GetUploadsRootPath();
-Directory.CreateDirectory(uploadsRootPath);
+string uploadsRootPath;
+using (var avatarScope = app.Services.CreateScope())
+{
+    var avatarStorage = avatarScope.ServiceProvider.GetRequiredService<AvatarStorageService>();
+    uploadsRootPath = avatarStorage.GetUploadsRootPath();
+    Directory.CreateDirectory(uploadsRootPath);
+}
 
 if (app.Environment.IsDevelopment())
 {

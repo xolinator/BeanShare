@@ -28,12 +28,22 @@
                 </div>
 
                 <div class="bs-form-group">
-                    <label class="bs-label" for="endDate">End Date</label>
-                    <InputDate id="endDate"
-                              class="bs-input"
-                              @bind-Value="model.EndDate" />
-                    <ValidationMessage For="@(() => model.EndDate)" class="bs-validation-message" />
+                    <label class="bs-flex bs-items-center bs-gap-2" style="cursor: pointer;">
+                        <input type="checkbox" @bind="model.IsOpenEnded" />
+                        <span class="bs-label" style="margin: 0;">Open-ended (end date set when you close the period)</span>
+                    </label>
                 </div>
+
+                @if (!model.IsOpenEnded)
+                {
+                    <div class="bs-form-group">
+                        <label class="bs-label" for="endDate">End Date</label>
+                        <InputDate id="endDate"
+                                  class="bs-input"
+                                  @bind-Value="model.EndDate" />
+                        <ValidationMessage For="@(() => model.EndDate)" class="bs-validation-message" />
+                    </div>
+                }
 
                 <div class="bs-modal-footer">
                     <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="Cancel">
@@ -109,7 +119,8 @@
         [Required(ErrorMessage = "Start date is required")]
         public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
 
-        [Required(ErrorMessage = "End date is required")]
         public DateTime EndDate { get; set; } = DateTime.UtcNow.Date.AddMonths(1).AddDays(-1);
+
+        public bool IsOpenEnded { get; set; }
     }
 }

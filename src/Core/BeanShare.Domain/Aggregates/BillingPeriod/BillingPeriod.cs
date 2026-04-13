@@ -22,11 +22,15 @@ public sealed class BillingPeriod : AggregateRoot
     public UserId? ClosedBy { get; private set; }
     public UserId? SettledBy { get; private set; }
 
+    public static readonly DateTime OpenEndedSentinel = new(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+
+    public bool IsOpenEnded => EndDate >= OpenEndedSentinel.Date;
+
     public static BillingPeriod Create(
         SpaceId spaceId,
         string name,
         DateTime startDate,
-        DateTime endDate,
+        DateTime? endDate,
         UserId createdBy,
         IClock clock)
     {
@@ -35,14 +39,21 @@ public sealed class BillingPeriod : AggregateRoot
         ArgumentNullException.ThrowIfNull(createdBy);
         ArgumentNullException.ThrowIfNull(clock);
 
-        if (endDate <= startDate)
-        {
-            throw new ArgumentException("End date must be after start date");
-        }
+        if (startDate.Kind != DateTimeKind.Utc)
+            throw new ArgumentException("Start date must be in UTC");
 
-        if (startDate.Kind != DateTimeKind.Utc || endDate.Kind != DateTimeKind.Utc)
+        DateTime resolvedEnd;
+        if (endDate.HasValue)
         {
-            throw new ArgumentException("Dates must be in UTC");
+            if (endDate.Value.Kind != DateTimeKind.Utc)
+                throw new ArgumentException("End date must be in UTC");
+            if (endDate.Value <= startDate)
+                throw new ArgumentException("End date must be after start date");
+            resolvedEnd = endDate.Value.Date.AddDays(1).AddTicks(-1);
+        }
+        else
+        {
+            resolvedEnd = OpenEndedSentinel;
         }
 
         var billingPeriod = new BillingPeriod
@@ -51,7 +62,7 @@ public sealed class BillingPeriod : AggregateRoot
             SpaceId = spaceId,
             Name = name,
             StartDate = startDate.Date,
-            EndDate = endDate.Date.AddDays(1).AddTicks(-1),
+            EndDate = resolvedEnd,
             State = BillingState.Draft,
             CreatedAt = clock.UtcNow,
             CreatedBy = createdBy
@@ -62,7 +73,7 @@ public sealed class BillingPeriod : AggregateRoot
             spaceId,
             name,
             startDate,
-            endDate,
+            endDate ?? resolvedEnd,
             createdBy,
             clock.UtcNow
         ));
@@ -104,7 +115,33 @@ public sealed class BillingPeriod : AggregateRoot
         ClosedAt = clock.UtcNow;
         ClosedBy = userId;
 
+        if (IsOpenEnded)
+            EndDate = clock.UtcNow.Date.AddDays(1).AddTicks(-1);
+
         RaiseDomainEvent(new BillingPeriodClosed(
+            Id,
+            SpaceId,
+            userId,
+            clock.UtcNow
+        ));
+    }
+
+    public void Reopen(UserId userId, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(userId);
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (State != BillingState.Closed)
+        {
+            throw new InvalidOperationException($"Cannot reopen billing period in state {State}");
+        }
+
+        State = BillingState.Open;
+        ClosedAt = null;
+        ClosedBy = null;
+        EndDate = OpenEndedSentinel;
+
+        RaiseDomainEvent(new BillingPeriodOpened(
             Id,
             SpaceId,
             userId,
@@ -156,6 +193,11 @@ public sealed class BillingPeriod : AggregateRoot
     }
 
     public bool CanBeSettled()
+    {
+        return State == BillingState.Closed;
+    }
+
+    public bool CanBeReopened()
     {
         return State == BillingState.Closed;
     }

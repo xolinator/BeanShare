@@ -236,7 +236,8 @@ await app.Services.InitializeBeanShareDatabaseAsync(includeWebDemoData);
 
 app.UseAntiforgery();
 
-var avatarStorage = app.Services.GetRequiredService<AvatarStorageService>();
+using var avatarScope = app.Services.CreateScope();
+var avatarStorage = avatarScope.ServiceProvider.GetRequiredService<AvatarStorageService>();
 var uploadsRootPath = avatarStorage.GetUploadsRootPath();
 Directory.CreateDirectory(uploadsRootPath);
 

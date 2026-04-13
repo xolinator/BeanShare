@@ -10,6 +10,7 @@ public sealed class CoffeeStockDto
     public required decimal TotalCurrentStockGrams { get; init; }
     public required decimal TotalInvestmentAmount { get; init; }
     public required string TotalInvestmentCurrency { get; init; }
+    public required int TotalPurchaseCount { get; init; }
     public required IReadOnlyList<StockLevelDto> StockLevels { get; init; }
     public required IReadOnlyList<StockPurchaseDto> RecentPurchases { get; init; }
 }
