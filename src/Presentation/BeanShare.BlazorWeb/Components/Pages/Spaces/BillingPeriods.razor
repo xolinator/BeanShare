@@ -62,7 +62,7 @@
                         <div>
                             <h3 style="margin: 0 0 0.25rem 0; font-size: 1.125rem; font-weight: 600;">@period.Name</h3>
                             <p class="bs-text-subtle" style="font-size: 0.875rem; margin: 0;">
-                                @period.StartDate.ToString("MMM dd, yyyy") - @period.EndDate.ToString("MMM dd, yyyy")
+                                @period.FormattedDateRange
                             </p>
                         </div>
                         <span class="bs-badge" style="background: @GetStateColor(period.State); color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
@@ -79,11 +79,18 @@
                             <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Total Coffee</p>
                             <p style="font-size: 1.25rem; font-weight: 700; margin: 0;">@period.TotalCoffeeGrams.ToString("F0")g</p>
                         </div>
-                        @if (period.DaysRemaining >= 0 && period.State == "Open")
+                        @if (period.State == "Open")
                         {
                             <div>
                                 <p class="bs-text-subtle" style="font-size: 0.75rem; margin: 0 0 0.25rem 0;">Days Remaining</p>
-                                <p style="font-size: 1.25rem; font-weight: 700; margin: 0;">@period.DaysRemaining</p>
+                                @if (period.IsOpenEnded)
+                                {
+                                    <p style="font-size: 1.25rem; font-weight: 700; margin: 0;">Open-ended</p>
+                                }
+                                else
+                                {
+                                    <p style="font-size: 1.25rem; font-weight: 700; margin: 0;">@period.DaysRemaining</p>
+                                }
                             </div>
                         }
                     </div>
@@ -160,7 +167,7 @@
                 Guid.Parse(SpaceId),
                 model.Name,
                 model.StartDate.ToUniversalTime(),
-                model.EndDate.ToUniversalTime()
+                model.IsOpenEnded ? null : model.EndDate.ToUniversalTime()
             );
 
             var result = await Mediator.Send(command);

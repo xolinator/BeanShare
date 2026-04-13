@@ -34,7 +34,7 @@ public sealed class GetSpaceStockEndpoint : Endpoint<GetSpaceStockRequest, Space
         var routeSpaceId = Route<Guid>("spaceId");
         req = req with { SpaceId = routeSpaceId };
 
-        var query = new GetSpaceStockQuery(req.SpaceId);
+        var query = new GetSpaceStockQuery(req.SpaceId, req.Page, req.PageSize);
         var result = await _mediator.Send(query, ct);
 
         if (result.IsSuccess)
@@ -51,6 +51,7 @@ public sealed class GetSpaceStockEndpoint : Endpoint<GetSpaceStockRequest, Space
                 TotalCurrentStockGrams = dto.TotalCurrentStockGrams,
                 TotalInvestmentAmount = dto.TotalInvestmentAmount,
                 TotalInvestmentCurrency = dto.TotalInvestmentCurrency,
+                TotalPurchaseCount = dto.TotalPurchaseCount,
                 StockLevels = dto.StockLevels.Select(sl => new StockLevelResponse
                 {
                     Id = sl.Id,

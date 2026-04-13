@@ -1,3 +1,5 @@
+using BeanShare.Domain.Aggregates.BillingPeriod;
+
 namespace BeanShare.Application.Features.Billing.Dtos;
 public sealed record BillingPeriodDto(
     Guid Id,
@@ -18,4 +20,15 @@ public sealed record BillingPeriodDto(
     decimal TotalCoffeeGrams,
     decimal? EstimatedCost,
     string? Currency
-);
+)
+{
+    public bool IsOpenEnded => EndDate >= BillingPeriod.OpenEndedSentinel.Date;
+
+    public string FormattedDateRange => IsOpenEnded
+        ? $"{StartDate:MMM dd, yyyy} — Open-ended"
+        : $"{StartDate:MMM dd, yyyy} — {EndDate:MMM dd, yyyy}";
+
+    public string FormattedDateRangeLong => IsOpenEnded
+        ? $"{StartDate:MMMM dd, yyyy} — Open-ended"
+        : $"{StartDate:MMMM dd, yyyy} — {EndDate:MMMM dd, yyyy}";
+};

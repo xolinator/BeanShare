@@ -98,6 +98,10 @@ public sealed class MockEmailService : IEmailService
     public Task SendEmailAsync(EmailMessage message, CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task SendEmailWithAttachmentAsync(EmailMessage message, EmailAttachment attachment, CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task SendEmailWithAttachmentsAsync(EmailMessage message, IEnumerable<EmailAttachment> attachments, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<IReadOnlyList<EmailSendResult>> SendBatchAsync(IReadOnlyList<EmailMessage> messages, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<EmailSendResult>>(messages.Select(m => new EmailSendResult(m.To, true)).ToList());
+    public Task<IReadOnlyList<EmailSendResult>> SendBatchAsync(IReadOnlyList<EmailMessage> messages, IReadOnlyList<EmailAttachment> sharedAttachments, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<EmailSendResult>>(messages.Select(m => new EmailSendResult(m.To, true)).ToList());
 }
 
 public sealed class MockCurrencyConversionService : ICurrencyConversionService

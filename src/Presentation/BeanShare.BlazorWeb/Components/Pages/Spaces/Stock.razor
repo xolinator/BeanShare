@@ -124,7 +124,13 @@ else
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
                            CurrencyCode="@(space?.CurrencyCode ?? "USD")"
-                           OnEditPurchase="HandleEditPurchase" />
+                           TotalPurchaseCount="@totalPurchaseCount"
+                           TotalStockGrams="@totalStockGrams"
+                           TotalInvestmentAmount="@totalInvestmentAmount"
+                           IsLoadingMore="@isLoadingMorePurchases"
+                           OnLoadMore="HandleLoadMorePurchases"
+                           OnEditPurchase="HandleEditPurchase"
+                           OnClonePurchase="HandleClonePurchase" />
 
             @if (isAdmin)
             {
@@ -141,8 +147,9 @@ else
 
 <AddPurchaseModal IsVisible="@showAddPurchaseModal"
                  OnSubmit="HandleAddPurchase"
-                 OnCancel="@(() => showAddPurchaseModal = false)"
-                 CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                 OnCancel="HandleAddPurchaseCancel"
+                 CurrencyCode="@(space?.CurrencyCode ?? "USD")"
+                 PrefillFrom="@purchasePrefill" />
 
 @if (showSplitModal && selectedStockLevel != null)
 {
@@ -215,8 +222,14 @@ else
 
     private List<StockPurchaseDto> purchases = new();
     private List<StockLevelDto> stockLevels = new();
+    private int totalPurchaseCount;
+    private decimal totalStockGrams;
+    private decimal totalInvestmentAmount;
+    private int currentPurchasePage = 1;
+    private bool isLoadingMorePurchases;
 
     private bool showAddPurchaseModal;
+    private AddPurchaseModal.PurchasePrefill? purchasePrefill;
     private bool showSplitModal;
     private bool isSplitting;
     private StockLevelDto? selectedStockLevel;
@@ -270,6 +283,7 @@ else
     private async Task LoadStock()
     {
         isLoadingStock = true;
+        currentPurchasePage = 1;
 
         try
         {
@@ -278,6 +292,9 @@ else
             {
                 purchases = result.Value.RecentPurchases.ToList();
                 stockLevels = result.Value.StockLevels.ToList();
+                totalPurchaseCount = result.Value.TotalPurchaseCount;
+                totalStockGrams = result.Value.TotalCurrentStockGrams;
+                totalInvestmentAmount = result.Value.TotalInvestmentAmount;
             }
         }
         catch (Exception ex)
@@ -287,6 +304,31 @@ else
         finally
         {
             isLoadingStock = false;
+        }
+    }
+
+    private async Task HandleLoadMorePurchases()
+    {
+        isLoadingMorePurchases = true;
+
+        try
+        {
+            currentPurchasePage++;
+            var result = await Mediator.Send(new GetSpaceStockQuery(Guid.Parse(SpaceId), currentPurchasePage));
+            if (result.IsSuccess)
+            {
+                purchases.AddRange(result.Value.RecentPurchases);
+                totalPurchaseCount = result.Value.TotalPurchaseCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            currentPurchasePage--;
+            ShowToast(true, "Error", $"Failed to load more purchases: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingMorePurchases = false;
         }
     }
 
@@ -321,6 +363,7 @@ else
             if (result.IsSuccess)
             {
                 showAddPurchaseModal = false;
+                purchasePrefill = null;
                 ShowToast(false, "Success", "Stock purchase added successfully!");
                 await LoadStock();
             }
@@ -333,6 +376,25 @@ else
         {
             ShowToast(true, "Error", $"Failed to add purchase: {ex.Message}");
         }
+    }
+
+    private void HandleAddPurchaseCancel()
+    {
+        showAddPurchaseModal = false;
+        purchasePrefill = null;
+    }
+
+    private void HandleClonePurchase(PurchaseRow.PurchaseCloneModel model)
+    {
+        purchasePrefill = new AddPurchaseModal.PurchasePrefill
+        {
+            ProductBrand = model.ProductBrand,
+            ProductName = model.ProductName,
+            QuantityGrams = model.QuantityGrams,
+            CostAmount = model.CostAmount,
+            CoffeeType = model.CoffeeType
+        };
+        showAddPurchaseModal = true;
     }
 
     private async Task HandleEditPurchase(BeanShare.SharedUi.Components.Stock.PurchaseRow.PurchaseEditModel model)
