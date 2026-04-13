@@ -371,7 +371,7 @@ See [TEST.md](TEST.md) for local setup and [PRODUCTION-DEPLOYMENT.md](../PRODUCT
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
 Authored by Oliver Golec as a diploma thesis at the Faculty of Information Technology, Brno University of Technology (VUT FIT), under the supervision of Ing. Jan Pluskal, Ph.D.
 
