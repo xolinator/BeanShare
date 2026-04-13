@@ -16,7 +16,7 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(assembly);
 
-        services.AddMediatR(assembly);
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
 
         // Add Mapster
         var config = TypeAdapterConfig.GlobalSettings;
