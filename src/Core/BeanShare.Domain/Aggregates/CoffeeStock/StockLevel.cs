@@ -92,8 +92,9 @@ public sealed class StockLevel : Entity
         if (!quantity.IsPositive)
             throw new ArgumentException("Quantity must be positive", nameof(quantity));
 
-        var newConsumed = TotalConsumed.Subtract(quantity);
-        TotalConsumed = newConsumed;
+        TotalConsumed = quantity.Grams > TotalConsumed.Grams
+            ? Weight.Zero
+            : TotalConsumed.Subtract(quantity);
         UpdatedAt = clock.UtcNow;
     }
 

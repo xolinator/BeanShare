@@ -36,21 +36,42 @@
     {
         <div class="bs-flex bs-items-center bs-justify-between bs-mb-4">
             <h2 class="bs-font-bold" style="margin: 0; font-size: 1.25rem;">Purchases</h2>
+            @if (TotalPurchaseCount > 0)
+            {
+                <span class="bs-text-subtle" style="font-size: 0.875rem;">Showing @Purchases.Count() of @TotalPurchaseCount</span>
+            }
         </div>
         <div class="bs-flex bs-flex-col bs-gap-4">
             @foreach (var purchase in Purchases)
             {
                 <PurchaseRow PurchaseId="@purchase.Id"
                             ProductName="@purchase.ProductName"
+                            ProductBrand="@purchase.ProductBrand"
                             TotalCost="@purchase.TotalCost"
                             CurrencyCode="@purchase.CostCurrency"
                             QuantityGrams="@((int)purchase.QuantityGrams)"
                             CoffeeType="@purchase.CoffeeType"
                             PurchasedAt="@purchase.PurchasedAt"
                             PurchasedByName="@purchase.PurchasedByName"
-                            OnEdit="OnEditPurchase" />
+                            OnEdit="OnEditPurchase"
+                            OnClone="OnClonePurchase" />
             }
         </div>
+        @if (HasMorePurchases)
+        {
+            <div style="text-align: center; margin-top: 1rem;">
+                <button class="bs-btn bs-btn-secondary" @onclick="HandleLoadMore" disabled="@IsLoadingMore">
+                    @if (IsLoadingMore)
+                    {
+                        <span>Loading...</span>
+                    }
+                    else
+                    {
+                        <span>Load more</span>
+                    }
+                </button>
+            </div>
+        }
     }
 </div>
 
@@ -67,9 +88,34 @@
     [Parameter]
     public EventCallback<PurchaseRow.PurchaseEditModel> OnEditPurchase { get; set; }
 
-    private int TotalPurchases => Purchases?.Count() ?? 0;
-    private int TotalGrams => (int)(Purchases?.Sum(p => p.QuantityGrams) ?? 0);
-    private decimal TotalCost => Purchases?.Sum(p => p.TotalCost) ?? 0m;
+    [Parameter]
+    public EventCallback<PurchaseRow.PurchaseCloneModel> OnClonePurchase { get; set; }
+
+    [Parameter]
+    public int TotalPurchaseCount { get; set; }
+
+    [Parameter]
+    public decimal TotalStockGrams { get; set; }
+
+    [Parameter]
+    public decimal TotalInvestmentAmount { get; set; }
+
+    [Parameter]
+    public bool IsLoadingMore { get; set; }
+
+    [Parameter]
+    public EventCallback OnLoadMore { get; set; }
+
+    private bool HasMorePurchases => Purchases != null && TotalPurchaseCount > Purchases.Count();
+
+    private async Task HandleLoadMore()
+    {
+        await OnLoadMore.InvokeAsync();
+    }
+
+    private int TotalPurchases => TotalPurchaseCount;
+    private int TotalGrams => (int)TotalStockGrams;
+    private decimal TotalCost => TotalInvestmentAmount;
 
     private string FormatCurrency(decimal amount)
     {

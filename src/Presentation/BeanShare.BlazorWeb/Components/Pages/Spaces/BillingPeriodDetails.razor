@@ -5,6 +5,7 @@
 @using BeanShare.Application.Features.Billing.Commands.OpenBillingPeriod
 @using BeanShare.Application.Features.Billing.Commands.CloseBillingPeriod
 @using BeanShare.Application.Features.Settlement.Commands.GenerateSettlement
+@using BeanShare.Application.Features.Billing.Commands.ReopenBillingPeriod
 @using BeanShare.Application.Features.Billing.Dtos
 @using BeanShare.Domain.ValueObjects
 @using Microsoft.AspNetCore.Authorization
@@ -53,7 +54,7 @@
                     </span>
                     <h2 style="margin: 1rem 0 0.5rem 0; font-size: 1.5rem; font-weight: 700;">@period.Name</h2>
                     <p class="bs-text-subtle" style="margin: 0;">
-                        @period.StartDate.ToString("MMMM dd, yyyy") - @period.EndDate.ToString("MMMM dd, yyyy")
+                        @period.FormattedDateRangeLong
                     </p>
                 </div>
             </div>
@@ -118,6 +119,17 @@
                         {
                             <span class="material-symbols-outlined">receipt_long</span>
                             <span>Generate Settlement</span>
+                        }
+                    </button>
+                    <button class="bs-btn bs-btn-secondary" @onclick="HandleReopenPeriod" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span>Reopening...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined">lock_open</span>
+                            <span>Reopen</span>
                         }
                     </button>
                 }
@@ -283,6 +295,34 @@
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to close billing period: {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task HandleReopenPeriod()
+    {
+        isProcessing = true;
+        try
+        {
+            var command = new ReopenBillingPeriodCommand(Guid.Parse(PeriodId));
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Billing period reopened successfully!");
+                await LoadPeriod();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to reopen billing period: {ex.Message}");
         }
         finally
         {

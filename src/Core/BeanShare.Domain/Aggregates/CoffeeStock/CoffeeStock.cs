@@ -152,7 +152,7 @@ public sealed class CoffeeStock : AggregateRoot
             sl.Product.Type == product.Type);
 
         if (stockLevel == null)
-            return;
+            throw new ProductNotFoundException(product.Name, product.Brand);
 
         stockLevel.RestoreStock(quantity, clock);
         UpdatedAt = clock.UtcNow;
