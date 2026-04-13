@@ -355,11 +355,6 @@
     "hash": "sha256-75KzEGWjbRELczJpCiJub+ltNUMMbz5A/1KQU+5dgP8="
   },
   {
-    "pname": "Microsoft.Extensions.DependencyInjection.Abstractions",
-    "version": "9.0.0",
-    "hash": "sha256-CncVwkKZ5CsIG2O0+OM9qXuYXh3p6UGyueTHSLDVL+c="
-  },
-  {
     "pname": "Microsoft.Extensions.DependencyModel",
     "version": "10.0.0-preview.7.25380.108",
     "hash": "sha256-oyeBCWxDfoiJraxCdMbWEnyg+/mma4giF4+8yLBnJ28="
