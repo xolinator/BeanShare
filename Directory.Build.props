@@ -1,5 +1,10 @@
 <Project>
   <PropertyGroup>
+    <!-- Common project properties applied to all projects in the solution -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
     <!-- Suppress development-time only vulnerability warnings -->
     <!-- NU1903: Microsoft.Build packages vulnerability only affects build tools, not runtime -->
     <NoWarn>$(NoWarn);NU1903</NoWarn>
