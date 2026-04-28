@@ -114,14 +114,36 @@
     [Parameter]
     public string CurrencyCode { get; set; } = "USD";
 
+    [Parameter]
+    public PurchasePrefill? PrefillFrom { get; set; }
+
     private AddPurchaseModel model = new();
     private bool isSubmitting;
     private bool showDiscardConfirm;
+    private bool prefillApplied;
 
     protected override void OnInitialized()
     {
         if (!string.IsNullOrEmpty(CurrencyCode))
             model.Currency = CurrencyCode;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (PrefillFrom != null && !prefillApplied)
+        {
+            model.ProductBrand = PrefillFrom.ProductBrand;
+            model.ProductName = PrefillFrom.ProductName;
+            model.QuantityGrams = PrefillFrom.QuantityGrams;
+            model.TotalCost = PrefillFrom.CostAmount;
+            model.CoffeeType = PrefillFrom.CoffeeType;
+            model.PurchasedAt = DateTime.UtcNow;
+            model.Currency = CurrencyCode;
+            prefillApplied = true;
+        }
+
+        if (PrefillFrom == null)
+            prefillApplied = false;
     }
 
     private async Task HandleSubmit()
@@ -166,6 +188,15 @@
         model = new AddPurchaseModel { Currency = CurrencyCode };
         showDiscardConfirm = false;
         await OnCancel.InvokeAsync();
+    }
+
+    public class PurchasePrefill
+    {
+        public string ProductBrand { get; set; } = "";
+        public string ProductName { get; set; } = "";
+        public int QuantityGrams { get; set; }
+        public decimal CostAmount { get; set; }
+        public string CoffeeType { get; set; } = "Espresso";
     }
 
     public class AddPurchaseModel

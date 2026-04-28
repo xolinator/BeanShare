@@ -71,6 +71,11 @@ else
             <div class="bs-flex bs-items-center bs-gap-2">
                 <span class="bs-text-subtle">by @PurchasedByInitials</span>
                 <button class="bs-btn-icon" style="padding: 0.25rem; color: var(--bs-text-subtle);"
+                        title="Clone purchase"
+                        @onclick="HandleClone" @onclick:stopPropagation="true">
+                    <span class="material-symbols-outlined" style="font-size: 1rem;">content_copy</span>
+                </button>
+                <button class="bs-btn-icon" style="padding: 0.25rem; color: var(--bs-text-subtle);"
                         title="Edit purchase"
                         @onclick="StartEdit" @onclick:stopPropagation="true">
                     <span class="material-symbols-outlined" style="font-size: 1rem;">edit</span>
@@ -97,6 +102,7 @@ else
     [Parameter] public string PurchasedByName { get; set; } = "";
     [Parameter] public EventCallback<PurchaseEditModel> OnEdit { get; set; }
     [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+    [Parameter] public EventCallback<PurchaseCloneModel> OnClone { get; set; }
 
     private bool isEditing;
     private bool isSaving;
@@ -107,6 +113,18 @@ else
     private decimal editQuantity;
     private decimal editCost;
     private DateTime editDate;
+
+    private async Task HandleClone()
+    {
+        await OnClone.InvokeAsync(new PurchaseCloneModel
+        {
+            ProductBrand = ProductBrand,
+            ProductName = ProductName,
+            QuantityGrams = QuantityGrams,
+            CostAmount = TotalCost,
+            CoffeeType = CoffeeType
+        });
+    }
 
     private void StartEdit()
     {
@@ -208,5 +226,14 @@ else
         public decimal QuantityGrams { get; set; }
         public decimal CostAmount { get; set; }
         public DateTime PurchasedAt { get; set; }
+    }
+
+    public class PurchaseCloneModel
+    {
+        public string ProductBrand { get; set; } = "";
+        public string ProductName { get; set; } = "";
+        public int QuantityGrams { get; set; }
+        public decimal CostAmount { get; set; }
+        public string CoffeeType { get; set; } = "Espresso";
     }
 }

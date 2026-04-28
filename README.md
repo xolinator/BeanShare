@@ -371,11 +371,8 @@ See [TEST.md](TEST.md) for local setup and [PRODUCTION-DEPLOYMENT.md](../PRODUCT
 
 ## License
 
-Authored by: Oliver Golec
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
-This project is part of a diploma thesis at Brno University of Technology (VUT FIT).
+Authored by Oliver Golec as a diploma thesis at the Faculty of Information Technology, Brno University of Technology (VUT FIT), under the supervision of Ing. Jan Pluskal, Ph.D.
 
-For issues and questions:
-- Create an issue in the repository
-- Check documentation in `/docs`
-- Review configuration guide
+For issues and questions, create an issue in the repository.

@@ -24,8 +24,9 @@ public static class DependencyInjection
         services.AddScoped<AvatarStorageService>();
         services.AddMemoryCache();
 
-        // Document generation
         services.AddSingleton<ISettlementReportGenerator, SettlementReportGenerator>();
+        services.AddSingleton<ISettlementPdfGenerator>(sp =>
+            new SettlementPdfGeneratorAdapter(sp.GetRequiredService<ISettlementReportGenerator>()));
 
         // services.AddIdentity();
 

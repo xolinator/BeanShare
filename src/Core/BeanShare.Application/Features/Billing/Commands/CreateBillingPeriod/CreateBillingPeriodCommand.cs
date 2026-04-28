@@ -7,5 +7,5 @@ public sealed record CreateBillingPeriodCommand(
     Guid SpaceId,
     string Name,
     DateTime StartDate,
-    DateTime EndDate
+    DateTime? EndDate = null
 ) : ICommand<Result<BillingPeriodDto>>;

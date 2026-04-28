@@ -71,7 +71,13 @@ else
             <div>
                 <StockPurchases Purchases="@purchases"
                                IsLoading="@isLoadingStock"
-                               CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                               CurrencyCode="@(space?.CurrencyCode ?? "USD")"
+                               TotalPurchaseCount="@totalPurchaseCount"
+                               TotalStockGrams="@totalStockGrams"
+                               TotalInvestmentAmount="@totalInvestmentAmount"
+                               IsLoadingMore="@isLoadingMorePurchases"
+                               OnLoadMore="HandleLoadMorePurchases"
+                               OnClonePurchase="HandleClonePurchase" />
 
                 @if (isAdmin)
                 {
@@ -139,8 +145,9 @@ else
 
 <AddPurchaseModal IsVisible="@showAddPurchaseModal"
                  OnSubmit="HandleAddPurchase"
-                 OnCancel="@(() => showAddPurchaseModal = false)"
-                 CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
+                 OnCancel="HandleAddPurchaseCancel"
+                 CurrencyCode="@(space?.CurrencyCode ?? "USD")"
+                 PrefillFrom="@purchasePrefill" />
 
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
@@ -164,6 +171,11 @@ else
     private bool isLoadingAnalytics;
 
     private List<StockPurchaseDto> purchases = new();
+    private int totalPurchaseCount;
+    private decimal totalStockGrams;
+    private decimal totalInvestmentAmount;
+    private int currentPurchasePage = 1;
+    private bool isLoadingMorePurchases;
     private List<StockLevelDto> stockProducts = new();
     private List<PresetOption> quickPresets = new();
     private List<ConsumptionEntryDto> recentConsumptions = new();
@@ -173,6 +185,7 @@ else
     private SpaceAnalyticsDto? spaceAnalytics;
 
     private bool showAddPurchaseModal;
+    private AddPurchaseModal.PurchasePrefill? purchasePrefill;
     private bool showToast;
     private bool isToastError;
     private string toastTitle = "";
@@ -234,12 +247,16 @@ else
         }
 
         isLoadingStock = true;
+        currentPurchasePage = 1;
         try
         {
             var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
             if (stockData != null)
             {
                 purchases = stockData.RecentPurchases.ToList();
+                totalPurchaseCount = stockData.TotalPurchaseCount;
+                totalStockGrams = stockData.TotalCurrentStockGrams;
+                totalInvestmentAmount = stockData.TotalInvestmentAmount;
             }
         }
         catch (Exception ex)
@@ -249,6 +266,35 @@ else
         finally
         {
             isLoadingStock = false;
+        }
+    }
+
+    private async Task HandleLoadMorePurchases()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid)) return;
+
+        isLoadingMorePurchases = true;
+        StateHasChanged();
+
+        try
+        {
+            currentPurchasePage++;
+            var stockData = await StockService.GetSpaceStockAsync(spaceGuid, currentPurchasePage);
+            if (stockData != null)
+            {
+                purchases.AddRange(stockData.RecentPurchases);
+                totalPurchaseCount = stockData.TotalPurchaseCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            currentPurchasePage--;
+            ShowToast(true, "Error", $"Failed to load more purchases: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingMorePurchases = false;
+            StateHasChanged();
         }
     }
 
@@ -490,6 +536,7 @@ else
             if (success)
             {
                 showAddPurchaseModal = false;
+                purchasePrefill = null;
                 ShowToast(false, "Success", "Stock purchase added successfully!");
                 await LoadStock();
             }
@@ -502,6 +549,25 @@ else
         {
             ShowToast(true, "Error", $"Failed to add purchase: {ex.Message}");
         }
+    }
+
+    private void HandleAddPurchaseCancel()
+    {
+        showAddPurchaseModal = false;
+        purchasePrefill = null;
+    }
+
+    private void HandleClonePurchase(PurchaseRow.PurchaseCloneModel model)
+    {
+        purchasePrefill = new AddPurchaseModal.PurchasePrefill
+        {
+            ProductBrand = model.ProductBrand,
+            ProductName = model.ProductName,
+            QuantityGrams = model.QuantityGrams,
+            CostAmount = model.CostAmount,
+            CoffeeType = model.CoffeeType
+        };
+        showAddPurchaseModal = true;
     }
 
     private async Task HandleLogConsumption(ConsumptionFormModel model)

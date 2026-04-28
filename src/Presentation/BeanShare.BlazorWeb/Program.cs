@@ -7,9 +7,11 @@ using BeanShare.Infrastructure.Persistence;
 using BeanShare.Infrastructure.Persistence.Seeds;
 using BeanShare.Infrastructure.Services;
 using BeanShare.SharedUi.Services;
-using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Components;
+using System.Security.Claims;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -76,7 +78,7 @@ if (useOidc)
         {
             options.ResponseMode = oidcResponseMode;
         }
-        options.SaveTokens = true;
+        options.SaveTokens = false;
         options.GetClaimsFromUserInfoEndpoint = true;
         options.RequireHttpsMetadata = builder.Environment.IsProduction();
         options.MapInboundClaims = false;
@@ -100,10 +102,24 @@ if (useOidc)
         options.Scope.Add("profile");
         options.Scope.Add("email");
 
+        // Only map the claims we actually need from the UserInfo endpoint response.
+        // This prevents Authentik group lists, extra profile fields, and other bulk
+        // claims from being written into the auth cookie.
+        options.ClaimActions.Clear();
+        options.ClaimActions.MapUniqueJsonKey("sub", "sub");
+        options.ClaimActions.MapUniqueJsonKey("email", "email");
+        options.ClaimActions.MapUniqueJsonKey("preferred_username", "preferred_username");
+        options.ClaimActions.MapUniqueJsonKey("name", "name");
+        options.ClaimActions.MapUniqueJsonKey("identity_provider", "identity_provider");
+        // Map groups/roles from UserInfo so that role-based authorization still works
+        // for providers that only include these claims in the UserInfo response.
+        options.ClaimActions.MapJsonKey(ClaimTypes.Role, "roles");
+        options.ClaimActions.MapJsonKey(ClaimTypes.Role, "groups");
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             NameClaimType = "preferred_username",
-            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+            RoleClaimType = ClaimTypes.Role
         };
 
         options.Events = new OpenIdConnectEvents
@@ -124,7 +140,7 @@ if (useOidc)
                 // Extract roles from multiple OIDC claim formats for provider compatibility
                 if (context.Principal != null)
                 {
-                    var identity = context.Principal.Identity as System.Security.Claims.ClaimsIdentity;
+                    var identity = context.Principal.Identity as ClaimsIdentity;
                     if (identity != null)
                     {
                         // Keycloak: realm_access JSON with nested roles array
@@ -174,6 +190,41 @@ if (useOidc)
                     {
                         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                         logger.LogError(ex, "Failed to sync user from OIDC claims");
+                    }
+                }
+
+                // Strip non-essential claims from the ID token before the auth ticket is
+                // written to the cookie. Keeping only what the application actually reads
+                // prevents the cookie from chunking into multiple browser cookies (which
+                // causes "400 Request Header Or Cookie Too Large" behind nginx).
+                //
+                // Removed claim types and why they are safe to remove:
+                //   iss, aud, exp, iat, nbf, jti  – JWT validation fields; already consumed by the handler
+                //   nonce, auth_time, acr, amr, sid, at_hash, c_hash, azp, session_state
+                //                                  – OIDC protocol fields; not used after validation
+                //   realm_access                   – Keycloak JSON blob; roles already expanded above
+                //   roles, groups                  – raw claim strings; already expanded into ClaimTypes.Role
+                //   given_name, family_name, locale, zoneinfo, updated_at, picture,
+                //   website, phone_number, email_verified
+                //                                  – extended profile fields not read by this application
+                if (context.Principal?.Identity is ClaimsIdentity idToClean)
+                {
+                    var essentialClaimTypes = new HashSet<string>(StringComparer.Ordinal)
+                    {
+                        "sub",
+                        ClaimTypes.NameIdentifier,
+                        "email",
+                        "preferred_username",
+                        "name",
+                        "identity_provider",
+                        ClaimTypes.Role,
+                    };
+
+                    foreach (var claim in idToClean.Claims
+                        .Where(c => !essentialClaimTypes.Contains(c.Type))
+                        .ToList())
+                    {
+                        idToClean.RemoveClaim(claim);
                     }
                 }
             }
@@ -236,7 +287,8 @@ await app.Services.InitializeBeanShareDatabaseAsync(includeWebDemoData);
 
 app.UseAntiforgery();
 
-var avatarStorage = app.Services.GetRequiredService<AvatarStorageService>();
+using var avatarScope = app.Services.CreateScope();
+var avatarStorage = avatarScope.ServiceProvider.GetRequiredService<AvatarStorageService>();
 var uploadsRootPath = avatarStorage.GetUploadsRootPath();
 Directory.CreateDirectory(uploadsRootPath);
 
@@ -278,14 +330,14 @@ static string ResolvePublicBaseUrl(IServiceProvider services, string? configured
     return developmentFallback.TrimEnd('/');
 }
 
-static void AddRoleClaims(System.Security.Claims.ClaimsIdentity identity, string? rawValue)
+static void AddRoleClaims(ClaimsIdentity identity, string? rawValue)
 {
     foreach (var roleValue in ExpandMultiValueClaim(rawValue))
     {
-        if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, roleValue))
+        if (!identity.HasClaim(ClaimTypes.Role, roleValue))
         {
-            identity.AddClaim(new System.Security.Claims.Claim(
-                System.Security.Claims.ClaimTypes.Role,
+            identity.AddClaim(new Claim(
+                ClaimTypes.Role,
                 roleValue));
         }
     }

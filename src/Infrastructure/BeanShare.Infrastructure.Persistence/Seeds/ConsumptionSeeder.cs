@@ -185,10 +185,7 @@ public class ConsumptionSeeder : IDataSeeder
         var coffeeProducts = new[]
         {
             CoffeeProduct.Create("Super Crema", "Lavazza", CoffeeType.Espresso),
-            CoffeeProduct.Create("Pike Place", "Starbucks", CoffeeType.Filter),
-            CoffeeProduct.Create("Classico", "Illy", CoffeeType.Filter),
-            CoffeeProduct.Create("Death Wish", "Death Wish Coffee", CoffeeType.Espresso),
-            CoffeeProduct.Create("Breakfast Blend", "Green Mountain", CoffeeType.Filter)
+            CoffeeProduct.Create("Pike Place", "Starbucks", CoffeeType.Filter)
         };
 
         var localRandom = new Random((int)(date.Ticks % int.MaxValue) + userId.Value.GetHashCode());

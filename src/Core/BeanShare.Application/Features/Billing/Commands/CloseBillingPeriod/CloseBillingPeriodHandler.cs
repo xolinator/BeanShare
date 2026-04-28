@@ -42,9 +42,8 @@ public sealed class CloseBillingPeriodHandler : IRequestHandler<CloseBillingPeri
 
         try
         {
-            await AssignUnbilledConsumptions(billingPeriod, billingPeriodId, cancellationToken);
-
             billingPeriod.Close(_userContext.CurrentUserId, _clock);
+            await AssignUnbilledConsumptions(billingPeriod, billingPeriodId, cancellationToken);
             await _billingPeriodRepository.UpdateAsync(billingPeriod, cancellationToken);
 
             return Result.Success();

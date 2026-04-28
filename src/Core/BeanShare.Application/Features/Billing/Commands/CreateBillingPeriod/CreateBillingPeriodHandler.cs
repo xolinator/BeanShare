@@ -45,8 +45,9 @@ public sealed class CreateBillingPeriodHandler : IRequestHandler<CreateBillingPe
             return Result<BillingPeriodDto>.Failure(Error.InsufficientSpacePrivileges("create billing periods"));
         }
 
+        var overlapEnd = command.EndDate ?? BillingPeriod.OpenEndedSentinel;
         var hasOverlap = await _billingPeriodRepository.HasOverlappingPeriodAsync(
-            spaceId, command.StartDate, command.EndDate, null, cancellationToken);
+            spaceId, command.StartDate, overlapEnd, null, cancellationToken);
 
         if (hasOverlap)
         {

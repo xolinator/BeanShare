@@ -14,9 +14,9 @@ public class StockService : IStockService
         _cache = cache;
     }
 
-    public async Task<CoffeeStockDto?> GetSpaceStockAsync(Guid spaceId)
+    public async Task<CoffeeStockDto?> GetSpaceStockAsync(Guid spaceId, int page = 1, int pageSize = 10)
     {
-        var cacheKey = $"stock:{spaceId}";
+        var cacheKey = $"stock:{spaceId}:p{page}";
         var cached = _cache.Get<CoffeeStockDto>(cacheKey);
         if (cached != null)
             return cached;
@@ -25,7 +25,7 @@ public class StockService : IStockService
 
         try
         {
-            var result = await _httpClient.GetFromJsonAsync<CoffeeStockDto>($"/api/spaces/{spaceId}/stock");
+            var result = await _httpClient.GetFromJsonAsync<CoffeeStockDto>($"/api/spaces/{spaceId}/stock?page={page}&pageSize={pageSize}");
             if (result != null)
                 _cache.Set(cacheKey, result);
             return result;

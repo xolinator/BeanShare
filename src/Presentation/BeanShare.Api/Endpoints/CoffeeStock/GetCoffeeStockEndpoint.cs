@@ -32,7 +32,7 @@ public sealed class GetCoffeeStockEndpoint : Endpoint<GetSpaceStockRequest, Spac
     {
         var routeSpaceId = Route<Guid>("spaceId");
 
-        var query = new GetSpaceStockQuery(routeSpaceId);
+        var query = new GetSpaceStockQuery(routeSpaceId, req.Page, req.PageSize);
         var result = await _mediator.Send(query, ct);
 
         if (result.IsFailure)
@@ -57,6 +57,7 @@ public sealed class GetCoffeeStockEndpoint : Endpoint<GetSpaceStockRequest, Spac
             TotalCurrentStockGrams = dto.TotalCurrentStockGrams,
             TotalInvestmentAmount = dto.TotalInvestmentAmount,
             TotalInvestmentCurrency = dto.TotalInvestmentCurrency,
+            TotalPurchaseCount = dto.TotalPurchaseCount,
             StockLevels = dto.StockLevels.Select(sl => new StockLevelResponse
             {
                 Id = sl.Id,
