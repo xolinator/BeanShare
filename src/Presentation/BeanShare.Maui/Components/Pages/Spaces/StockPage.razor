@@ -258,7 +258,8 @@ else
                 model.CoffeeType,
                 model.QuantityGrams,
                 model.TotalCost,
-                model.Currency
+                model.Currency,
+                model.PurchasedAt.ToUniversalTime()
             );
 
             if (success)

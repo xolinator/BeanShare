@@ -119,7 +119,7 @@ public sealed class CoffeeStock : AggregateRoot
             if (oldStockLevel != null)
             {
                 var maxReduction = oldStockLevel.TotalPurchased.Grams - oldStockLevel.TotalConsumed.Grams;
-                var reduction = Math.Min(newQuantity.Grams, maxReduction);
+                var reduction = Math.Min(oldQuantity.Grams, maxReduction);
                 if (reduction > 0)
                     oldStockLevel.ReducePurchased(Weight.FromGrams(reduction), clock);
             }

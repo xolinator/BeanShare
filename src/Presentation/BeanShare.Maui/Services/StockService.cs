@@ -57,6 +57,14 @@ public class StockService : IStockService
             {
                 _cache.Invalidate("stock:");
             }
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<bool> UpdateStockPurchaseAsync(Guid spaceId, Guid purchaseId, string productName, string productBrand, string coffeeType, decimal quantityGrams, decimal costAmount, DateTime purchasedAt)
     {
         try
