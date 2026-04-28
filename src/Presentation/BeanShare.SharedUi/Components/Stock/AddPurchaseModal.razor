@@ -1,10 +1,26 @@
 @if (IsVisible)
 {
-    <div class="bs-modal-backdrop" @onclick="Cancel">
+    <div class="bs-modal-backdrop" @onclick="HandleBackdropClick">
         <div class="bs-modal" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true">
             <div class="bs-modal-header">
                 <h3 class="bs-modal-title">Add Stock Purchase</h3>
             </div>
+            @if (showDiscardConfirm)
+            {
+                <div style="padding: 1rem;">
+                    <p style="margin: 0 0 1rem 0;">Discard unsaved changes?</p>
+                    <div class="bs-modal-footer">
+                        <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="@(() => showDiscardConfirm = false)">
+                            Keep Editing
+                        </button>
+                        <button type="button" class="bs-btn bs-btn-error bs-flex-1" @onclick="DiscardChanges">
+                            Discard
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
             <EditForm Model="@model" OnValidSubmit="HandleSubmit">
                 <DataAnnotationsValidator />
 
@@ -80,6 +96,7 @@
                     </button>
                 </div>
             </EditForm>
+            }
         </div>
     </div>
 }
@@ -102,6 +119,7 @@
 
     private AddPurchaseModel model = new();
     private bool isSubmitting;
+    private bool showDiscardConfirm;
     private bool prefillApplied;
 
     protected override void OnInitialized()
@@ -135,6 +153,7 @@
         {
             await OnSubmit.InvokeAsync(model);
             model = new AddPurchaseModel { Currency = CurrencyCode };
+            showDiscardConfirm = false;
         }
         finally
         {
@@ -142,9 +161,32 @@
         }
     }
 
+    private bool IsDirty =>
+        !string.IsNullOrEmpty(model.ProductBrand) ||
+        !string.IsNullOrEmpty(model.ProductName) ||
+        model.QuantityGrams != 0 ||
+        model.TotalCost != 0;
+
+    private async Task HandleBackdropClick()
+    {
+        if (IsDirty)
+            showDiscardConfirm = true;
+        else
+            await DiscardChanges();
+    }
+
     private async Task Cancel()
     {
+        if (IsDirty)
+            showDiscardConfirm = true;
+        else
+            await DiscardChanges();
+    }
+
+    private async Task DiscardChanges()
+    {
         model = new AddPurchaseModel { Currency = CurrencyCode };
+        showDiscardConfirm = false;
         await OnCancel.InvokeAsync();
     }
 

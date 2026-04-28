@@ -274,4 +274,167 @@ public sealed class CoffeeStockDomainTests
         lowStockProducts.Should().HaveCount(1);
         lowStockProducts.First().CurrentStock.Should().Be(Weight.FromGrams(500));
     }
+
+    [Fact]
+    public void UpdatePurchase_IncreasingQuantity_ShouldGrowStockLevel()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Premium Blend", "Blue Mountain", CoffeeType.Espresso);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(20m, "USD"), "Vendor", _userId, purchasedAt, _clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStock.UpdatePurchase(purchaseId, Weight.FromGrams(1500), 30m, purchasedAt, _clock);
+
+        var stock = coffeeStock.StockLevels.First();
+        stock.TotalPurchased.Should().Be(Weight.FromGrams(1500));
+        stock.CurrentStock.Should().Be(Weight.FromGrams(1500));
+        coffeeStock.Purchases.First().Quantity.Should().Be(Weight.FromGrams(1500));
+    }
+
+    [Fact]
+    public void UpdatePurchase_DecreasingQuantity_ShouldShrinkStockLevel()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Premium Blend", "Blue Mountain", CoffeeType.Espresso);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(20m, "USD"), "Vendor", _userId, purchasedAt, _clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStock.UpdatePurchase(purchaseId, Weight.FromGrams(400), 8m, purchasedAt, _clock);
+
+        var stock = coffeeStock.StockLevels.First();
+        stock.TotalPurchased.Should().Be(Weight.FromGrams(400));
+        stock.CurrentStock.Should().Be(Weight.FromGrams(400));
+    }
+
+    [Fact]
+    public void UpdatePurchase_DecreasingBelowConsumed_ShouldCapAtAvailable()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Premium Blend", "Blue Mountain", CoffeeType.Espresso);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(20m, "USD"), "Vendor", _userId, purchasedAt, _clock);
+        coffeeStock.ConsumeStock(product, Weight.FromGrams(700), _clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStock.UpdatePurchase(purchaseId, Weight.FromGrams(100), 2m, purchasedAt, _clock);
+
+        var stock = coffeeStock.StockLevels.First();
+        stock.TotalPurchased.Should().Be(Weight.FromGrams(700));
+        stock.TotalConsumed.Should().Be(Weight.FromGrams(700));
+        stock.CurrentStock.Should().Be(Weight.Zero);
+    }
+
+    [Fact]
+    public void UpdatePurchase_ChangingProductAndQuantity_ShouldReduceOldStockByOldQuantity()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var oldProduct = CoffeeProduct.Create("Pike Place", "Starbucks", CoffeeType.Filter);
+        var newProduct = CoffeeProduct.Create("Super Crema", "Lavazza", CoffeeType.Espresso);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+        coffeeStock.AddPurchase(oldProduct, Weight.FromGrams(1000), Money.Create(20m, "USD"), "Vendor", _userId, purchasedAt, _clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStock.UpdatePurchase(
+            purchaseId,
+            Weight.FromGrams(500),
+            15m,
+            purchasedAt,
+            _clock,
+            newProductName: newProduct.Name,
+            newProductBrand: newProduct.Brand,
+            newCoffeeType: newProduct.Type);
+
+        var stockOld = coffeeStock.StockLevels.Single(sl => sl.Product.Equals(oldProduct));
+        var stockNew = coffeeStock.StockLevels.Single(sl => sl.Product.Equals(newProduct));
+        stockOld.CurrentStock.Should().Be(Weight.Zero);
+        stockOld.TotalPurchased.Should().Be(Weight.Zero);
+        stockNew.TotalPurchased.Should().Be(Weight.FromGrams(500));
+        stockNew.CurrentStock.Should().Be(Weight.FromGrams(500));
+        coffeeStock.Purchases.Single().Product.Should().Be(newProduct);
+    }
+
+    [Fact]
+    public void UpdatePurchase_ChangingProductOnly_ShouldMoveStockToNewProduct()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var oldProduct = CoffeeProduct.Create("Pike Place", "Starbucks", CoffeeType.Filter);
+        var newProduct = CoffeeProduct.Create("Super Crema", "Lavazza", CoffeeType.Espresso);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+        coffeeStock.AddPurchase(oldProduct, Weight.FromGrams(800), Money.Create(16m, "USD"), "Vendor", _userId, purchasedAt, _clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStock.UpdatePurchase(
+            purchaseId,
+            Weight.FromGrams(800),
+            16m,
+            purchasedAt,
+            _clock,
+            newProductName: newProduct.Name,
+            newProductBrand: newProduct.Brand,
+            newCoffeeType: newProduct.Type);
+
+        var stockOld = coffeeStock.StockLevels.Single(sl => sl.Product.Equals(oldProduct));
+        var stockNew = coffeeStock.StockLevels.Single(sl => sl.Product.Equals(newProduct));
+        stockOld.CurrentStock.Should().Be(Weight.Zero);
+        stockNew.CurrentStock.Should().Be(Weight.FromGrams(800));
+    }
+
+    [Fact]
+    public void UpdatePurchase_NonexistentPurchase_ShouldThrow()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+
+        var act = () => coffeeStock.UpdatePurchase(Guid.NewGuid(), Weight.FromGrams(100), 5m, purchasedAt, _clock);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [Fact]
+    public void DeletePurchase_WithValidPurchase_ShouldRemoveAndReduceStockLevel()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Premium Blend", "Blue Mountain", CoffeeType.Espresso);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(600), Money.Create(12m, "USD"), "Vendor", _userId, purchasedAt, _clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStock.DeletePurchase(purchaseId, _clock);
+
+        coffeeStock.Purchases.Should().BeEmpty();
+        var stock = coffeeStock.StockLevels.First();
+        stock.TotalPurchased.Should().Be(Weight.Zero);
+        stock.CurrentStock.Should().Be(Weight.Zero);
+    }
+
+    [Fact]
+    public void DeletePurchase_WithPartiallyConsumedStock_ShouldCapReductionAtAvailable()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Premium Blend", "Blue Mountain", CoffeeType.Espresso);
+        var purchasedAt = _clock.UtcNow.AddDays(-1);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(20m, "USD"), "Vendor", _userId, purchasedAt, _clock);
+        coffeeStock.ConsumeStock(product, Weight.FromGrams(400), _clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStock.DeletePurchase(purchaseId, _clock);
+
+        coffeeStock.Purchases.Should().BeEmpty();
+        var stock = coffeeStock.StockLevels.First();
+        stock.TotalPurchased.Should().Be(Weight.FromGrams(400));
+        stock.TotalConsumed.Should().Be(Weight.FromGrams(400));
+        stock.CurrentStock.Should().Be(Weight.Zero);
+    }
+
+    [Fact]
+    public void DeletePurchase_NonexistentPurchase_ShouldThrow()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+
+        var act = () => coffeeStock.DeletePurchase(Guid.NewGuid(), _clock);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*not found*");
+    }
 }

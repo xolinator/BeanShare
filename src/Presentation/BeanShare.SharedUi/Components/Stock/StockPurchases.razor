@@ -54,6 +54,7 @@
                             PurchasedAt="@purchase.PurchasedAt"
                             PurchasedByName="@purchase.PurchasedByName"
                             OnEdit="OnEditPurchase"
+                            OnDelete="OnDeletePurchase"
                             OnClone="OnClonePurchase" />
             }
         </div>
@@ -87,6 +88,9 @@
 
     [Parameter]
     public EventCallback<PurchaseRow.PurchaseEditModel> OnEditPurchase { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDeletePurchase { get; set; }
 
     [Parameter]
     public EventCallback<PurchaseRow.PurchaseCloneModel> OnClonePurchase { get; set; }

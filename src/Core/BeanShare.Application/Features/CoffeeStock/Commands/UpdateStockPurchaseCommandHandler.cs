@@ -50,12 +50,19 @@ public sealed class UpdateStockPurchaseCommandHandler
 
         try
         {
+            CoffeeType? coffeeType = null;
+            if (!string.IsNullOrEmpty(command.CoffeeType) && Enum.TryParse<CoffeeType>(command.CoffeeType, out var parsedType))
+                coffeeType = parsedType;
+
             coffeeStock.UpdatePurchase(
                 command.PurchaseId,
                 Weight.FromGrams(command.QuantityGrams),
                 command.CostAmount,
                 command.PurchasedAt,
-                _clock);
+                _clock,
+                command.ProductName,
+                command.ProductBrand,
+                coffeeType);
 
             await _coffeeStockRepository.UpdateAsync(coffeeStock, cancellationToken);
 

@@ -64,4 +64,50 @@ public class StockService : IStockService
             return false;
         }
     }
+
+    public async Task<bool> UpdateStockPurchaseAsync(Guid spaceId, Guid purchaseId, string productName, string productBrand, string coffeeType, decimal quantityGrams, decimal costAmount, DateTime purchasedAt)
+    {
+        try
+        {
+            var request = new
+            {
+                SpaceId = spaceId,
+                PurchaseId = purchaseId,
+                ProductName = productName,
+                ProductBrand = productBrand,
+                CoffeeType = coffeeType,
+                QuantityGrams = quantityGrams,
+                CostAmount = costAmount,
+                PurchasedAt = purchasedAt.ToUniversalTime()
+            };
+
+            var response = await _httpClient.PutAsJsonAsync($"/api/spaces/{spaceId}/stock/purchases/{purchaseId}", request);
+            if (response.IsSuccessStatusCode)
+            {
+                _cache.Invalidate("stock:");
+            }
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteStockPurchaseAsync(Guid spaceId, Guid purchaseId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/api/spaces/{spaceId}/stock/purchases/{purchaseId}");
+            if (response.IsSuccessStatusCode)
+            {
+                _cache.Invalidate("stock:");
+            }
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
