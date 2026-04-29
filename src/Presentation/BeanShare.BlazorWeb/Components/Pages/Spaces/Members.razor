@@ -235,6 +235,7 @@ else
 
         isSearchingUsers = true;
         userSearchResults = null;
+        StateHasChanged();
         try
         {
             var result = await Mediator.Send(new SearchUsersForSpaceQuery(spaceGuid, searchTerm));
@@ -254,6 +255,7 @@ else
         finally
         {
             isSearchingUsers = false;
+            StateHasChanged();
         }
     }
 

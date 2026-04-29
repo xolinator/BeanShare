@@ -34,7 +34,7 @@ public sealed class SearchUsersForSpaceQueryHandler
 
         var (users, _) = await _userRepository.GetPagedAsync(
             page: 1,
-            pageSize: request.MaxResults + existingMemberIds.Count,
+            pageSize: request.MaxResults * 3,
             searchTerm: request.SearchTerm,
             roleFilter: null,
             activeFilter: true,
