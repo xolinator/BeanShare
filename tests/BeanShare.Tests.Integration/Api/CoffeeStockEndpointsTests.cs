@@ -261,6 +261,54 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
         alerts!.AlertCount.Should().BeGreaterThan(0); // Both products should be below 2000g threshold
     }
 
+    [Fact]
+    public async Task DeleteStockPurchase_ShouldRemovePurchaseAndReduceStockLevel()
+    {
+        var spaceId = await CreateTestSpace();
+        var purchase = await AddTestPurchase(spaceId, "Premium Espresso", "Blue Mountain", 1000, 30.00m);
+
+        // Verify initial state
+        var stockBefore = await (await _client.GetAsync($"/api/spaces/{spaceId}/stock"))
+            .Content.ReadFromJsonAsync<SpaceStockResponse>();
+        stockBefore!.PurchaseCount.Should().Be(1);
+        stockBefore.TotalCurrentStockGrams.Should().Be(1000);
+        stockBefore.StockLevels.Single(sl => sl.ProductName == "Premium Espresso").CurrentStockGrams.Should().Be(1000);
+
+        // Delete the purchase
+        var deleteResponse = await _client.DeleteAsync($"/api/spaces/{spaceId}/stock/purchases/{purchase.Id}");
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify stock is updated after deletion
+        var stockAfter = await (await _client.GetAsync($"/api/spaces/{spaceId}/stock"))
+            .Content.ReadFromJsonAsync<SpaceStockResponse>();
+        stockAfter.Should().NotBeNull();
+        stockAfter!.PurchaseCount.Should().Be(0);
+        stockAfter.TotalCurrentStockGrams.Should().Be(0);
+        var stockLevel = stockAfter.StockLevels.FirstOrDefault(sl => sl.ProductName == "Premium Espresso");
+        if (stockLevel != null)
+            stockLevel.CurrentStockGrams.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeleteStockPurchase_WithMultiplePurchasesSameProduct_ShouldOnlyReduceByDeletedAmount()
+    {
+        var spaceId = await CreateTestSpace();
+        var purchase1 = await AddTestPurchase(spaceId, "Premium Espresso", "Blue Mountain", 1000, 30.00m);
+        var purchase2 = await AddTestPurchase(spaceId, "Premium Espresso", "Blue Mountain", 500, 15.00m);
+
+        // Delete only the first purchase
+        var deleteResponse = await _client.DeleteAsync($"/api/spaces/{spaceId}/stock/purchases/{purchase1.Id}");
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Remaining stock should reflect only the second purchase
+        var stockAfter = await (await _client.GetAsync($"/api/spaces/{spaceId}/stock"))
+            .Content.ReadFromJsonAsync<SpaceStockResponse>();
+        stockAfter.Should().NotBeNull();
+        stockAfter!.PurchaseCount.Should().Be(1);
+        stockAfter.TotalCurrentStockGrams.Should().Be(500);
+        stockAfter.StockLevels.Single(sl => sl.ProductName == "Premium Espresso").CurrentStockGrams.Should().Be(500);
+    }
+
     private async Task<Guid> CreateTestSpace()
     {
         var createRequest = new CreateSpaceRequest { Name = $"Test Space {Guid.NewGuid()}" };

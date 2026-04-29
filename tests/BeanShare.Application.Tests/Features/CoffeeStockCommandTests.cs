@@ -218,4 +218,129 @@ public class CoffeeStockCommandTests
         result.Errors.Should().Contain(e => e.Code.Contains("VALIDATION_ERROR"));
         await coffeeStockRepository.DidNotReceive().AddAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task DeleteStockPurchase_WithValidAdmin_ShouldRemovePurchaseAndUpdateStockLevel()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), TestClock.Instance);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var coffeeStock = CoffeeStock.Create(spaceId, TestClock.Instance);
+        var product = CoffeeProduct.Create("Premium Blend", "Blue Mountain", CoffeeType.Espresso);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(25.99m, "USD"), "Vendor", adminId, clock.UtcNow.AddDays(-1), clock);
+        var purchaseId = coffeeStock.Purchases.First().Id;
+
+        coffeeStockRepository.GetBySpaceIdAsync(spaceId, Arg.Any<CancellationToken>())
+            .Returns(coffeeStock);
+
+        var handler = new DeleteStockPurchaseCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new DeleteStockPurchaseCommand(spaceId.Value, purchaseId);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        coffeeStock.Purchases.Should().BeEmpty();
+        coffeeStock.StockLevels.First().TotalPurchased.Should().Be(Weight.Zero);
+        coffeeStock.StockLevels.First().CurrentStock.Should().Be(Weight.Zero);
+        await coffeeStockRepository.Received(1).UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteStockPurchase_WithNonAdmin_ShouldReturnError()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(memberId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), TestClock.Instance);
+        space.Join(memberId, TestClock.Instance);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var handler = new DeleteStockPurchaseCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new DeleteStockPurchaseCommand(spaceId.Value, Guid.NewGuid());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("INSUFFICIENT_PRIVILEGES"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteStockPurchase_WithNonexistentSpace_ShouldReturnError()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        userContext.CurrentUserId.Returns(new UserId(Guid.NewGuid()));
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns((Domain.Aggregates.Space.Space?)null);
+
+        var handler = new DeleteStockPurchaseCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new DeleteStockPurchaseCommand(Guid.NewGuid(), Guid.NewGuid());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("SPACE_NOT_FOUND"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteStockPurchase_WithNonexistentPurchase_ShouldReturnError()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), TestClock.Instance);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var coffeeStock = CoffeeStock.Create(spaceId, TestClock.Instance);
+        coffeeStockRepository.GetBySpaceIdAsync(spaceId, Arg.Any<CancellationToken>())
+            .Returns(coffeeStock);
+
+        var handler = new DeleteStockPurchaseCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new DeleteStockPurchaseCommand(spaceId.Value, Guid.NewGuid());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("DOMAIN_ERROR"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
 }
