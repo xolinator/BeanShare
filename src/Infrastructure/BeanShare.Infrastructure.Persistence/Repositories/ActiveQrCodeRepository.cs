@@ -43,7 +43,9 @@ public sealed class ActiveQrCodeRepository : IActiveQrCodeRepository
 
     public Task UpdateAsync(ActiveQrCode entity, CancellationToken cancellationToken = default)
     {
-        _context.ActiveQrCodes.Update(entity);
+        // ActiveQrCode is always loaded within the same DbContext scope before UpdateAsync is
+        // called, so it is already tracked. EF Core's snapshot change tracking persists only
+        // the modified scalar properties automatically.
         return Task.CompletedTask;
     }
 }

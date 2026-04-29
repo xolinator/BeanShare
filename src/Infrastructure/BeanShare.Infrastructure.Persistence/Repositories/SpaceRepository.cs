@@ -47,7 +47,11 @@ public sealed class SpaceRepository : ISpaceRepository
 
     public Task UpdateAsync(Space space, CancellationToken cancellationToken = default)
     {
-        _context.Spaces.Update(space);
+        // Space is always loaded within the same DbContext scope before UpdateAsync is called,
+        // so it is already tracked. EF Core's snapshot change tracking handles all mutations:
+        //   - scalar property changes  → UPDATE
+        //   - new Members added        → INSERT into SpaceMemberships
+        //   - Members removed          → DELETE from SpaceMemberships (OwnsMany orphan deletion)
         return Task.CompletedTask;
     }
 

@@ -43,7 +43,9 @@ public sealed class BillingPeriodRepository : IBillingPeriodRepository
 
     public Task UpdateAsync(BillingPeriod billingPeriod, CancellationToken cancellationToken = default)
     {
-        _context.BillingPeriods.Update(billingPeriod);
+        // BillingPeriod is always loaded within the same DbContext scope before UpdateAsync is
+        // called, so it is already tracked. EF Core's snapshot change tracking persists only
+        // the modified scalar properties automatically.
         return Task.CompletedTask;
     }
 

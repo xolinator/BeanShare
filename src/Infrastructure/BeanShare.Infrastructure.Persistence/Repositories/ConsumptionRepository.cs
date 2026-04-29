@@ -107,7 +107,9 @@ internal sealed class ConsumptionRepository : IConsumptionRepository
 
     public Task UpdateAsync(ConsumptionEntry consumption, CancellationToken cancellationToken = default)
     {
-        _context.Consumptions.Update(consumption);
+        // ConsumptionEntry is always loaded within the same DbContext scope before UpdateAsync
+        // is called, so it is already tracked. EF Core's snapshot change tracking persists
+        // only the modified scalar properties automatically.
         return Task.CompletedTask;
     }
 

@@ -41,7 +41,9 @@ public sealed class GlobalPresetRepository : IGlobalPresetRepository
 
     public Task UpdateAsync(GlobalPreset preset, CancellationToken ct = default)
     {
-        _context.GlobalPresets.Update(preset);
+        // GlobalPreset is always loaded within the same DbContext scope before UpdateAsync is
+        // called, so it is already tracked. EF Core's snapshot change tracking persists only
+        // the modified scalar properties automatically.
         return Task.CompletedTask;
     }
 

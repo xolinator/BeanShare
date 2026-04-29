@@ -44,7 +44,9 @@ public sealed class SettlementRepository : ISettlementRepository
 
     public Task UpdateAsync(Settlement settlement, CancellationToken cancellationToken = default)
     {
-        _context.Settlements.Update(settlement);
+        // Settlement is always loaded within the same DbContext scope before UpdateAsync is
+        // called, so it is already tracked. EF Core's snapshot change tracking handles all
+        // mutations to scalar properties and to the OwnsMany Lines collection automatically.
         return Task.CompletedTask;
     }
 }

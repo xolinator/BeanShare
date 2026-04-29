@@ -61,7 +61,9 @@ public sealed class PresetRecipeRepository : IPresetRecipeRepository
 
     public Task UpdateAsync(PresetRecipe preset, CancellationToken ct = default)
     {
-        _context.PresetRecipes.Update(preset);
+        // PresetRecipe is always loaded within the same DbContext scope before UpdateAsync is
+        // called, so it is already tracked. EF Core's snapshot change tracking persists only
+        // the modified scalar properties automatically.
         return Task.CompletedTask;
     }
 
