@@ -167,6 +167,7 @@
     private DateTime? endDate;
     private int currentPage = 1;
     private const int pageSize = 20;
+    private const int maxUserDropdownSize = 1000;
 
     protected override async Task OnInitializedAsync()
     {
@@ -204,7 +205,7 @@
     {
         try
         {
-            var result = await Mediator.Send(new GetAllUsersQuery(PageSize: 1000));
+            var result = await Mediator.Send(new GetAllUsersQuery(PageSize: maxUserDropdownSize));
             if (result.IsSuccess)
             {
                 allUsers = result.Value.Users;
