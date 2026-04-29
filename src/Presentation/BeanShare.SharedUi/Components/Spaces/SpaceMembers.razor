@@ -1,3 +1,14 @@
+@if (IsAdmin)
+{
+    <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
+        <button class="bs-btn bs-btn-primary bs-btn-sm"
+                @onclick="@(() => showAddMemberModal = true)">
+            <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle; margin-right: 0.25rem;">person_add</span>
+            Add Member
+        </button>
+    </div>
+}
+
 @if (IsLoading)
 {
     <div class="bs-flex bs-flex-col bs-gap-2">
@@ -61,6 +72,14 @@ else
                OnConfirm="HandleLeaveConfirmed"
                OnCancel="@(() => showLeaveDialog = false)" />
 
+<AddMemberModal IsVisible="@showAddMemberModal"
+                IsSearching="@isSearchingMembers"
+                IsAdding="@isAddingMember"
+                SearchResults="@memberSearchResults"
+                OnSearch="HandleSearchMembers"
+                OnAdd="HandleAddMember"
+                OnCancel="HandleAddMemberCancel" />
+
 @code {
     [Parameter]
     public IEnumerable<MembershipDto>? Members { get; set; }
@@ -86,6 +105,21 @@ else
     [Parameter]
     public EventCallback OnLeaveSpace { get; set; }
 
+    [Parameter]
+    public EventCallback<string> OnSearchUsers { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnAddMember { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<UserSearchResultDto>? UserSearchResults { get; set; }
+
+    [Parameter]
+    public bool IsSearchingUsers { get; set; }
+
+    [Parameter]
+    public bool IsAddingMemberInProgress { get; set; }
+
     private int AdminCount => Members?.Count(m => m.Role == "Admin") ?? 0;
 
     private bool CanLeave
@@ -100,6 +134,10 @@ else
 
     private bool showLeaveDialog;
     private bool isLeaving;
+    private bool showAddMemberModal;
+    private bool isSearchingMembers => IsSearchingUsers;
+    private bool isAddingMember => IsAddingMemberInProgress;
+    private IReadOnlyList<UserSearchResultDto>? memberSearchResults => UserSearchResults;
 
     private Task HandlePromote(string userId) => OnPromoteMember.InvokeAsync(userId);
     private Task HandleDemote(string userId) => OnDemoteMember.InvokeAsync(userId);
@@ -122,5 +160,18 @@ else
             isLeaving = false;
             showLeaveDialog = false;
         }
+    }
+
+    private Task HandleSearchMembers(string term) => OnSearchUsers.InvokeAsync(term);
+
+    private async Task HandleAddMember(Guid userId)
+    {
+        await OnAddMember.InvokeAsync(userId);
+        showAddMemberModal = false;
+    }
+
+    private void HandleAddMemberCancel()
+    {
+        showAddMemberModal = false;
     }
 }

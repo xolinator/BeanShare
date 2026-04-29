@@ -56,7 +56,12 @@ else
                      OnPromoteMember="HandlePromoteMember"
                      OnDemoteMember="HandleDemoteMember"
                      OnRemoveMember="HandleRemoveMember"
-                     OnLeaveSpace="HandleLeaveSpace" />
+                     OnLeaveSpace="HandleLeaveSpace"
+                     OnSearchUsers="HandleSearchUsers"
+                     OnAddMember="HandleAddMember"
+                     UserSearchResults="@userSearchResults"
+                     IsSearchingUsers="@isSearchingUsers"
+                     IsAddingMemberInProgress="@isAddingMember" />
     </div>
 }
 
@@ -80,6 +85,10 @@ else
     private bool isToastError;
     private string toastTitle = "";
     private string toastMessage = "";
+
+    private IReadOnlyList<UserSearchResultDto>? userSearchResults;
+    private bool isSearchingUsers;
+    private bool isAddingMember;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -216,6 +225,65 @@ else
         catch (Exception ex)
         {
             ShowToast(true, "Error", $"Failed to leave space: {ex.Message}");
+        }
+    }
+
+    private async Task HandleSearchUsers(string searchTerm)
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+            return;
+
+        isSearchingUsers = true;
+        userSearchResults = null;
+        try
+        {
+            var result = await Mediator.Send(new SearchUsersForSpaceQuery(spaceGuid, searchTerm));
+            if (result.IsSuccess)
+            {
+                userSearchResults = result.Value;
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to search users.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to search users: {ex.Message}");
+        }
+        finally
+        {
+            isSearchingUsers = false;
+        }
+    }
+
+    private async Task HandleAddMember(Guid userId)
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid))
+            return;
+
+        isAddingMember = true;
+        try
+        {
+            var result = await Mediator.Send(new AddMemberToSpaceCommand(spaceGuid, userId));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "Member added to space.");
+                userSearchResults = null;
+                await LoadSpace();
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to add member.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to add member: {ex.Message}");
+        }
+        finally
+        {
+            isAddingMember = false;
         }
     }
 

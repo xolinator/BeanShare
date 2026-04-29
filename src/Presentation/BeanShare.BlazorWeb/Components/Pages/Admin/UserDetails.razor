@@ -185,7 +185,15 @@
                                             @membership.Role
                                         </span>
                                     </div>
-                                    <span class="membership-joined">Joined @membership.JoinedAt.ToString("MMM dd, yyyy")</span>
+                                    <div class="bs-flex bs-items-center bs-gap-2">
+                                        <span class="membership-joined">Joined @membership.JoinedAt.ToString("MMM dd, yyyy")</span>
+                                        <button class="action-btn deactivate-btn"
+                                                title="Remove from Space"
+                                                @onclick="() => RemoveFromSpace(membership.SpaceId)"
+                                                disabled="@isRemovingFromSpace">
+                                            <span class="material-symbols-outlined">person_remove</span>
+                                        </button>
+                                    </div>
                                 </div>
                             }
                         </div>
@@ -224,6 +232,7 @@
 
     private bool showAssignForm;
     private bool isAssigning;
+    private bool isRemovingFromSpace;
     private Guid selectedSpaceId;
     private List<SpaceOptionDto> availableSpaces = [];
 
@@ -375,6 +384,32 @@
     {
         showAssignForm = false;
         selectedSpaceId = Guid.Empty;
+    }
+
+    private async Task RemoveFromSpace(Guid spaceId)
+    {
+        isRemovingFromSpace = true;
+        try
+        {
+            var result = await Mediator.Send(new RemoveUserFromSpaceAdminCommand(UserId, spaceId));
+            if (result.IsSuccess)
+            {
+                ShowToast(false, "Success", "User removed from space successfully");
+                await LoadUser();
+            }
+            else
+            {
+                ShowToast(true, "Error", result.Errors.FirstOrDefault().Message ?? "Failed to remove user from space");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to remove user from space: {ex.Message}");
+        }
+        finally
+        {
+            isRemovingFromSpace = false;
+        }
     }
 
     private async Task AssignUserToSpace()

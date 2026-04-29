@@ -1,0 +1,128 @@
+@using BeanShare.Application.Features.Spaces.Queries
+
+@if (IsVisible)
+{
+    <div class="bs-modal-backdrop" @onclick="HandleCancel">
+        <div class="bs-modal" @onclick:stopPropagation="true" @ontouchend:stopPropagation="true">
+            <div class="bs-modal-header">
+                <h3 class="bs-modal-title">Add Member</h3>
+            </div>
+
+            <div class="bs-form-group">
+                <label class="bs-label">Search by name or email</label>
+                <div class="bs-flex bs-gap-2">
+                    <input type="text"
+                           class="bs-input"
+                           placeholder="e.g. Jane or jane@example.com"
+                           @bind="searchTerm"
+                           @bind:event="oninput"
+                           @onkeyup="HandleKeyUp" />
+                    <button class="bs-btn bs-btn-secondary"
+                            style="flex-shrink: 0;"
+                            @onclick="TriggerSearch"
+                            disabled="@(IsSearching || string.IsNullOrWhiteSpace(searchTerm))">
+                        @if (IsSearching)
+                        {
+                            <span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">progress_activity</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined">search</span>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            @if (SearchResults != null)
+            {
+                @if (SearchResults.Any())
+                {
+                    <div class="bs-flex bs-flex-col bs-gap-2" style="max-height: 16rem; overflow-y: auto; margin-bottom: 1rem;">
+                        @foreach (var user in SearchResults)
+                        {
+                            <div class="bs-card" style="padding: 0.75rem;">
+                                <div class="bs-flex bs-items-center bs-justify-between">
+                                    <div style="min-width: 0; flex: 1;">
+                                        <p class="bs-font-bold" style="margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@user.Name</p>
+                                        <p class="bs-text-subtle" style="margin: 0; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@user.Email</p>
+                                    </div>
+                                    <button class="bs-btn bs-btn-sm bs-btn-primary"
+                                            style="flex-shrink: 0; margin-left: 0.75rem;"
+                                            @onclick="() => HandleAdd(user.Id)"
+                                            disabled="@IsAdding">
+                                        <span class="material-symbols-outlined" style="font-size: 1rem;">person_add</span>
+                                        Add
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (!IsSearching)
+                {
+                    <p class="bs-text-subtle" style="margin-bottom: 1rem; font-size: 0.875rem; text-align: center;">
+                        No users found matching "@searchTerm".
+                    </p>
+                }
+            }
+
+            <div class="bs-modal-footer">
+                <button type="button" class="bs-btn bs-btn-secondary bs-flex-1" @onclick="HandleCancel">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public bool IsSearching { get; set; }
+
+    [Parameter]
+    public bool IsAdding { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<UserSearchResultDto>? SearchResults { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSearch { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnAdd { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private string searchTerm = "";
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchTerm))
+        {
+            await TriggerSearch();
+        }
+    }
+
+    private async Task TriggerSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            await OnSearch.InvokeAsync(searchTerm);
+        }
+    }
+
+    private async Task HandleAdd(Guid userId)
+    {
+        await OnAdd.InvokeAsync(userId);
+    }
+
+    private async Task HandleCancel()
+    {
+        searchTerm = "";
+        await OnCancel.InvokeAsync();
+    }
+}
