@@ -57,9 +57,11 @@ public sealed class CoffeeStockRepository : ICoffeeStockRepository
     public Task UpdateAsync(CoffeeStock coffeeStock, CancellationToken cancellationToken = default)
     {
         var currentPurchaseIds = coffeeStock.Purchases.Select(p => p.Id).ToHashSet();
+        var coffeeStockId = coffeeStock.Id.Value;
         foreach (var purchase in _context.ChangeTracker
             .Entries<Purchase>()
-            .Where(e => !currentPurchaseIds.Contains(e.Entity.Id))
+            .Where(e => e.Property<Guid>("CoffeeStockId").CurrentValue == coffeeStockId
+                        && !currentPurchaseIds.Contains(e.Entity.Id))
             .Select(e => e.Entity)
             .ToList())
         {
