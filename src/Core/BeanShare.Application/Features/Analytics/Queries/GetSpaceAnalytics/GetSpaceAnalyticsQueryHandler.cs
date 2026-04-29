@@ -81,7 +81,6 @@ public sealed class GetSpaceAnalyticsQueryHandler : IRequestHandler<GetSpaceAnal
                 TotalGrams = g.Sum(c => c.Quantity.Grams)
             })
             .OrderByDescending(x => x.CupCount)
-            .Take(5)
             .ToList();
 
         var topConsumers = new List<TopConsumerDto>();

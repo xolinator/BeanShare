@@ -56,13 +56,13 @@
             </div>
         </div>
 
-        <!-- Top Consumers -->
+        <!-- All Consumers -->
         <div class="bs-card bs-mb-6">
-            <h3 class="bs-font-bold bs-mb-4">Top Coffee Consumers</h3>
+            <h3 class="bs-font-bold bs-mb-4">Coffee Consumers</h3>
             @if (Analytics.TopConsumers.Any())
             {
                 <div class="bs-flex bs-flex-col bs-gap-3">
-                    @foreach (var consumer in Analytics.TopConsumers.Take(5))
+                    @foreach (var consumer in Analytics.TopConsumers)
                     {
                         <div class="bs-flex bs-items-center bs-justify-between">
                             <div class="bs-flex bs-items-center bs-gap-3">
