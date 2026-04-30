@@ -54,7 +54,7 @@ public sealed class CoffeeStockRepository : ICoffeeStockRepository
         await _context.CoffeeStocks.AddAsync(coffeeStock, cancellationToken);
     }
 
-    public Task UpdateAsync(CoffeeStock coffeeStock, CancellationToken cancellationToken = default)
+    public Task UpdateAsync(CoffeeStock coffeeStock, CancellationToken _ = default)
     {
         // The aggregate is always loaded within the same DbContext scope before UpdateAsync is
         // called, so it is already tracked. EF Core's snapshot change tracking detects all
