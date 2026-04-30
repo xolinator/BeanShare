@@ -91,7 +91,9 @@ public sealed class UserRepository(BeanShareDbContext context) : IUserRepository
 
     public Task UpdateAsync(User user, CancellationToken ct = default)
     {
-        _context.Users.Update(user);
+        // User is always loaded within the same DbContext scope before UpdateAsync is called,
+        // so it is already tracked. EF Core's snapshot change tracking persists only the
+        // modified scalar properties automatically.
         return Task.CompletedTask;
     }
 

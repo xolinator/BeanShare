@@ -54,9 +54,19 @@ public sealed class CoffeeStockRepository : ICoffeeStockRepository
         await _context.CoffeeStocks.AddAsync(coffeeStock, cancellationToken);
     }
 
-    public Task UpdateAsync(CoffeeStock coffeeStock, CancellationToken cancellationToken = default)
+    public Task UpdateAsync(CoffeeStock coffeeStock, CancellationToken _ = default)
     {
-        _context.CoffeeStocks.Update(coffeeStock);
+        // The aggregate is always loaded within the same DbContext scope before UpdateAsync is
+        // called, so it is already tracked. EF Core's snapshot change tracking detects all
+        // modifications automatically at SaveChanges time:
+        //   - changed scalar properties  → UPDATE
+        //   - new children added to the collections → INSERT
+        //   - children removed from the collections → DELETE
+        //     (the FK is required/IsRequired(), so orphaned dependents are automatically deleted)
+        //
+        // Calling context.Update() on an already-tracked entity would reset the collection
+        // snapshot to the post-mutation state, which prevents EF Core from detecting orphaned
+        // children and issuing the necessary DELETE statements.
         return Task.CompletedTask;
     }
 
