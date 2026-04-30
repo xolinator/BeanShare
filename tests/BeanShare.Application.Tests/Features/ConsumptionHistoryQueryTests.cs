@@ -242,6 +242,80 @@ public sealed class ConsumptionHistoryQueryTests
         result.Value.Items.First().ConsumedAt.Should().Be(new DateTime(2025, 10, 3, 9, 0, 0, DateTimeKind.Utc));
     }
 
+    // -----------------------------------------------------------------------
+    // Peer filtering: regular (non-admin) user views a space-mate's history
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetUserConsumptionHistory_WithMemberUserIdFilter_ShouldReturnOnlyThatMembersConsumptions()
+    {
+        var space = CreateSpace();
+        var peerId = new UserId(Guid.NewGuid());
+
+        // Consumptions owned by peer, current user, and another user — all in same space
+        var allConsumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumptionForUser(peerId,       _clock.UtcNow.AddHours(-1)),
+            CreateConsumptionForUser(peerId,       _clock.UtcNow.AddHours(-2)),
+            CreateConsumption(_clock.UtcNow.AddHours(-3)),         // current user's
+            CreateConsumptionForUser(new UserId(Guid.NewGuid()), _clock.UtcNow.AddHours(-4)) // third user
+        };
+
+        _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
+        SetupConsumptionMocks(allConsumptions);
+        _userContext.Roles.Returns(Array.Empty<string>());   // not an admin
+
+        var query = new GetUserConsumptionHistoryQuery(_spaceId.Value, null, null, null, 1, 20, peerId.Value);
+
+        var result = await _handler.Handle(query, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Should().HaveCount(2);
+        result.Value.Items.Should().AllSatisfy(item => item.UserId.Should().Be(peerId.Value));
+    }
+
+    // -----------------------------------------------------------------------
+    // Admin global user filter: admin sees any user's history across spaces
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetUserConsumptionHistory_AdminFilterByUserWithoutSpace_ShouldReturnTargetUserHistory()
+    {
+        var targetUserId = new UserId(Guid.NewGuid());
+        var targetSpaceId = SpaceId.New();
+
+        // Space where target user is a member (not the current user's space)
+        var targetSpace = Space.Create(targetSpaceId, "Target Space", Currency.USD, targetUserId, new InviteCode("TGTABC"), _clock);
+
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumptionForUserInSpace(targetUserId, targetSpaceId, _clock.UtcNow.AddHours(-1)),
+            CreateConsumptionForUserInSpace(targetUserId, targetSpaceId, _clock.UtcNow.AddHours(-2)),
+        };
+
+        // When the handler resolves spaces for the target user it calls GetBySpecAsync with targetUserId
+        _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Space> { targetSpace });
+
+        SetupConsumptionMocks(consumptions);
+        _userContext.Roles.Returns(new[] { "admin" });
+
+        var query = new GetUserConsumptionHistoryQuery(
+            SpaceId: null,
+            StartDate: null,
+            EndDate: null,
+            BillingPeriodId: null,
+            PageNumber: 1,
+            PageSize: 20,
+            MemberUserId: targetUserId.Value);
+
+        var result = await _handler.Handle(query, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TotalCount.Should().Be(2);
+        result.Value.Items.Should().AllSatisfy(item => item.UserId.Should().Be(targetUserId.Value));
+    }
+
     private void SetupConsumptionMocks(List<ConsumptionEntry> consumptions)
     {
         _consumptionRepository.GetBySpecAsync(Arg.Any<ISpec<ConsumptionEntry>>(), Arg.Any<CancellationToken>())
@@ -302,5 +376,17 @@ public sealed class ConsumptionHistoryQueryTests
         }
 
         return consumption;
+    }
+
+    private ConsumptionEntry CreateConsumptionForUser(UserId userId, DateTime consumedAt)
+    {
+        var product = CoffeeProduct.Create("Test Coffee", "Test Brand", CoffeeType.Espresso);
+        return ConsumptionEntry.Create(_spaceId, userId, product, Weight.FromGrams(18m), consumedAt, _clock);
+    }
+
+    private ConsumptionEntry CreateConsumptionForUserInSpace(UserId userId, SpaceId spaceId, DateTime consumedAt)
+    {
+        var product = CoffeeProduct.Create("Test Coffee", "Test Brand", CoffeeType.Espresso);
+        return ConsumptionEntry.Create(spaceId, userId, product, Weight.FromGrams(18m), consumedAt, _clock);
     }
 }
