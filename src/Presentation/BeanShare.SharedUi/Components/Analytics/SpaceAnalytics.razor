@@ -58,33 +58,92 @@
 
         <!-- All Consumers -->
         <div class="bs-card bs-mb-6">
-            <h3 class="bs-font-bold bs-mb-4">Coffee Consumers</h3>
-            @if (Analytics.TopConsumers.Any())
+            <div class="bs-flex bs-items-center bs-justify-between bs-mb-4" style="flex-wrap: wrap; gap: 0.5rem;">
+                <h3 class="bs-font-bold" style="margin: 0;">Coffee Consumers</h3>
+                <input type="search" style="padding: 0.375rem 0.625rem; border: 1px solid var(--bs-border); border-radius: 0.375rem; font-size: 0.875rem; max-width: 200px; background: var(--bs-background); color: var(--bs-text);"
+                       placeholder="Search by name…"
+                       @bind="consumersSearch" @bind:event="oninput" @bind:after="ResetConsumersPage" />
+            </div>
+            @{
+                var filteredConsumers = GetFilteredSortedConsumers();
+                var consumersPageCount = (int)Math.Ceiling((double)filteredConsumers.Count / ConsumersPageSize);
+                var pagedConsumers = filteredConsumers.Skip((consumersPage - 1) * ConsumersPageSize).Take(ConsumersPageSize).ToList();
+            }
+            @if (filteredConsumers.Any())
             {
-                <div class="bs-flex bs-flex-col bs-gap-3">
-                    @foreach (var consumer in Analytics.TopConsumers)
-                    {
-                        <div class="bs-flex bs-items-center bs-justify-between">
-                            <div class="bs-flex bs-items-center bs-gap-3">
-                                <div class="bs-avatar">
-                                    <span>@consumer.UserName.GetInitials()</span>
-                                </div>
-                                <div>
-                                    <p class="bs-font-medium">@consumer.UserName</p>
-                                    <p class="bs-text-subtle" style="font-size: 0.875rem;">@consumer.CupCount cups</p>
-                                </div>
-                            </div>
-                            @if (consumer.TotalCost != null)
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--bs-border);">
+                                <th style="padding: 0.5rem 0.75rem; text-align: left; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none;"
+                                    @onclick='() => SortConsumers("name")'>
+                                    Name @SortIndicator("name")
+                                </th>
+                                <th style="padding: 0.5rem 0.75rem; text-align: right; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none;"
+                                    @onclick='() => SortConsumers("cups")'>
+                                    Cups @SortIndicator("cups")
+                                </th>
+                                <th style="padding: 0.5rem 0.75rem; text-align: right; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none;"
+                                    @onclick='() => SortConsumers("cost")'>
+                                    Estimated Cost @SortIndicator("cost")
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var consumer in pagedConsumers)
                             {
-                                <span class="bs-font-medium">@consumer.TotalCost.Currency @consumer.TotalCost.Amount.ToString("F2")</span>
+                                <tr style="border-bottom: 1px solid var(--bs-border);">
+                                    <td style="padding: 0.5rem 0.75rem;">
+                                        <div class="bs-flex bs-items-center bs-gap-3">
+                                            <div class="bs-avatar">
+                                                <span>@consumer.UserName.GetInitials()</span>
+                                            </div>
+                                            <span class="bs-font-medium">@consumer.UserName</span>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 0.5rem 0.75rem; text-align: right;">@consumer.CupCount</td>
+                                    <td style="padding: 0.5rem 0.75rem; text-align: right;">
+                                        @if (consumer.TotalCost != null)
+                                        {
+                                            @($"{consumer.TotalCost.Currency} {consumer.TotalCost.Amount:F2}")
+                                        }
+                                        else
+                                        {
+                                            <span class="bs-text-subtle">—</span>
+                                        }
+                                    </td>
+                                </tr>
                             }
-                        </div>
-                    }
+                        </tbody>
+                    </table>
                 </div>
+
+                @if (consumersPageCount > 1)
+                {
+                    <div class="bs-flex bs-items-center bs-justify-between" style="margin-top: 0.75rem; font-size: 0.8125rem;">
+                        <span class="bs-text-subtle">
+                            @((consumersPage - 1) * ConsumersPageSize + 1)–@(Math.Min(consumersPage * ConsumersPageSize, filteredConsumers.Count)) of @filteredConsumers.Count
+                        </span>
+                        <div class="bs-flex bs-gap-2">
+                            <button style="padding: 0.25rem 0.625rem; border: 1px solid var(--bs-border); border-radius: 0.25rem; background: var(--bs-background); cursor: pointer; font-size: 0.8125rem;"
+                                    disabled="@(consumersPage <= 1)"
+                                    @onclick="() => consumersPage--">‹ Prev</button>
+                            @for (int p = 1; p <= consumersPageCount; p++)
+                            {
+                                var pageNum = p;
+                                <button style="padding: 0.25rem 0.625rem; border: 1px solid var(--bs-border); border-radius: 0.25rem; font-size: 0.8125rem; cursor: pointer; @(consumersPage == pageNum ? "background: var(--bs-primary); color: #fff; border-color: var(--bs-primary);" : "background: var(--bs-background);")"
+                                        @onclick="() => consumersPage = pageNum">@pageNum</button>
+                            }
+                            <button style="padding: 0.25rem 0.625rem; border: 1px solid var(--bs-border); border-radius: 0.25rem; background: var(--bs-background); cursor: pointer; font-size: 0.8125rem;"
+                                    disabled="@(consumersPage >= consumersPageCount)"
+                                    @onclick="() => consumersPage++">Next ›</button>
+                        </div>
+                    </div>
+                }
             }
             else
             {
-                <p class="bs-text-subtle">No consumption data yet</p>
+                <p class="bs-text-subtle">@(Analytics.TopConsumers.Any() ? "No consumers match the search." : "No consumption data yet")</p>
             }
         </div>
 
@@ -192,4 +251,48 @@
     [Parameter]
     public bool IsLoading { get; set; }
 
+    private const int ConsumersPageSize = 10;
+    private int consumersPage = 1;
+    private string consumersSearch = "";
+    private string consumersSortField = "cups";
+    private bool consumersSortDesc = true;
+
+    private void ResetConsumersPage() => consumersPage = 1;
+
+    private List<TopConsumerDto> GetFilteredSortedConsumers()
+    {
+        if (Analytics == null) return new List<TopConsumerDto>();
+
+        IEnumerable<TopConsumerDto> result = Analytics.TopConsumers;
+
+        if (!string.IsNullOrWhiteSpace(consumersSearch))
+            result = result.Where(c => c.UserName.Contains(consumersSearch, StringComparison.OrdinalIgnoreCase));
+
+        result = consumersSortField switch
+        {
+            "name" => consumersSortDesc ? result.OrderByDescending(c => c.UserName) : result.OrderBy(c => c.UserName),
+            "cost" => consumersSortDesc ? result.OrderByDescending(c => c.TotalCost?.Amount ?? 0) : result.OrderBy(c => c.TotalCost?.Amount ?? 0),
+            _ => consumersSortDesc ? result.OrderByDescending(c => c.CupCount) : result.OrderBy(c => c.CupCount),
+        };
+
+        return result.ToList();
+    }
+
+    private void SortConsumers(string field)
+    {
+        if (consumersSortField == field)
+            consumersSortDesc = !consumersSortDesc;
+        else
+        {
+            consumersSortField = field;
+            consumersSortDesc = field != "name";
+        }
+        consumersPage = 1;
+    }
+
+    private MarkupString SortIndicator(string field)
+    {
+        if (consumersSortField != field) return new MarkupString("<span style='opacity:0.3'>⇅</span>");
+        return new MarkupString(consumersSortDesc ? "↓" : "↑");
+    }
 }
