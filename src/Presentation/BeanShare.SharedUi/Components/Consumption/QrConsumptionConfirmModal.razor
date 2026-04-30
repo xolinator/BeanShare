@@ -19,6 +19,14 @@
             <div style="background: var(--bs-gray-50); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
                 <p class="bs-font-bold" style="margin: 0; font-size: 1.125rem;">@Payload.ProductBrand @Payload.ProductName</p>
                 <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">@Payload.ProductType</p>
+                @if (!hasOpenRecipe && !string.IsNullOrWhiteSpace(Payload.RecipeName))
+                {
+                    <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">
+                        <span class="material-symbols-outlined" style="font-size: 0.875rem; vertical-align: middle;">coffee</span>
+                        <span style="font-weight: 600;">@Payload.RecipeName</span>
+                        <span> · @Payload.DefaultGrams g</span>
+                    </p>
+                }
                 @if (!string.IsNullOrEmpty(Payload.QrLabel))
                 {
                     <p class="bs-qr-location">
@@ -35,7 +43,7 @@
                     @if (QuickPresets != null && QuickPresets.Count > 0)
                     {
                         <div style="display: flex; flex-wrap: wrap; gap: 0.375rem; margin-bottom: 0.5rem;">
-                            @foreach (var preset in QuickPresets.Take(8))
+                            @foreach (var preset in QuickPresets)
                             {
                                 var isSelected = selectedRecipe == preset.Name;
                                 <button type="button"
@@ -248,7 +256,9 @@
 
         try
         {
-            var presetName = hasOpenRecipe ? (selectedRecipe == "Custom" ? null : selectedRecipe) : null;
+            var presetName = hasOpenRecipe
+                ? (selectedRecipe == "Custom" ? null : selectedRecipe)
+                : (string.IsNullOrWhiteSpace(Payload.RecipeName) ? null : Payload.RecipeName);
             var model = new ConsumptionFormModel
             {
                 ProductName = Payload.ProductName,

@@ -1,4 +1,5 @@
 @using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using BeanShare.SharedUi.Services
 @using Microsoft.JSInterop
 @inject IQrCodeService QrCodeService
@@ -57,12 +58,13 @@
                         <label class="bs-label">Default Recipe</label>
                         <select class="bs-input" @bind="selectedRecipe" @bind:after="OnRecipeChanged">
                             <option value="UserChooses">User chooses when scanning</option>
-                            <option value="Espresso">Espresso (8g)</option>
-                            <option value="Double Espresso">Double Espresso (16g)</option>
-                            <option value="Filter Coffee">Filter Coffee (15g)</option>
-                            <option value="Pour Over">Pour Over (18g)</option>
-                            <option value="French Press">French Press (12g)</option>
-                            <option value="Cold Brew">Cold Brew (20g)</option>
+                            @if (QuickPresets != null)
+                            {
+                                @foreach (var preset in QuickPresets)
+                                {
+                                    <option value="@preset.Name">@preset.Name (@preset.Grams g)</option>
+                                }
+                            }
                             <option value="Custom">Custom...</option>
                         </select>
                     </div>
@@ -125,8 +127,11 @@
     [Parameter]
     public Guid? CreatedQrCodeId { get; set; }
 
+    [Parameter]
+    public List<PresetOption>? QuickPresets { get; set; }
+
     private string label = "";
-    private string selectedRecipe = "Espresso";
+    private string selectedRecipe = "UserChooses";
     private int customGrams = 10;
     private string qrDataUri = "";
     private bool isGenerating;
@@ -145,15 +150,7 @@
         {
             _initialized = true;
             label = "";
-            selectedRecipe = StockLevel.ProductType switch
-            {
-                "Espresso" => "Espresso",
-                "Filter" => "Filter Coffee",
-                "Instant" => "Espresso",
-                "Decaf" => "Espresso",
-                "Specialty" => "Pour Over",
-                _ => "Espresso"
-            };
+            selectedRecipe = PickDefaultPresetName(StockLevel.ProductType);
         }
 
         if (IsVisible && CreatedQrCodeId.HasValue && CreatedQrCodeId.Value != Guid.Empty && string.IsNullOrEmpty(qrDataUri))
@@ -166,23 +163,40 @@
         {
             qrDataUri = "";
             label = "";
-            selectedRecipe = "Espresso";
+            selectedRecipe = "UserChooses";
             customGrams = 10;
             isGenerating = false;
             _initialized = false;
         }
     }
 
+    private string PickDefaultPresetName(string productType)
+    {
+        if (QuickPresets == null || QuickPresets.Count == 0)
+        {
+            return "UserChooses";
+        }
+
+        var matchByType = QuickPresets.FirstOrDefault(p =>
+            string.Equals(p.CoffeeType, productType, StringComparison.OrdinalIgnoreCase));
+        return (matchByType ?? QuickPresets[0]).Name;
+    }
+
     private void OnRecipeChanged()
     {
     }
 
-    private int GetGramsForRecipe(string recipe) => recipe switch
+    private int GetGramsForRecipe(string recipe)
     {
-        "UserChooses" => 0,
-        "Custom" => customGrams > 0 ? customGrams : 10,
-        _ => CoffeeRecipeDefaults.GetGrams(recipe)
-    };
+        if (recipe == "UserChooses") return 0;
+        if (recipe == "Custom") return customGrams > 0 ? customGrams : 10;
+
+        var preset = QuickPresets?.FirstOrDefault(p => p.Name == recipe);
+        if (preset != null) return preset.Grams;
+
+        // fallback if the saved recipe is no longer in the preset list
+        return customGrams > 0 ? customGrams : 10;
+    }
 
     private async Task HandleGenerate()
     {

@@ -562,6 +562,7 @@ else
                 payload.ProductType = dto.ProductType;
                 payload.DefaultGrams = dto.DefaultGrams;
                 payload.QrLabel = dto.Label;
+                payload.RecipeName = dto.RecipeName;
                 QrResolveCache.Store(payload.QrCodeId.Value, payload);
                 return true;
             }
@@ -581,6 +582,7 @@ else
                 payload.ProductType = cached.ProductType;
                 payload.DefaultGrams = cached.DefaultGrams;
                 payload.QrLabel = cached.QrLabel;
+                payload.RecipeName = cached.RecipeName;
                 usingCachedQrData = true;
                 return true;
             }

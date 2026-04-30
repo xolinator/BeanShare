@@ -2,11 +2,13 @@
 @using BeanShare.Application.Abstractions
 @using BeanShare.Application.Features.CoffeeStock.Dtos
 @using BeanShare.Application.Features.ActiveQrCodes.Dtos
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using BeanShare.SharedUi.Services
 @using BeanShare.Maui.Services
 @inject ISpacesService SpacesService
 @inject IStockService StockService
 @inject IActiveQrService ActiveQrService
+@inject IPresetService PresetService
 @inject NavigationManager Navigation
 @inject IUserContext UserContext
 @inject IAlertService AlertService
@@ -98,7 +100,8 @@ else
                                  OnReassign="HandleReassignQr"
                                  OnDeactivate="HandleDeactivateQr"
                                  OnShowQr="HandleShowExistingQr"
-                                 SpaceName="@spaceName" />
+                                 SpaceName="@spaceName"
+                                 QuickPresets="@quickPresets" />
 
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
@@ -137,7 +140,8 @@ else
             SpaceName="@spaceName"
             OnClose="HandleQrModalClose"
             OnCreate="HandleQrCreate"
-            CreatedQrCodeId="@createdQrCodeId" />
+            CreatedQrCodeId="@createdQrCodeId"
+            QuickPresets="@quickPresets" />
 
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
@@ -170,6 +174,7 @@ else
     private List<ActiveQrCodeDto> activeQrCodes = new();
     private bool isLoadingActiveQrs;
     private Guid? createdQrCodeId;
+    private List<PresetOption> quickPresets = new();
     private bool showToast;
     private bool isToastError;
     private string toastTitle = "";
@@ -185,7 +190,7 @@ else
                 return;
             }
             await LoadSpace();
-            await Task.WhenAll(LoadStock(), LoadActiveQrCodes());
+            await Task.WhenAll(LoadStock(), LoadActiveQrCodes(), LoadQuickPresets());
         }
     }
 
@@ -383,6 +388,20 @@ else
         {
             isLoadingActiveQrs = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task LoadQuickPresets()
+    {
+        if (!Guid.TryParse(SpaceId, out var spaceGuid)) return;
+
+        try
+        {
+            quickPresets = await PresetService.GetQuickPresetsAsync(spaceGuid);
+        }
+        catch
+        {
+            // Presets are optional context; the dropdown falls back to UserChooses + Custom.
         }
     }
 

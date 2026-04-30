@@ -433,6 +433,7 @@
                     payload.ProductType = resolved.ProductType;
                     payload.DefaultGrams = resolved.DefaultGrams;
                     payload.QrLabel = resolved.Label;
+                    payload.RecipeName = resolved.RecipeName;
                     QrResolveCache.Store(payload.QrCodeId.Value, payload);
                 }
                 else
@@ -452,6 +453,7 @@
                     payload.ProductType = cached.ProductType;
                     payload.DefaultGrams = cached.DefaultGrams;
                     payload.QrLabel = cached.QrLabel;
+                    payload.RecipeName = cached.RecipeName;
                 }
                 else
                 {
