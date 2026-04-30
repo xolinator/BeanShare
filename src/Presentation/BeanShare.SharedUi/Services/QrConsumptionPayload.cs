@@ -27,4 +27,7 @@ public sealed class QrConsumptionPayload
 
     [JsonIgnore]
     public string? QrLabel { get; set; }
+
+    [JsonIgnore]
+    public string? RecipeName { get; set; }
 }

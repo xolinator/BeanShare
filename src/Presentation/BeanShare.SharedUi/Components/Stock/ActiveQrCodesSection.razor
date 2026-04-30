@@ -1,5 +1,6 @@
 @using BeanShare.Application.Features.ActiveQrCodes.Dtos
 @using BeanShare.Application.Features.CoffeeStock.Dtos
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using BeanShare.SharedUi.Services
 @using Microsoft.JSInterop
 @inject IQrCodeService QrCodeService
@@ -81,12 +82,13 @@ else
                                 <label class="bs-label">Default Recipe</label>
                                 <select class="bs-input" @bind="reassignRecipe" @bind:after="OnReassignRecipeChanged">
                                     <option value="UserChooses">User chooses when scanning</option>
-                                    <option value="Espresso">Espresso (8g)</option>
-                                    <option value="Double Espresso">Double Espresso (16g)</option>
-                                    <option value="Filter Coffee">Filter Coffee (15g)</option>
-                                    <option value="Pour Over">Pour Over (18g)</option>
-                                    <option value="French Press">French Press (12g)</option>
-                                    <option value="Cold Brew">Cold Brew (20g)</option>
+                                    @if (QuickPresets != null)
+                                    {
+                                        @foreach (var preset in QuickPresets)
+                                        {
+                                            <option value="@preset.Name">@preset.Name (@preset.Grams g)</option>
+                                        }
+                                    }
                                     <option value="Custom">Custom...</option>
                                 </select>
                             </div>
@@ -184,9 +186,12 @@ else
     [Parameter]
     public string SpaceName { get; set; } = "";
 
+    [Parameter]
+    public List<PresetOption>? QuickPresets { get; set; }
+
     private Guid? reassigningQrId;
     private int reassignSelectedProductIndex = -1;
-    private string reassignRecipe = "Espresso";
+    private string reassignRecipe = "UserChooses";
     private int reassignCustomGrams = 10;
 
     public sealed class ReassignModel
@@ -203,8 +208,25 @@ else
     {
         reassigningQrId = qr.Id;
         reassignSelectedProductIndex = -1;
-        reassignRecipe = qr.DefaultGrams == 0 ? "UserChooses" : qr.RecipeName;
-        reassignCustomGrams = qr.DefaultGrams;
+        if (qr.DefaultGrams == 0)
+        {
+            reassignRecipe = "UserChooses";
+            reassignCustomGrams = 10;
+        }
+        else if (QuickPresets != null && QuickPresets.Any(p => p.Name == qr.RecipeName))
+        {
+            reassignRecipe = qr.RecipeName;
+            reassignCustomGrams = qr.DefaultGrams;
+        }
+        else
+        {
+            // Saved recipe is no longer in this space's preset list
+            // (renamed, deleted, or created via a different path).
+            // Fall back to Custom while preserving the saved grams so
+            // the user can re-save without losing data.
+            reassignRecipe = "Custom";
+            reassignCustomGrams = qr.DefaultGrams;
+        }
 
         if (StockLevels != null)
         {
@@ -225,7 +247,7 @@ else
     {
         reassigningQrId = null;
         reassignSelectedProductIndex = -1;
-        reassignRecipe = "Espresso";
+        reassignRecipe = "UserChooses";
         reassignCustomGrams = 10;
     }
 
@@ -237,12 +259,16 @@ else
     {
     }
 
-    private int GetGramsForRecipe(string recipe) => recipe switch
+    private int GetGramsForRecipe(string recipe)
     {
-        "UserChooses" => 0,
-        "Custom" => reassignCustomGrams > 0 ? reassignCustomGrams : 10,
-        _ => CoffeeRecipeDefaults.GetGrams(recipe)
-    };
+        if (recipe == "UserChooses") return 0;
+        if (recipe == "Custom") return reassignCustomGrams > 0 ? reassignCustomGrams : 10;
+
+        var preset = QuickPresets?.FirstOrDefault(p => p.Name == recipe);
+        if (preset != null) return preset.Grams;
+
+        return reassignCustomGrams > 0 ? reassignCustomGrams : 10;
+    }
 
     private async Task HandleReassign(Guid qrCodeId)
     {

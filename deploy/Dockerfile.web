@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 WORKDIR /src
 
 COPY BeanShare.sln ./
+COPY Directory.Build.props Directory.Packages.props ./
 COPY src/Core/BeanShare.Application/*.csproj src/Core/BeanShare.Application/
 COPY src/Core/BeanShare.Domain/*.csproj src/Core/BeanShare.Domain/
 COPY src/Infrastructure/BeanShare.Infrastructure/*.csproj src/Infrastructure/BeanShare.Infrastructure/

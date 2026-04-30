@@ -8,6 +8,8 @@
 @using BeanShare.Application.Features.ActiveQrCodes.Queries
 @using BeanShare.Application.Features.ActiveQrCodes.Commands
 @using BeanShare.Application.Features.ActiveQrCodes.Dtos
+@using BeanShare.Application.Features.Presets.Queries
+@using BeanShare.SharedUi.Components.Consumption.Models
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @using BeanShare.Application.Abstractions
@@ -119,7 +121,8 @@ else
                                  OnReassign="HandleReassignQr"
                                  OnDeactivate="HandleDeactivateQr"
                                  OnShowQr="HandleShowExistingQr"
-                                 SpaceName="@spaceName" />
+                                 SpaceName="@spaceName"
+                                 QuickPresets="@quickPresets" />
 
             <StockPurchases Purchases="@purchases"
                            IsLoading="@isLoadingStock"
@@ -203,7 +206,8 @@ else
             SpaceName="@spaceName"
             OnClose="HandleQrModalClose"
             OnCreate="HandleQrCreate"
-            CreatedQrCodeId="@createdQrCodeId" />
+            CreatedQrCodeId="@createdQrCodeId"
+            QuickPresets="@quickPresets" />
 
 <Toast IsVisible="@showToast"
        IsError="@isToastError"
@@ -240,6 +244,7 @@ else
     private List<ActiveQrCodeDto> activeQrCodes = new();
     private bool isLoadingActiveQrs;
     private Guid? createdQrCodeId;
+    private List<PresetOption> quickPresets = new();
 
     private bool showToast;
     private bool isToastError;
@@ -256,6 +261,7 @@ else
             await LoadSpace();
             await LoadStock();
             await LoadActiveQrCodes();
+            await LoadQuickPresets();
         }
         finally
         {
@@ -510,6 +516,34 @@ else
         finally
         {
             isLoadingActiveQrs = false;
+        }
+    }
+
+    private async Task LoadQuickPresets()
+    {
+        try
+        {
+            var result = await Mediator.Send(new GetQuickPresetsQuery(Guid.Parse(SpaceId)));
+            if (result.IsSuccess)
+            {
+                quickPresets = result.Value.Presets.Select(p => new PresetOption
+                {
+                    GlobalPresetId = p.GlobalPresetId,
+                    SpacePresetId = p.SpacePresetId,
+                    Name = p.Name,
+                    CoffeeType = p.CoffeeType,
+                    Preparation = p.Preparation,
+                    Grams = (int)p.DefaultGrams,
+                    Description = p.Description,
+                    IsFavorite = p.IsFavorite,
+                    IsGlobal = p.IsGlobal,
+                    DisplayOrder = p.DisplayOrder
+                }).ToList();
+            }
+        }
+        catch
+        {
+            // Presets are optional context; the dropdown will fall back to UserChooses + Custom
         }
     }
 
