@@ -294,7 +294,7 @@ public sealed class CoffeeStockEndpointsTests : IClassFixture<PostgreSqlFixture>
     {
         var spaceId = await CreateTestSpace();
         var purchase1 = await AddTestPurchase(spaceId, "Premium Espresso", "Blue Mountain", 1000, 30.00m);
-        var purchase2 = await AddTestPurchase(spaceId, "Premium Espresso", "Blue Mountain", 500, 15.00m);
+        _ = await AddTestPurchase(spaceId, "Premium Espresso", "Blue Mountain", 500, 15.00m);
 
         // Delete only the first purchase
         var deleteResponse = await _client.DeleteAsync($"/api/spaces/{spaceId}/stock/purchases/{purchase1.Id}");
