@@ -213,11 +213,12 @@
 
     private string FormatDate(DateTime date)
     {
+        var local = date.ToLocalTime();
         var now = DateTime.Now;
-        if (date.Date == now.Date)
-            return $"Today, {date:h:mm tt}";
-        if (date.Date == now.Date.AddDays(-1))
-            return $"Yesterday, {date:h:mm tt}";
-        return date.ToString("MMM dd, h:mm tt");
+        if (local.Date == now.Date)
+            return $"Today, {local:h:mm tt}";
+        if (local.Date == now.Date.AddDays(-1))
+            return $"Yesterday, {local:h:mm tt}";
+        return local.ToString("MMM dd, h:mm tt");
     }
 }

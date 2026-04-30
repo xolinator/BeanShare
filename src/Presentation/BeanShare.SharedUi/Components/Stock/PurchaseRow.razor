@@ -54,7 +54,7 @@ else
             <div>
                 <p class="bs-font-bold" style="margin: 0;">@ProductName</p>
                 <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">
-                    @PurchasedAt.ToString("MMM dd, yyyy")
+                    @PurchasedAt.ToLocalTime().ToString("MMM dd, yyyy")
                 </p>
             </div>
             <div style="text-align: right;">

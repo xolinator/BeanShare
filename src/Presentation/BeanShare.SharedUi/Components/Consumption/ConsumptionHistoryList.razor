@@ -20,7 +20,7 @@
         <div class="history-timeline">
             @{
                 var groupedByDate = History.Items
-                    .GroupBy(i => i.ConsumedAt.Date)
+                    .GroupBy(i => i.ConsumedAt.ToLocalTime().Date)
                     .OrderByDescending(g => g.Key);
             }
 
@@ -78,7 +78,7 @@
                                     else
                                     {
                                         <div class="item-header">
-                                            <span class="item-time">@item.ConsumedAt.ToString("HH:mm")</span>
+                                            <span class="item-time">@item.ConsumedAt.ToLocalTime().ToString("HH:mm")</span>
                                             <span class="item-space bs-badge" style="background: var(--bs-gray-200); color: var(--bs-text);">@item.SpaceName</span>
                                             @if (!string.IsNullOrEmpty(item.UserName) && item.UserName != "Unknown")
                                             {
