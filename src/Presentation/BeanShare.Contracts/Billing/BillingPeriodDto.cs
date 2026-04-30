@@ -19,7 +19,11 @@ public record BillingPeriodDto(
     decimal TotalCoffeeGrams,
     decimal? EstimatedCost,
     string Currency
-);
+)
+{
+    public string FormattedDateRange { get; init; } = string.Empty;
+    public string FormattedDateRangeLong { get; init; } = string.Empty;
+};
 
 public record BillingPeriodSummaryDto(
     Guid Id,
@@ -30,7 +34,10 @@ public record BillingPeriodSummaryDto(
     int DaysRemaining,
     int ConsumptionCount,
     decimal TotalCoffeeGrams
-);
+)
+{
+    public string FormattedDateRange { get; init; } = string.Empty;
+};
 
 public record CreateBillingPeriodDto
 {
