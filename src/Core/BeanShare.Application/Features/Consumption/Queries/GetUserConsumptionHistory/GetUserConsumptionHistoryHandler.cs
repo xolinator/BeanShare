@@ -37,8 +37,17 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
     public async Task<Result<ConsumptionHistoryDto>> Handle(GetUserConsumptionHistoryQuery query, CancellationToken cancellationToken)
     {
         var currentUserId = _userContext.CurrentUserId;
+        var isSystemAdmin = _userContext.Roles.Contains("admin");
 
-        var userSpacesSpec = new SpacesWithUserMembershipSpecification(currentUserId);
+        // When an admin requests history for a specific user across all spaces (no SpaceId filter),
+        // resolve the spaces that belong to the target user instead of the current user.
+        var isAdminGlobalUserQuery = !query.SpaceId.HasValue && query.MemberUserId.HasValue && isSystemAdmin;
+
+        var spacesSpecUserId = isAdminGlobalUserQuery
+            ? new UserId(query.MemberUserId!.Value)
+            : currentUserId;
+
+        var userSpacesSpec = new SpacesWithUserMembershipSpecification(spacesSpecUserId);
         var userSpaces = await _spaceRepository.GetBySpecAsync(userSpacesSpec, cancellationToken);
 
         if (!userSpaces.Any())
@@ -80,6 +89,12 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
 
                 specs.Add(new ConsumptionsBySpaceAndDateRangeSpecification(
                     space.Id, targetUserId, query.StartDate, query.EndDate, billingPeriodId));
+            }
+            else if (isAdminGlobalUserQuery)
+            {
+                var targetUserId = new UserId(query.MemberUserId!.Value);
+                specs.Add(new ConsumptionsByUserAndDateRangeSpecification(
+                    targetUserId, space.Id, query.StartDate, query.EndDate, billingPeriodId));
             }
             else
             {
