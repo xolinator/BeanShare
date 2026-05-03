@@ -172,10 +172,12 @@
     protected override async Task OnInitializedAsync()
     {
         isSystemAdmin = UserContext.Roles.Contains("admin");
-        await Task.WhenAll(
-            LoadSpaces(),
-            isSystemAdmin ? LoadAllUsers() : Task.CompletedTask
-        );
+        // Sequential to avoid concurrent use of the scoped DbContext.
+        await LoadSpaces();
+        if (isSystemAdmin)
+        {
+            await LoadAllUsers();
+        }
         await LoadHistory();
     }
 
@@ -210,10 +212,15 @@
             {
                 allUsers = result.Value.Users;
             }
+            else
+            {
+                errorMessage = "Unable to load users for filter.";
+            }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load users");
+            errorMessage = "Unable to load users for filter.";
         }
     }
 
