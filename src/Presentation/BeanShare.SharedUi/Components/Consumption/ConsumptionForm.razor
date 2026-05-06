@@ -4,7 +4,7 @@
 @using BeanShare.SharedUi.Components.Consumption.Models
 
 <div class="bs-card">
-    <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+    <EditForm EditContext="editContext" OnSubmit="HandleSubmit">
         <DataAnnotationsValidator />
 
         @if (StockProducts == null || !StockProducts.Any())
@@ -31,12 +31,6 @@
                         </option>
                     }
                 </select>
-                @if (!string.IsNullOrEmpty(productSelectionError))
-                {
-                    <div style="color: var(--bs-danger); font-size: 0.875rem; margin-top: 0.5rem;">
-                        @productSelectionError
-                    </div>
-                }
             </div>
 
             @if (SpaceMembers != null && SpaceMembers.Count > 1)
@@ -185,6 +179,9 @@
     public EventCallback<ConsumptionFormModel> OnSubmit { get; set; }
 
     [Parameter]
+    public EventCallback<string> OnValidationError { get; set; }
+
+    [Parameter]
     public List<StockLevelDto> StockProducts { get; set; } = new();
 
     [Parameter]
@@ -203,14 +200,20 @@
     public Guid? CurrentUserId { get; set; }
 
     private ConsumptionFormModel model = new() { ConsumedAt = DateTime.Now };
+    private EditContext editContext = default!;
     private bool isSubmitting;
     private bool isCustomMode = false;
     private PresetOption? selectedPresetOption;
     private StockLevelDto? selectedProduct;
     private string selectedProductId = "";
-    private string productSelectionError = "";
+
     private HashSet<Guid> selectedMemberIds = new();
     private bool logForMyself = true;
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(model);
+    }
 
     protected override void OnParametersSet()
     {
@@ -270,7 +273,6 @@
                 model.ProductName = selectedProduct.ProductName;
                 model.ProductBrand = selectedProduct.ProductBrand;
                 model.ProductType = selectedProduct.ProductType;
-                productSelectionError = "";
             }
         }
     }
@@ -313,19 +315,16 @@
     {
         if (selectedProduct == null)
         {
-            productSelectionError = "Please select a coffee product";
+            await OnValidationError.InvokeAsync("Please select a coffee product.");
             return;
         }
 
-        if (model.Grams <= 0)
-        {
+        if (!editContext.Validate())
             return;
-        }
 
-        // Validate that at least one person is selected
         if (!logForMyself && !selectedMemberIds.Any())
         {
-            productSelectionError = "Please select at least one member to log consumption for.";
+            await OnValidationError.InvokeAsync("Please select at least one member to log consumption for.");
             return;
         }
 
@@ -374,6 +373,7 @@
             ConsumedAt = DateTime.Now,
             Grams = defaultPreset?.Grams ?? 8
         };
+        editContext = new EditContext(model);
 
         isCustomMode = false;
         selectedPresetOption = defaultPreset;
@@ -387,7 +387,6 @@
 
         selectedProduct = null;
         selectedProductId = "";
-        productSelectionError = "";
         selectedMemberIds.Clear();
         logForMyself = true;
     }
