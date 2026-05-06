@@ -102,7 +102,8 @@ else
                                 RemainingStockGrams="@remainingStock"
                                 CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
-                <ConsumptionForm OnSubmit="HandleLogConsumption" />
+                <ConsumptionForm OnSubmit="HandleLogConsumption"
+                                 OnValidationError="HandleFormValidationError" />
 
                 <RecentConsumptionList RecentLogs="@recentConsumptions"
                                       IsLoading="@isLoadingConsumption" />
@@ -539,6 +540,8 @@ else
             ShowToast(false, "Copied!", "Invite code copied to clipboard");
         }
     }
+
+    private void HandleFormValidationError(string message) => ShowToast(true, "Validation", message);
 
     private void ShowToast(bool isError, string title, string message)
     {

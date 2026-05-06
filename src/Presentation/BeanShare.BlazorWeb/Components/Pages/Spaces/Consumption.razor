@@ -86,6 +86,7 @@ else
             </div>
 
             <ConsumptionForm OnSubmit="HandleLogConsumption"
+                           OnValidationError="HandleFormValidationError"
                            StockProducts="@stockProducts"
                            PresetData="@presetData"
                            QuickPresets="@quickPresets"
@@ -622,6 +623,8 @@ else
         usingCachedQrData = false;
         await HandleLogConsumption(model);
     }
+
+    private void HandleFormValidationError(string message) => ShowToast(true, "Validation", message);
 
     private void ShowToast(bool isError, string title, string message)
     {

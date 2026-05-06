@@ -99,6 +99,7 @@ else
                                 CurrencyCode="@(space?.CurrencyCode ?? "USD")" />
 
                 <ConsumptionForm OnSubmit="HandleLogConsumption"
+                                 OnValidationError="HandleFormValidationError"
                                  StockProducts="@stockProducts"
                                  QuickPresets="@quickPresets"
                                  SpaceMembers="@space?.Members?.ToList()"
@@ -634,6 +635,8 @@ else
             await AlertService.ShowAlertAsync("Copied", "Invite code copied to clipboard!");
         }
     }
+
+    private void HandleFormValidationError(string message) => ShowToast(true, "Validation", message);
 
     private void ShowToast(bool isError, string title, string message)
     {
