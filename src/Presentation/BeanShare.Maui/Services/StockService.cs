@@ -110,4 +110,31 @@ public class StockService : IStockService
             return false;
         }
     }
+
+    public async Task<bool> SetCurrentlyUsedAsync(Guid spaceId, Guid? stockLevelId)
+    {
+        try
+        {
+            bool success;
+            if (stockLevelId.HasValue)
+            {
+                var response = await _httpClient.PostAsync($"/api/spaces/{spaceId}/stock/{stockLevelId.Value}/currently-used", null);
+                success = response.IsSuccessStatusCode;
+            }
+            else
+            {
+                var response = await _httpClient.DeleteAsync($"/api/spaces/{spaceId}/stock/currently-used");
+                success = response.IsSuccessStatusCode;
+            }
+
+            if (success)
+                _cache.Invalidate("stock:");
+
+            return success;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

@@ -33,6 +33,7 @@ public sealed class CoffeeStockMappingProfile : IRegister
             .Map(dest => dest.CurrentStockGrams, src => src.CurrentStock.Grams)
             .Map(dest => dest.ConsumptionPercentage, src => src.ConsumptionPercentage)
             .Map(dest => dest.IsArchived, src => src.IsArchived)
+            .Map(dest => dest.IsCurrentlyUsed, src => src.IsCurrentlyUsed)
             .Map(dest => dest.UpdatedAt, src => src.UpdatedAt);
 
         config.NewConfig<Domain.Aggregates.CoffeeStock.CoffeeStock, CoffeeStockDto>()

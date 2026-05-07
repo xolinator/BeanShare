@@ -67,10 +67,16 @@ else
                     <div class="bs-flex bs-flex-col bs-gap-4">
                         @foreach (var stockLevel in stockLevels)
                         {
-                            <div class="bs-card">
+                            <div class="bs-card" style="@(stockLevel.IsCurrentlyUsed ? "border: 2px solid var(--bs-primary);" : "")">
                                 <div class="bs-flex bs-items-center bs-justify-between">
                                     <div>
-                                        <p class="bs-font-bold" style="margin: 0; font-size: 1rem;">@stockLevel.ProductDisplayName</p>
+                                        <div class="bs-flex bs-items-center bs-gap-2">
+                                            <p class="bs-font-bold" style="margin: 0; font-size: 1rem;">@stockLevel.ProductDisplayName</p>
+                                            @if (stockLevel.IsCurrentlyUsed)
+                                            {
+                                                <span style="background: var(--bs-primary); color: white; font-size: 0.625rem; font-weight: 700; padding: 0.125rem 0.375rem; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">In Use</span>
+                                            }
+                                        </div>
                                         <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">@stockLevel.ProductType</p>
                                     </div>
                                     <div class="bs-flex bs-items-center bs-gap-3">
@@ -92,6 +98,14 @@ else
                                                     @onclick="@(() => ShowSplitModal(stockLevel))"
                                                     title="Split remaining stock among members">
                                                 <span class="material-symbols-outlined" style="font-size: 1rem;">call_split</span>
+                                            </button>
+                                        }
+                                        @if (isAdmin && stockLevel.CurrentStockGrams > 0)
+                                        {
+                                            <button class="bs-btn bs-btn-sm @(stockLevel.IsCurrentlyUsed ? "bs-btn-primary" : "bs-btn-secondary")"
+                                                    @onclick="@(() => HandleToggleCurrentlyUsed(stockLevel))"
+                                                    title="@(stockLevel.IsCurrentlyUsed ? "Remove 'currently used' flag" : "Mark as currently used coffee")">
+                                                <span class="material-symbols-outlined" style="font-size: 1rem;">coffee</span>
                                             </button>
                                         }
                                         @if (isAdmin && stockLevel.CurrentStockGrams == 0)
@@ -498,6 +512,33 @@ else
         }
     }
 
+    private async Task HandleToggleCurrentlyUsed(StockLevelDto stockLevel)
+    {
+        try
+        {
+            Guid? targetId = stockLevel.IsCurrentlyUsed ? null : stockLevel.Id;
+            var command = new SetCurrentlyUsedStockLevelCommand(Guid.Parse(SpaceId), targetId);
+            var result = await Mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                var msg = targetId.HasValue
+                    ? $"{stockLevel.ProductDisplayName} is now the currently used coffee."
+                    : $"Currently used coffee cleared.";
+                ShowToast(false, "Updated", msg);
+                await LoadStock();
+            }
+            else
+            {
+                ShowToast(true, "Error", string.Join(", ", result.Errors.Select(e => e.Message)));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(true, "Error", $"Failed to update currently used coffee: {ex.Message}");
+        }
+    }
+
     private async Task LoadActiveQrCodes()
     {
         isLoadingActiveQrs = true;
@@ -664,6 +705,7 @@ else
                     CurrentStockGrams = 0,
                     ConsumptionPercentage = 0,
                     IsArchived = false,
+                    IsCurrentlyUsed = false,
                     UpdatedAt = DateTime.UtcNow
                 };
             }

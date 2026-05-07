@@ -11,6 +11,7 @@ public sealed class StockLevel : Entity
     public Weight TotalPurchased { get; private set; }
     public Weight TotalConsumed { get; private set; }
     public bool IsArchived { get; private set; }
+    public bool IsCurrentlyUsed { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
     private StockLevel()
@@ -103,12 +104,25 @@ public sealed class StockLevel : Entity
     public void Archive(IClock clock)
     {
         IsArchived = true;
+        IsCurrentlyUsed = false;
         UpdatedAt = clock.UtcNow;
     }
 
     public void Unarchive(IClock clock)
     {
         IsArchived = false;
+        UpdatedAt = clock.UtcNow;
+    }
+
+    public void SetCurrentlyUsed(IClock clock)
+    {
+        IsCurrentlyUsed = true;
+        UpdatedAt = clock.UtcNow;
+    }
+
+    public void ClearCurrentlyUsed(IClock clock)
+    {
+        IsCurrentlyUsed = false;
         UpdatedAt = clock.UtcNow;
     }
 

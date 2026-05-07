@@ -199,6 +199,9 @@
     [Parameter]
     public Guid? CurrentUserId { get; set; }
 
+    [Parameter]
+    public Guid? DefaultStockLevelId { get; set; }
+
     private ConsumptionFormModel model = new() { ConsumedAt = DateTime.Now };
     private EditContext editContext = default!;
     private bool isSubmitting;
@@ -237,6 +240,20 @@
             else
             {
                 model.Grams = 8; // Fallback default
+            }
+        }
+
+        // Pre-select currently used product if no product is selected yet
+        if (string.IsNullOrEmpty(selectedProductId) && DefaultStockLevelId.HasValue)
+        {
+            var defaultProduct = StockProducts.FirstOrDefault(p => p.Id == DefaultStockLevelId.Value);
+            if (defaultProduct != null)
+            {
+                selectedProductId = defaultProduct.Id.ToString();
+                selectedProduct = defaultProduct;
+                model.ProductName = defaultProduct.ProductName;
+                model.ProductBrand = defaultProduct.ProductBrand;
+                model.ProductType = defaultProduct.ProductType;
             }
         }
     }

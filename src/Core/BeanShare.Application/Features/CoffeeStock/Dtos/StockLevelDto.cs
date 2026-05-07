@@ -11,5 +11,6 @@ public sealed class StockLevelDto
     public required decimal CurrentStockGrams { get; init; }
     public required decimal ConsumptionPercentage { get; init; }
     public required bool IsArchived { get; init; }
+    public required bool IsCurrentlyUsed { get; init; }
     public required DateTime UpdatedAt { get; init; }
 }

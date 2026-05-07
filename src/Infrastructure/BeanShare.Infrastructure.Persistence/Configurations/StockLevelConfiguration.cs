@@ -58,6 +58,10 @@ public sealed class StockLevelConfiguration : IEntityTypeConfiguration<StockLeve
             .HasDefaultValue(false)
             .IsRequired();
 
+        builder.Property(sl => sl.IsCurrentlyUsed)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.Property(sl => sl.UpdatedAt)
             .IsRequired();
 
