@@ -13,7 +13,7 @@ namespace BeanShare.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, bool useInMemoryDatabase = false)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, IConfiguration? configuration = null, bool useInMemoryDatabase = false)
     {
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<ICostingPolicy, WeightedAverageCostingPolicy>();
@@ -21,6 +21,15 @@ public static class DependencyInjection
         services.AddPersistence(connectionString, useInMemoryDatabase);
 
         services.AddScoped<IUserService, UserService>();
+        if (configuration != null)
+        {
+            services.Configure<SemiAuthQrOptions>(configuration.GetSection(SemiAuthQrOptions.SectionName));
+        }
+        else
+        {
+            services.Configure<SemiAuthQrOptions>(_ => { });
+        }
+        services.AddSingleton<ISemiAuthQrSettings, SemiAuthQrSettings>();
         services.AddScoped<AvatarStorageService>();
         services.AddMemoryCache();
 

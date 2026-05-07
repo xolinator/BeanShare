@@ -1,39 +1,123 @@
 @page "/scan/{QrCodeId}"
 @rendermode InteractiveServer
-@using MediatR
+@using BeanShare.Application.Common
+@using BeanShare.Application.Features.ActiveQrCodes.Dtos
 @using BeanShare.Application.Features.ActiveQrCodes.Queries
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@using BeanShare.Application.Features.SemiAuthQr.Commands
+@using MediatR
 @inject IMediator Mediator
-@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Scan QR - BeanShare</PageTitle>
 
-<div class="bs-container" style="padding-top: 4rem; text-align: center;">
+<div class="bs-container" style="padding-top: 3rem; max-width: 32rem;">
     @if (isLoading)
     {
-        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-primary); display: block; margin-bottom: 1rem;">qr_code_scanner</span>
-        <h2 style="margin-bottom: 0.5rem;">Resolving QR Code...</h2>
-        <p class="bs-text-subtle">Please wait while we look up this QR code.</p>
+        <div style="text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-primary);">qr_code_scanner</span>
+            <h2 style="margin-top: 0.5rem;">Resolving QR Code...</h2>
+        </div>
     }
-    else if (!string.IsNullOrEmpty(errorMessage))
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
     {
-        <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--bs-error); display: block; margin-bottom: 1rem;">error</span>
-        <h2 style="margin-bottom: 0.5rem;">QR Code Error</h2>
-        <p class="bs-text-subtle" style="margin-bottom: 1.5rem;">@errorMessage</p>
-        <a href="/spaces" class="bs-btn bs-btn-primary">Go to Spaces</a>
+        <div class="bs-card" style="text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--bs-error);">error</span>
+            <p style="margin-top: 0.75rem;">@errorMessage</p>
+            <a class="bs-btn bs-btn-primary" href="/login?returnUrl=@Uri.EscapeDataString($"/scan/{QrCodeId}")">Sign in</a>
+        </div>
+    }
+    else if (resolvedQr == null)
+    {
+        <div class="bs-card" style="text-align: center;">
+            <p>QR code data is unavailable.</p>
+        </div>
+    }
+    else if (requiresLogin)
+    {
+        <div class="bs-card" style="text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--bs-primary);">lock</span>
+            <h2 style="margin-top: 0.75rem;">Sign in once on this device</h2>
+            <p class="bs-text-subtle">This QR can be logged anonymously only on devices that were previously signed in.</p>
+            <a class="bs-btn bs-btn-primary" href="/login?returnUrl=@Uri.EscapeDataString($"/scan/{QrCodeId}")">Sign in and continue</a>
+        </div>
+    }
+    else
+    {
+        <div class="bs-card">
+            <h2 style="margin: 0 0 0.75rem 0;">@resolvedQr.ProductBrand @resolvedQr.ProductName</h2>
+            <p class="bs-text-subtle" style="margin: 0 0 1rem 0;">@resolvedQr.Label · @resolvedQr.ProductType</p>
+
+            @if (!string.IsNullOrWhiteSpace(successMessage))
+            {
+                <div class="bs-alert bs-alert-success" style="margin-bottom: 1rem;">@successMessage</div>
+            }
+
+            <div class="bs-form-group">
+                <label class="bs-label">Grams</label>
+                <input class="bs-input" type="number" min="1" max="500" @bind="grams" @bind:event="oninput" />
+            </div>
+
+            @if (resolvedQr.DefaultGrams == 0)
+            {
+                <p class="bs-text-subtle" style="font-size: 0.85rem;">This station uses open recipe mode; choose grams manually.</p>
+            }
+            else if (!string.IsNullOrWhiteSpace(resolvedQr.RecipeName))
+            {
+                <p class="bs-text-subtle" style="font-size: 0.85rem;">Recipe: @resolvedQr.RecipeName (@resolvedQr.DefaultGrams g)</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(submitError))
+            {
+                <div class="bs-alert bs-alert-error" style="margin: 0.75rem 0;">@submitError</div>
+            }
+
+            <button class="bs-btn bs-btn-primary" disabled="@isSubmitting" @onclick="HandleLogConsumption">
+                @if (isSubmitting)
+                {
+                    <span>Logging...</span>
+                }
+                else
+                {
+                    <span>Log Coffee</span>
+                }
+            </button>
+        </div>
     }
 </div>
 
 @code {
     [Parameter]
-    public string QrCodeId { get; set; } = "";
+    public string QrCodeId { get; set; } = string.Empty;
 
+    private ActiveQrCodeDto? resolvedQr;
     private bool isLoading = true;
-    private string errorMessage = "";
+    private bool requiresLogin;
+    private bool isSubmitting;
+    private string errorMessage = string.Empty;
+    private string submitError = string.Empty;
+    private string successMessage = string.Empty;
+    private decimal grams;
+    private string? deviceId;
+    private string? deviceToken;
+    private bool pendingCredentialLoad;
 
     protected override async Task OnParametersSetAsync()
     {
+        isLoading = true;
+        requiresLogin = false;
+        errorMessage = string.Empty;
+        submitError = string.Empty;
+        successMessage = string.Empty;
+        resolvedQr = null;
+
+        if (!Configuration.GetValue<bool>("Features:SemiAuthQr:Enabled", false))
+        {
+            errorMessage = "Semi-authenticated QR logging is currently disabled.";
+            isLoading = false;
+            return;
+        }
+
         if (!Guid.TryParse(QrCodeId, out var qrId))
         {
             errorMessage = "Invalid QR code format.";
@@ -41,24 +125,118 @@
             return;
         }
 
+        var result = await Mediator.Send(new ResolveActiveQrCodeQuery(qrId));
+        if (!result.IsSuccess)
+        {
+            errorMessage = "This QR code could not be found or has been deactivated.";
+            isLoading = false;
+            return;
+        }
+
+        resolvedQr = result.Value;
+        grams = resolvedQr.DefaultGrams > 0 ? resolvedQr.DefaultGrams : 8;
+        pendingCredentialLoad = true;
+        isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!pendingCredentialLoad)
+            return;
+
+        pendingCredentialLoad = false;
+        await LoadCredentialAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadCredentialAsync()
+    {
         try
         {
-            var result = await Mediator.Send(new ResolveActiveQrCodeQuery(qrId));
-            if (result.IsSuccess)
+            var credential = await JSRuntime.InvokeAsync<SemiAuthCredential?>("beanshareSemiAuth.getCredential");
+            if (credential == null ||
+                string.IsNullOrWhiteSpace(credential.DeviceId) ||
+                string.IsNullOrWhiteSpace(credential.Token))
             {
-                var dto = result.Value;
-                Navigation.NavigateTo($"/spaces/{dto.SpaceId}/consumption?qrCodeId={qrId}");
+                requiresLogin = true;
                 return;
             }
 
-            errorMessage = "This QR code could not be found or has been deactivated.";
+            if (!string.IsNullOrWhiteSpace(credential.ExpiresAt) &&
+                DateTime.TryParse(credential.ExpiresAt, out var expiresAt) &&
+                expiresAt <= DateTime.UtcNow)
+            {
+                await JSRuntime.InvokeVoidAsync("beanshareSemiAuth.clearCredential");
+                requiresLogin = true;
+                return;
+            }
+
+            deviceId = credential.DeviceId;
+            deviceToken = credential.Token;
+            requiresLogin = false;
         }
-        catch (Exception ex)
+        catch
         {
-            System.Diagnostics.Debug.WriteLine($"[BeanShare] QR resolve error: {ex.Message}");
-            errorMessage = "Failed to resolve QR code. Please try again.";
+            requiresLogin = true;
+        }
+    }
+
+    private async Task HandleLogConsumption()
+    {
+        if (resolvedQr == null || string.IsNullOrWhiteSpace(deviceId) || string.IsNullOrWhiteSpace(deviceToken))
+        {
+            requiresLogin = true;
+            return;
         }
 
-        isLoading = false;
+        submitError = string.Empty;
+        successMessage = string.Empty;
+
+        if (grams <= 0)
+        {
+            submitError = "Grams must be greater than 0.";
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            var result = await Mediator.Send(new RecordSemiAuthQrConsumptionCommand(
+                resolvedQr.Id,
+                deviceId,
+                deviceToken,
+                grams,
+                DateTime.UtcNow));
+
+            if (result.IsSuccess)
+            {
+                successMessage = "Coffee logged successfully.";
+                return;
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            submitError = firstError.Message;
+
+            if (firstError.Code == "UNAUTHENTICATED" || firstError.Code == "FORBIDDEN")
+            {
+                await JSRuntime.InvokeVoidAsync("beanshareSemiAuth.clearCredential");
+                requiresLogin = true;
+            }
+        }
+        catch
+        {
+            submitError = "Failed to log coffee consumption.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private sealed class SemiAuthCredential
+    {
+        public string DeviceId { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
+        public string? ExpiresAt { get; set; }
     }
 }

@@ -30,7 +30,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInMemoryDatabase);
+builder.Services.AddInfrastructure(connectionString, builder.Configuration, useInMemoryDatabase: useInMemoryDatabase);
 builder.Services.AddMemoryCache();
 builder.Services.AddExchangeRates(builder.Configuration);
 builder.Services.AddCommunicationServices(builder.Configuration);

@@ -100,3 +100,54 @@ window.beanshare = {
         URL.revokeObjectURL(url);
     }
 };
+
+window.beanshareSemiAuth = {
+    _deviceIdKey: 'beanshare-semi-auth-device-id',
+    _credentialKey: 'beanshare-semi-auth-credential',
+
+    ensureDeviceId: function () {
+        var existing = localStorage.getItem(this._deviceIdKey);
+        if (existing) {
+            return existing;
+        }
+
+        var generated = (window.crypto && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : this._fallbackUuid();
+        localStorage.setItem(this._deviceIdKey, generated);
+        return generated;
+    },
+
+    storeCredential: function (credential) {
+        if (!credential) return;
+        localStorage.setItem(this._credentialKey, JSON.stringify(credential));
+    },
+
+    getCredential: function () {
+        var raw = localStorage.getItem(this._credentialKey);
+        if (!raw) return null;
+
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return null;
+        }
+    },
+
+    clearCredential: function () {
+        localStorage.removeItem(this._credentialKey);
+    },
+
+    clearAll: function () {
+        localStorage.removeItem(this._credentialKey);
+        localStorage.removeItem(this._deviceIdKey);
+    },
+
+    _fallbackUuid: function () {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0;
+            var v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+};

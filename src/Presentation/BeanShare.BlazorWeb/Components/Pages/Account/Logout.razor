@@ -2,9 +2,12 @@
 @attribute [StreamRendering(false)]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using Microsoft.AspNetCore.Components.Authorization
+@using BeanShare.Application.Features.SemiAuthQr.Commands
+@using MediatR
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IMediator Mediator
 
 <PageTitle>Logging out - BeanShare</PageTitle>
 
@@ -34,6 +37,19 @@
 
             try
             {
+                var credential = await JSRuntime.InvokeAsync<SemiAuthCredential?>("beanshareSemiAuth.getCredential");
+                if (credential != null &&
+                    !string.IsNullOrWhiteSpace(credential.DeviceId) &&
+                    !string.IsNullOrWhiteSpace(credential.Token))
+                {
+                    await Mediator.Send(new RevokeSemiAuthQrDeviceTokenCommand(credential.DeviceId, credential.Token));
+                }
+            }
+            catch { }
+
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("beanshareSemiAuth.clearAll");
                 await JSRuntime.InvokeVoidAsync("localStorage.clear");
                 await JSRuntime.InvokeVoidAsync("sessionStorage.clear");
             }
@@ -50,5 +66,11 @@
                 Navigation.NavigateTo("/account/logout", forceLoad: true);
             }
         }
+    }
+
+    private sealed class SemiAuthCredential
+    {
+        public string? DeviceId { get; set; }
+        public string? Token { get; set; }
     }
 }

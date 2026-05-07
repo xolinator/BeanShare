@@ -1,0 +1,42 @@
+@using BeanShare.Application.Features.SemiAuthQr.Commands
+@using MediatR
+@inject IMediator Mediator
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+
+@code {
+    private bool _done;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _done)
+            return;
+
+        _done = true;
+
+        if (!Configuration.GetValue<bool>("Features:SemiAuthQr:Enabled", false))
+            return;
+
+        try
+        {
+            var deviceId = await JSRuntime.InvokeAsync<string>("beanshareSemiAuth.ensureDeviceId");
+            if (string.IsNullOrWhiteSpace(deviceId))
+                return;
+
+            var result = await Mediator.Send(new IssueSemiAuthQrDeviceTokenCommand(deviceId));
+            if (!result.IsSuccess)
+                return;
+
+            await JSRuntime.InvokeVoidAsync("beanshareSemiAuth.storeCredential", new
+            {
+                deviceId = result.Value.DeviceId,
+                token = result.Value.Token,
+                expiresAt = result.Value.ExpiresAt
+            });
+        }
+        catch
+        {
+            // best effort bootstrap
+        }
+    }
+}

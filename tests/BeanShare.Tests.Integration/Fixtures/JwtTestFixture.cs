@@ -73,6 +73,7 @@ public sealed class JwtTestFixture : WebApplicationFactory<Program>, IAsyncLifet
         });
 
         builder.UseEnvironment("Testing");
+        builder.UseSetting("Features:SemiAuthQr:Enabled", "true");
 
         builder.ConfigureLogging(logging =>
         {

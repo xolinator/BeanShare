@@ -14,6 +14,17 @@ BeanShare is a Clean Architecture information system for managing office coffee 
 - **Document Export**: Generate settlement reports in PDF and Excel formats
 - **Email Notifications**: Send settlement notifications to space members
 
+## Semi-Authenticated QR Logging
+
+BeanShare supports an optional "semi-auth" QR flow for ad-hoc logging at coffee stations.
+
+- Enable with `Features:SemiAuthQr:Enabled=true` (API and BlazorWeb configuration).
+- A device must have a prior authenticated login to receive a device-bound logging token.
+- Anonymous scan/log is limited to QR consumption logging only (no general app access).
+- Logged consumption is attributed to the original user identity behind the device token.
+- Tokens are rotated on re-issue, expire automatically, and are revoked on logout.
+- Server stores only hashed device and token values; raw token is kept client-side only.
+
 ## Architecture
 
 BeanShare follows Clean Architecture principles with clear separation of concerns:

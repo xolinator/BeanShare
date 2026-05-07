@@ -27,7 +27,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase", false);
 
-builder.Services.AddInfrastructure(connectionString, useInMemoryDatabase: useInMemoryDatabase);
+builder.Services.AddInfrastructure(connectionString, builder.Configuration, useInMemoryDatabase: useInMemoryDatabase);
 builder.Services.AddMemoryCache();
 builder.Services.AddExchangeRates(builder.Configuration);
 builder.Services.AddCommunicationServices(builder.Configuration);

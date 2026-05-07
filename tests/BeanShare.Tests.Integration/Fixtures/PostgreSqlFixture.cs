@@ -27,6 +27,7 @@ public sealed class PostgreSqlFixture : WebApplicationFactory<Program>, IAsyncLi
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("UseMockAuthentication", "true");
+        builder.UseSetting("Features:SemiAuthQr:Enabled", "true");
         builder.UseEnvironment("Testing");
 
         builder.ConfigureServices(services =>
