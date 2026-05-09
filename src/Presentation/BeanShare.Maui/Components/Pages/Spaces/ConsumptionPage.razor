@@ -239,7 +239,7 @@ else
         }
 
         if (dashboard.Stock?.StockLevels != null)
-            stockProducts = dashboard.Stock.StockLevels;
+            stockProducts = dashboard.Stock.StockLevels.Where(s => s.CurrentStockGrams > 0).ToList();
 
         if (dashboard.Consumption != null)
         {
@@ -384,7 +384,7 @@ else
             var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
             if (stockData != null && stockData.StockLevels != null)
             {
-                stockProducts = stockData.StockLevels.ToList();
+                stockProducts = stockData.StockLevels.Where(s => s.CurrentStockGrams > 0).ToList();
             }
         }
         catch (Exception ex)

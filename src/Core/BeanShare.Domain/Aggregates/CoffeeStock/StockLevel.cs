@@ -116,6 +116,9 @@ public sealed class StockLevel : Entity
 
     public void SetCurrentlyUsed(IClock clock)
     {
+        if (IsArchived)
+            throw new InvalidOperationException($"Cannot mark archived stock level '{Product.Name}' as currently used");
+
         IsCurrentlyUsed = true;
         UpdatedAt = clock.UtcNow;
     }

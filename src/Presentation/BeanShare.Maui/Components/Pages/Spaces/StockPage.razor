@@ -69,7 +69,7 @@ else
                                             <p class="bs-font-bold" style="margin: 0; font-size: 1rem;">@stockLevel.ProductDisplayName</p>
                                             @if (stockLevel.IsCurrentlyUsed)
                                             {
-                                                <span style="background: var(--bs-primary); color: white; font-size: 0.625rem; font-weight: 700; padding: 0.125rem 0.375rem; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">In Use</span>
+                                                <span class="bs-badge" style="background: var(--bs-primary); color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">In Use</span>
                                             }
                                         </div>
                                         <p class="bs-text-subtle" style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">@stockLevel.ProductType</p>
@@ -87,7 +87,7 @@ else
                                                 <span class="material-symbols-outlined" style="font-size: 1rem;">qr_code_2</span>
                                             </button>
                                         }
-                                        @if (isAdmin && stockLevel.CurrentStockGrams > 0)
+                                        @if (isAdmin && (stockLevel.CurrentStockGrams > 0 || stockLevel.IsCurrentlyUsed))
                                         {
                                             <button class="bs-btn bs-btn-sm @(stockLevel.IsCurrentlyUsed ? "bs-btn-primary" : "bs-btn-secondary")"
                                                     @onclick="@(() => HandleToggleCurrentlyUsed(stockLevel))"

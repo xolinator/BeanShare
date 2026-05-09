@@ -437,4 +437,103 @@ public sealed class CoffeeStockDomainTests
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*not found*");
     }
+
+    [Fact]
+    public void SetCurrentlyUsed_WithValidStockLevel_ShouldMarkAsCurrentlyUsed()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Ethiopian Yirgacheffe", "Onyx", CoffeeType.Filter);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(500), Money.Create(18.50m, "USD"), "Roaster Direct", _userId, _clock.UtcNow.AddDays(-1), _clock);
+        var stockLevelId = coffeeStock.StockLevels.First().Id;
+
+        coffeeStock.SetCurrentlyUsed(stockLevelId, _clock);
+
+        coffeeStock.StockLevels.First().IsCurrentlyUsed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SetCurrentlyUsed_ShouldClearPreviouslyMarkedStockLevel()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product1 = CoffeeProduct.Create("Colombian Supremo", "Counter Culture", CoffeeType.Espresso);
+        var product2 = CoffeeProduct.Create("Kenyan AA", "Heart Roasters", CoffeeType.Filter);
+        coffeeStock.AddPurchase(product1, Weight.FromGrams(1000), Money.Create(22m, "USD"), "Importer", _userId, _clock.UtcNow.AddDays(-2), _clock);
+        coffeeStock.AddPurchase(product2, Weight.FromGrams(750), Money.Create(19m, "USD"), "Importer", _userId, _clock.UtcNow.AddDays(-1), _clock);
+        var firstId = coffeeStock.StockLevels.First().Id;
+        var secondId = coffeeStock.StockLevels.Last().Id;
+
+        coffeeStock.SetCurrentlyUsed(firstId, _clock);
+        coffeeStock.SetCurrentlyUsed(secondId, _clock);
+
+        coffeeStock.StockLevels.Single(sl => sl.Id == firstId).IsCurrentlyUsed.Should().BeFalse();
+        coffeeStock.StockLevels.Single(sl => sl.Id == secondId).IsCurrentlyUsed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SetCurrentlyUsed_OnArchivedStockLevel_ShouldThrowInvalidOperation()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Guatemalan Antigua", "Verve", CoffeeType.Espresso);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(500), Money.Create(16m, "USD"), "Distributor", _userId, _clock.UtcNow.AddDays(-1), _clock);
+        var stockLevelId = coffeeStock.StockLevels.First().Id;
+        coffeeStock.ArchiveStockLevel(stockLevelId, _clock);
+
+        var act = () => coffeeStock.SetCurrentlyUsed(stockLevelId, _clock);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*archived*");
+    }
+
+    [Fact]
+    public void SetCurrentlyUsed_WithNonexistentStockLevel_ShouldThrowArgument()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+
+        var act = () => coffeeStock.SetCurrentlyUsed(Guid.NewGuid(), _clock);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*not found*");
+    }
+
+    [Fact]
+    public void ClearCurrentlyUsed_ShouldClearAllMarkedStockLevels()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Sumatra Mandheling", "Stumptown", CoffeeType.Espresso);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(800), Money.Create(21m, "USD"), "Supplier", _userId, _clock.UtcNow.AddDays(-1), _clock);
+        var stockLevelId = coffeeStock.StockLevels.First().Id;
+        coffeeStock.SetCurrentlyUsed(stockLevelId, _clock);
+
+        coffeeStock.ClearCurrentlyUsed(_clock);
+
+        coffeeStock.StockLevels.All(sl => !sl.IsCurrentlyUsed).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ArchiveStockLevel_WhenCurrentlyUsed_ShouldClearCurrentlyUsedFlag()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Costa Rican Tarrazu", "Intelligentsia", CoffeeType.Filter);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(600), Money.Create(17m, "USD"), "Direct Trade", _userId, _clock.UtcNow.AddDays(-1), _clock);
+        var stockLevelId = coffeeStock.StockLevels.First().Id;
+        coffeeStock.SetCurrentlyUsed(stockLevelId, _clock);
+
+        coffeeStock.ArchiveStockLevel(stockLevelId, _clock);
+
+        var archived = coffeeStock.StockLevels.First();
+        archived.IsArchived.Should().BeTrue();
+        archived.IsCurrentlyUsed.Should().BeFalse();
+    }
+
+    [Fact]
+    public void StockLevel_SetCurrentlyUsed_WhenArchived_ShouldThrowDirectly()
+    {
+        var coffeeStock = CoffeeStock.Create(_spaceId, _clock);
+        var product = CoffeeProduct.Create("Rwandan Bourbon", "George Howell", CoffeeType.Filter);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(400), Money.Create(14m, "USD"), "Coop", _userId, _clock.UtcNow.AddDays(-1), _clock);
+        var stockLevel = coffeeStock.StockLevels.First();
+        stockLevel.Archive(_clock);
+
+        var act = () => stockLevel.SetCurrentlyUsed(_clock);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*archived*");
+    }
 }

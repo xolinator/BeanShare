@@ -343,4 +343,231 @@ public class CoffeeStockCommandTests
         result.Errors.Should().Contain(e => e.Code.Contains("DOMAIN_ERROR"));
         await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task SetCurrentlyUsed_WithValidAdmin_ShouldSetStockLevel()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), clock);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var coffeeStock = CoffeeStock.Create(spaceId, clock);
+        var product = CoffeeProduct.Create("Panama Geisha", "Elida Estate", CoffeeType.Filter);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(250), Money.Create(45m, "USD"), "Auction Lot", adminId, clock.UtcNow.AddDays(-1), clock);
+        var stockLevelId = coffeeStock.StockLevels.First().Id;
+
+        coffeeStockRepository.GetBySpaceIdAsync(spaceId, Arg.Any<CancellationToken>())
+            .Returns(coffeeStock);
+
+        var handler = new SetCurrentlyUsedStockLevelCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new SetCurrentlyUsedStockLevelCommand(spaceId.Value, stockLevelId);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        coffeeStock.StockLevels.First().IsCurrentlyUsed.Should().BeTrue();
+        await coffeeStockRepository.Received(1).UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SetCurrentlyUsed_WithNullStockLevelId_ShouldClearAll()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), clock);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var coffeeStock = CoffeeStock.Create(spaceId, clock);
+        var product = CoffeeProduct.Create("Brazilian Santos", "Daterra", CoffeeType.Espresso);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(1000), Money.Create(20m, "USD"), "Importer", adminId, clock.UtcNow.AddDays(-1), clock);
+        coffeeStock.SetCurrentlyUsed(coffeeStock.StockLevels.First().Id, clock);
+
+        coffeeStockRepository.GetBySpaceIdAsync(spaceId, Arg.Any<CancellationToken>())
+            .Returns(coffeeStock);
+
+        var handler = new SetCurrentlyUsedStockLevelCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new SetCurrentlyUsedStockLevelCommand(spaceId.Value, null);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        coffeeStock.StockLevels.All(sl => !sl.IsCurrentlyUsed).Should().BeTrue();
+        await coffeeStockRepository.Received(1).UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SetCurrentlyUsed_WithNonAdmin_ShouldReturnError()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+        var memberId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(memberId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), clock);
+        space.Join(memberId, clock);
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var handler = new SetCurrentlyUsedStockLevelCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new SetCurrentlyUsedStockLevelCommand(spaceId.Value, Guid.NewGuid());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("INSUFFICIENT_PRIVILEGES"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SetCurrentlyUsed_WithNonexistentSpace_ShouldReturnError()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        userContext.CurrentUserId.Returns(new UserId(Guid.NewGuid()));
+
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns((Domain.Aggregates.Space.Space?)null);
+
+        var handler = new SetCurrentlyUsedStockLevelCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new SetCurrentlyUsedStockLevelCommand(Guid.NewGuid(), Guid.NewGuid());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("SPACE_NOT_FOUND"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SetCurrentlyUsed_WithArchivedStockLevel_ShouldReturnDomainError()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), clock);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var coffeeStock = CoffeeStock.Create(spaceId, clock);
+        var product = CoffeeProduct.Create("Tanzanian Peaberry", "Sweet Maria's", CoffeeType.Filter);
+        coffeeStock.AddPurchase(product, Weight.FromGrams(500), Money.Create(15m, "USD"), "Roaster", adminId, clock.UtcNow.AddDays(-1), clock);
+        var stockLevelId = coffeeStock.StockLevels.First().Id;
+        coffeeStock.ArchiveStockLevel(stockLevelId, clock);
+
+        coffeeStockRepository.GetBySpaceIdAsync(spaceId, Arg.Any<CancellationToken>())
+            .Returns(coffeeStock);
+
+        var handler = new SetCurrentlyUsedStockLevelCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new SetCurrentlyUsedStockLevelCommand(spaceId.Value, stockLevelId);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("DOMAIN_ERROR"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SetCurrentlyUsed_WithNonexistentStockLevel_ShouldReturnError()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), clock);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        var coffeeStock = CoffeeStock.Create(spaceId, clock);
+        coffeeStockRepository.GetBySpaceIdAsync(spaceId, Arg.Any<CancellationToken>())
+            .Returns(coffeeStock);
+
+        var handler = new SetCurrentlyUsedStockLevelCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new SetCurrentlyUsedStockLevelCommand(spaceId.Value, Guid.NewGuid());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("STOCK_LEVEL_NOT_FOUND"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SetCurrentlyUsed_WithNoCoffeeStockForSpace_ShouldReturnStockNotFound()
+    {
+        var coffeeStockRepository = Substitute.For<ICoffeeStockRepository>();
+        var spaceRepository = Substitute.For<ISpaceRepository>();
+        var userContext = Substitute.For<IUserContext>();
+        var clock = TestClock.Instance;
+
+        var spaceId = new SpaceId(Guid.NewGuid());
+        var adminId = new UserId(Guid.NewGuid());
+
+        userContext.CurrentUserId.Returns(adminId);
+
+        var space = Domain.Aggregates.Space.Space.Create(spaceId, "Test Space", Currency.USD, adminId, new InviteCode("CAFE23"), clock);
+        spaceRepository.GetSingleBySpecAsync(Arg.Any<SpaceByIdSpecification>(), Arg.Any<CancellationToken>())
+            .Returns(space);
+
+        coffeeStockRepository.GetBySpaceIdAsync(spaceId, Arg.Any<CancellationToken>())
+            .Returns((CoffeeStock?)null);
+
+        var handler = new SetCurrentlyUsedStockLevelCommandHandler(coffeeStockRepository, spaceRepository, userContext, clock);
+
+        var command = new SetCurrentlyUsedStockLevelCommand(spaceId.Value, Guid.NewGuid());
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("STOCK_NOT_FOUND"));
+        await coffeeStockRepository.DidNotReceive().UpdateAsync(Arg.Any<CoffeeStock>(), Arg.Any<CancellationToken>());
+    }
 }
