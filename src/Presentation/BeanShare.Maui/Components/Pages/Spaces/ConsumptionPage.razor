@@ -84,7 +84,8 @@ else
                            PresetData="@presetData"
                            QuickPresets="@quickPresets"
                            SpaceMembers="@space?.Members?.ToList()"
-                           CurrentUserId="@UserContext.CurrentUserId.Value" />
+                           CurrentUserId="@UserContext.CurrentUserId.Value"
+                           DefaultStockLevelId="@(stockProducts.FirstOrDefault(s => s.IsCurrentlyUsed)?.Id)" />
 
             <div>
                 <div class="bs-flex bs-items-center bs-justify-between" style="margin-bottom: 0.75rem;">
@@ -238,7 +239,7 @@ else
         }
 
         if (dashboard.Stock?.StockLevels != null)
-            stockProducts = dashboard.Stock.StockLevels;
+            stockProducts = dashboard.Stock.StockLevels.Where(s => s.CurrentStockGrams > 0).ToList();
 
         if (dashboard.Consumption != null)
         {
@@ -383,7 +384,7 @@ else
             var stockData = await StockService.GetSpaceStockAsync(spaceGuid);
             if (stockData != null && stockData.StockLevels != null)
             {
-                stockProducts = stockData.StockLevels.ToList();
+                stockProducts = stockData.StockLevels.Where(s => s.CurrentStockGrams > 0).ToList();
             }
         }
         catch (Exception ex)

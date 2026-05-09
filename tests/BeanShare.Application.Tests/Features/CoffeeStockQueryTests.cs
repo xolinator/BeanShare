@@ -241,6 +241,7 @@ public sealed class CoffeeStockQueryTests
                 TotalConsumedGrams = 900m,
                 ConsumptionPercentage = 90m,
                 IsArchived = false,
+                IsCurrentlyUsed = false,
                 UpdatedAt = _clock.UtcNow
             },
             new StockLevelDto
@@ -255,6 +256,7 @@ public sealed class CoffeeStockQueryTests
                 TotalConsumedGrams = 100m,
                 ConsumptionPercentage = 20m,
                 IsArchived = false,
+                IsCurrentlyUsed = false,
                 UpdatedAt = _clock.UtcNow
             }
         };

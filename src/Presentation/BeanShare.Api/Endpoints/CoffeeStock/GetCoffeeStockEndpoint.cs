@@ -70,6 +70,7 @@ public sealed class GetCoffeeStockEndpoint : Endpoint<GetSpaceStockRequest, Spac
                 CurrentStockGrams = sl.CurrentStockGrams,
                 ConsumptionPercentage = sl.ConsumptionPercentage,
                 IsArchived = sl.IsArchived,
+                IsCurrentlyUsed = sl.IsCurrentlyUsed,
                 UpdatedAt = sl.UpdatedAt
             }).ToList(),
             RecentPurchases = dto.RecentPurchases.Select(rp => new StockPurchaseResponse
