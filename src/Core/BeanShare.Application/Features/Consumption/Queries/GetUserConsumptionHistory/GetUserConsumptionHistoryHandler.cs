@@ -232,8 +232,14 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
             .ToDictionary(g => g.Key, g => g.Count());
 
         var consumptionGramsBySpace = allForSummary
-            .GroupBy(c => spaces.TryGetValue(c.SpaceId, out var s) ? s.Name : "Unknown")
-            .ToDictionary(g => g.Key, g => g.Sum(c => c.Quantity.Grams));
+            .GroupBy(c => c.SpaceId)
+            .Select(g => new
+            {
+                SpaceName = spaces.TryGetValue(g.Key, out var s) ? s.Name : "Unknown",
+                TotalGrams = g.Sum(c => c.Quantity.Grams)
+            })
+            .GroupBy(x => x.SpaceName)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.TotalGrams));
 
         var summary = new ConsumptionHistorySummaryDto(
             totalGrams,
