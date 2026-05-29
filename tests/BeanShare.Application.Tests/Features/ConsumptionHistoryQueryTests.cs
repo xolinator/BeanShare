@@ -89,6 +89,29 @@ public sealed class ConsumptionHistoryQueryTests
     }
 
     [Fact]
+    public async Task GetUserConsumptionHistory_WithoutFilters_ShouldReturnAllMembersInUserSpaces()
+    {
+        var peerId = new UserId(Guid.NewGuid());
+        var space = CreateSpace();
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumptionForUser(_currentUserId, _clock.UtcNow.AddHours(-1)),
+            CreateConsumptionForUser(peerId, _clock.UtcNow.AddHours(-2))
+        };
+
+        _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { space });
+        SetupConsumptionMocks(consumptions);
+
+        var query = new GetUserConsumptionHistoryQuery(null, null, null, null, 1, 20);
+
+        var result = await _handler.Handle(query, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TotalCount.Should().Be(2);
+        result.Value.Items.Select(x => x.UserId).Should().BeEquivalentTo(new[] { _currentUserId.Value, peerId.Value });
+    }
+
+    [Fact]
     public async Task GetUserConsumptionHistory_WithDateRangeFilter_ShouldFilterByDates()
     {
         var space = CreateSpace();
@@ -242,6 +265,31 @@ public sealed class ConsumptionHistoryQueryTests
         result.Value.Items.First().ConsumedAt.Should().Be(new DateTime(2025, 10, 3, 9, 0, 0, DateTimeKind.Utc));
     }
 
+    [Fact]
+    public async Task GetUserConsumptionHistory_WhenSpacesShareSameName_ShouldAggregateSummaryByNameWithoutFailure()
+    {
+        var secondSpaceId = SpaceId.New();
+        var sharedName = "Shared Space";
+        var firstSpace = CreateSpace(_spaceId, sharedName);
+        var secondSpace = CreateSpace(secondSpaceId, sharedName);
+        var consumptions = new List<ConsumptionEntry>
+        {
+            CreateConsumptionForUserInSpace(_currentUserId, _spaceId, _clock.UtcNow.AddHours(-1), 18m),
+            CreateConsumptionForUserInSpace(_currentUserId, secondSpaceId, _clock.UtcNow.AddHours(-2), 20m)
+        };
+
+        _spaceRepository.GetBySpecAsync(Arg.Any<ISpec<Space>>(), default).Returns(new List<Space> { firstSpace, secondSpace });
+        SetupConsumptionMocks(consumptions);
+
+        var query = new GetUserConsumptionHistoryQuery(null, null, null, null, 1, 20);
+
+        var result = await _handler.Handle(query, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Summary.ConsumptionGramsBySpace.Should().ContainSingle()
+            .Which.Should().Be(new KeyValuePair<string, decimal>(sharedName, 38m));
+    }
+
     // -----------------------------------------------------------------------
     // Peer filtering: regular (non-admin) user views a space-mate's history
     // -----------------------------------------------------------------------
@@ -341,7 +389,12 @@ public sealed class ConsumptionHistoryQueryTests
 
     private Space CreateSpace()
     {
-        var space = Space.Create(_spaceId, "Test Space", Currency.USD, _currentUserId, new InviteCode("TESTAB"), _clock);
+        return CreateSpace(_spaceId, "Test Space");
+    }
+
+    private Space CreateSpace(SpaceId spaceId, string name)
+    {
+        var space = Space.Create(spaceId, name, Currency.USD, _currentUserId, new InviteCode("TESTAB"), _clock);
         return space;
     }
 
@@ -384,9 +437,9 @@ public sealed class ConsumptionHistoryQueryTests
         return ConsumptionEntry.Create(_spaceId, userId, product, Weight.FromGrams(18m), consumedAt, _clock);
     }
 
-    private ConsumptionEntry CreateConsumptionForUserInSpace(UserId userId, SpaceId spaceId, DateTime consumedAt)
+    private ConsumptionEntry CreateConsumptionForUserInSpace(UserId userId, SpaceId spaceId, DateTime consumedAt, decimal grams = 18m)
     {
         var product = CoffeeProduct.Create("Test Coffee", "Test Brand", CoffeeType.Espresso);
-        return ConsumptionEntry.Create(spaceId, userId, product, Weight.FromGrams(18m), consumedAt, _clock);
+        return ConsumptionEntry.Create(spaceId, userId, product, Weight.FromGrams(grams), consumedAt, _clock);
     }
 }

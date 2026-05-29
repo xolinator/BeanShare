@@ -63,9 +63,6 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
 
         var spaces = new Dictionary<SpaceId, Domain.Aggregates.Space.Space>();
 
-        var isSpaceWideQuery = query.SpaceId.HasValue && !query.MemberUserId.HasValue;
-        var isSpecificMemberQuery = query.SpaceId.HasValue && query.MemberUserId.HasValue;
-
         var specs = new List<ISpec<Domain.Entities.ConsumptionEntry>>();
 
         foreach (var space in userSpaces)
@@ -81,7 +78,12 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
                 ? new BillingPeriodId(query.BillingPeriodId.Value)
                 : (BillingPeriodId?)null;
 
-            if (isSpaceWideQuery || isSpecificMemberQuery)
+            if (!query.MemberUserId.HasValue)
+            {
+                specs.Add(new ConsumptionsBySpaceAndDateRangeSpecification(
+                    space.Id, null, query.StartDate, query.EndDate, billingPeriodId));
+            }
+            else if (query.SpaceId.HasValue)
             {
                 UserId? targetUserId = query.MemberUserId.HasValue
                     ? new UserId(query.MemberUserId.Value)
@@ -231,11 +233,13 @@ public sealed class GetUserConsumptionHistoryHandler : IRequestHandler<GetUserCo
 
         var consumptionGramsBySpace = allForSummary
             .GroupBy(c => c.SpaceId)
-            .Select(g => new {
+            .Select(g => new
+            {
                 SpaceName = spaces.TryGetValue(g.Key, out var s) ? s.Name : "Unknown",
                 TotalGrams = g.Sum(c => c.Quantity.Grams)
             })
-            .ToDictionary(x => x.SpaceName, x => x.TotalGrams);
+            .GroupBy(x => x.SpaceName)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.TotalGrams));
 
         var summary = new ConsumptionHistorySummaryDto(
             totalGrams,
